@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual Environment
+.venv/
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
+
+# 다운로드한 주식 데이터
+raw/
+
+# 결과 파일
+*.xlsx
+*.csv
