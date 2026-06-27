@@ -18,6 +18,14 @@ def create_features(df):
         * 100
     )
 
+    df["MA60"] = df["종가"].rolling(60).mean()
+
+    df["MA60비율"] = (
+        (df["종가"] - df["MA60"])
+        / df["MA60"]
+        * 100
+    )
+
     return df
 
 
@@ -48,6 +56,7 @@ def make_dataset(df):
             "날짜",
             "거래량비율",
             "MA20비율",
+            "MA60비율",
             "20일후수익률"
         ]
     ]
