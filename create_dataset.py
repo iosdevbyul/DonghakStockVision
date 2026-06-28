@@ -26,6 +26,23 @@ def create_features(df):
         * 100
     )
 
+    # RSI(14)
+    delta = df["종가"].diff()
+
+    gain = delta.clip(lower=0)
+
+    loss = -delta.clip(upper=0)
+
+    avg_gain = gain.rolling(14).mean()
+
+    avg_loss = loss.rolling(14).mean()
+
+    rs = avg_gain / avg_loss
+
+    df["RSI"] = 100 - (
+        100 / (1 + rs)
+    )
+
     return df
 
 
@@ -57,6 +74,7 @@ def make_dataset(df):
             "거래량비율",
             "MA20비율",
             "MA60비율",
+            "RSI",
             "20일후수익률"
         ]
     ]
