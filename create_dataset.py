@@ -26,6 +26,20 @@ def create_features(df):
         * 100
     )
 
+    # 최근 20일 최고가
+    df["HIGH20"] = (
+        df["고가"]
+        .rolling(20)
+        .max()
+    )
+
+    # 최고가 대비 위치(%)
+    df["HIGH20비율"] = (
+        (df["종가"] - df["HIGH20"])
+        / df["HIGH20"]
+        * 100
+    )
+
     # RSI(14)
     delta = df["종가"].diff()
 
@@ -45,7 +59,7 @@ def create_features(df):
 
     return df
 
-
+    
 
 HOLD_DAYS = 20
 
@@ -75,7 +89,8 @@ def make_dataset(df):
             "MA20비율",
             "MA60비율",
             "RSI",
-            "20일후수익률"
+            "20일후수익률",
+            "HIGH20비율"
         ]
     ]
 
