@@ -48,6 +48,17 @@ def create_features(df):
         * 100
     )
 
+    # 일간 수익률
+    df["일간수익률"] = df["종가"].pct_change()
+
+    # 최근 20일 변동성(%)
+    df["Volatility20"] = (
+        df["일간수익률"]
+        .rolling(20)
+        .std()
+        * 100
+    )
+
     # RSI(14)
     delta = df["종가"].diff()
 
@@ -99,8 +110,8 @@ def make_dataset(df):
             "MA120비율",
             "RSI",
             "HIGH20비율",
-            "20일후수익률"
-
+            "20일후수익률",
+            "Volatility20"
         ]
     ]
 

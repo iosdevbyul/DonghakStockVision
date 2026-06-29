@@ -19,7 +19,8 @@ X = df[
         "MA60비율",
         "MA120비율",
         "RSI",
-        "HIGH20비율"
+        "HIGH20비율",
+        "Volatility20"
     ]
 ]
 
