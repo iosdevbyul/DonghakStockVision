@@ -17,6 +17,7 @@ X = df[
         "거래량비율",
         "MA20비율",
         "MA60비율",
+        "MA120비율",
         "RSI",
         "HIGH20비율"
     ]
@@ -51,3 +52,13 @@ accuracy = accuracy_score(
 )
 
 print(f"정확도 : {accuracy * 100:.2f}%")
+
+print("===== Feature Importance =====")
+
+feature_names = X.columns
+
+for name, importance in zip(
+    feature_names,
+    model.feature_importances_
+):
+    print(f"{name}: {importance:.4f}")

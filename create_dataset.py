@@ -26,6 +26,14 @@ def create_features(df):
         * 100
     )
 
+    df["MA120"] = df["종가"].rolling(120).mean()
+
+    df["MA120비율"] = (
+        (df["종가"] - df["MA120"])
+        / df["MA120"]
+        * 100
+    )
+
     # 최근 20일 최고가
     df["HIGH20"] = (
         df["고가"]
@@ -88,9 +96,11 @@ def make_dataset(df):
             "거래량비율",
             "MA20비율",
             "MA60비율",
+            "MA120비율",
             "RSI",
-            "20일후수익률",
-            "HIGH20비율"
+            "HIGH20비율",
+            "20일후수익률"
+
         ]
     ]
 
