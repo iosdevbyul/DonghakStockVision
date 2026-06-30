@@ -59,6 +59,13 @@ def create_features(df):
         * 100
     )
 
+    # Momentum20
+    df["Momentum20"] = (
+        (df["종가"] - df["종가"].shift(20))
+        / df["종가"].shift(20)
+        * 100
+    )
+
     # RSI(14)
     delta = df["종가"].diff()
 
@@ -111,7 +118,8 @@ def make_dataset(df):
             "RSI",
             "HIGH20비율",
             "20일후수익률",
-            "Volatility20"
+            "Volatility20",
+            "Momentum20"
         ]
     ]
 
