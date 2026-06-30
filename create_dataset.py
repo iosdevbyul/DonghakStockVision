@@ -80,6 +80,15 @@ def create_features(df):
         * 100
     )
 
+    # 20일선과 60일선의 관계
+    df["MA20_MA60_Gap"] = (
+        (df["MA20"] - df["MA60"])
+        / df["MA60"]
+        * 100
+    )
+    
+    
+
     # RSI(14)
     delta = df["종가"].diff()
 
@@ -135,7 +144,8 @@ def make_dataset(df):
             "Volatility20",
             "Momentum20",
             "HIGH252",
-            "HIGH252비율"
+            "HIGH252비율",
+            "MA20_MA60_Gap"
         ]
     ]
 

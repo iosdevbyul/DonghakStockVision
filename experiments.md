@@ -364,3 +364,56 @@ Decision
 
 ---
 
+## v21
+
+Changes
+- Added HIGH252 feature (52-week High)
+- Added HIGH252비율 feature
+
+Accuracy
+
+56.75%
+
+Training Time
+
+206.44 sec
+
+Observation
+
+- Accuracy improved by +0.46%.
+- HIGH252비율 became one of the important features.
+- Long-term trend information improved model performance.
+
+Decision
+
+- Keep HIGH252비율 feature.
+
+---
+
+## v22
+
+Changes
+- Added MA20_MA60_Gap feature
+
+Accuracy
+
+56.74%
+
+Training Time
+
+232.07 sec
+
+Observation
+
+- MA20_MA60_Gap was actively used by the model.
+- Accuracy remained almost unchanged (-0.01%).
+- The feature appears to overlap with MA20 and MA60 related features.
+
+Decision
+
+- Keep the feature for now.
+- Re-evaluate with XGBoost later.
+
+---
+
+
