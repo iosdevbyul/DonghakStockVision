@@ -66,6 +66,20 @@ def create_features(df):
         * 100
     )
 
+    # 최근 252일 최고가 (52주 신고가)
+    df["HIGH252"] = (
+        df["고가"]
+        .rolling(252)
+        .max()
+    )
+
+    # 52주 최고가 대비 위치(%)
+    df["HIGH252비율"] = (
+        (df["종가"] - df["HIGH252"])
+        / df["HIGH252"]
+        * 100
+    )
+
     # RSI(14)
     delta = df["종가"].diff()
 
@@ -119,7 +133,9 @@ def make_dataset(df):
             "HIGH20비율",
             "20일후수익률",
             "Volatility20",
-            "Momentum20"
+            "Momentum20",
+            "HIGH252",
+            "HIGH252비율"
         ]
     ]
 

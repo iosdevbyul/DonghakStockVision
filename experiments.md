@@ -339,3 +339,28 @@ Selected Parameters
 Best Accuracy
 
 56.29%
+
+---
+
+## v20
+
+Changes
+- Added Momentum20 feature
+
+Accuracy
+
+56.27%
+
+Observation
+
+- Momentum20 was used by the model (importance 0.1280).
+- However, it did not improve overall accuracy.
+- Likely overlaps with MA20/MA60/MA120 related features.
+
+Decision
+
+- Keep the feature for now.
+- Re-evaluate after adding more features or testing XGBoost.
+
+---
+

@@ -29,7 +29,8 @@ X = df[
         "RSI",
         "HIGH20비율",
         "Volatility20",
-        "Momentum20"
+        "Momentum20",
+        "HIGH252비율"
     ]
 ]
 
