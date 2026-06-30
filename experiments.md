@@ -416,4 +416,64 @@ Decision
 
 ---
 
+## v25
 
+Changes
+- Added MA60_MA120_Gap feature
+
+Hypothesis
+- The relationship between the 60-day and 120-day moving averages will help the model understand long-term trends.
+
+Accuracy
+
+56.79%
+
+Training Time
+
+221.17 sec
+
+Observation
+
+- New best accuracy achieved.
+- Feature importance was moderate (0.0819).
+- The feature appears to complement existing trend-related features.
+
+Decision
+
+- Keep the feature.
+
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---
+---

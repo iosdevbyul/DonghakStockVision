@@ -31,7 +31,8 @@ X = df[
         "Volatility20",
         "Momentum20",
         "HIGH252비율",
-        "MA20_MA60_Gap"
+        "MA20_MA60_Gap",
+        "MA60_MA120_Gap"
     ]
 ]
 
