@@ -32,7 +32,8 @@ X = df[
         "Momentum20",
         "HIGH252비율",
         "MA20_MA60_Gap",
-        "MA60_MA120_Gap"
+        "MA60_MA120_Gap",
+        "BollingerPosition"
     ]
 ]
 

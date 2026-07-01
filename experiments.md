@@ -443,6 +443,38 @@ Decision
 - Keep the feature.
 
 ---
+
+## v26
+
+Features
+- Added BollingerPosition
+
+Formula
+- STD20 = rolling(20).std()
+- UpperBand = MA20 + 2 × STD20
+- LowerBand = MA20 - 2 × STD20
+- BollingerPosition = ((Close - LowerBand) / (UpperBand - LowerBand)) × 100
+
+Hypothesis
+- The model will learn whether the current price is near the upper or lower Bollinger Band.
+- Expected to improve prediction by incorporating volatility and price position.
+
+Accuracy
+56.72%
+
+Training Time
+264.88 sec
+
+Observation
+- Accuracy decreased slightly from 56.79%.
+- Feature Importance: 0.0706
+- The feature likely overlaps with MA20 Ratio and Volatility20.
+- No meaningful improvement in RandomForest.
+
+Decision
+- Keep the feature for now.
+- Reevaluate after switching to XGBoost.
+
 ---
 ---
 ---

@@ -94,6 +94,21 @@ def create_features(df):
         * 100
     )
 
+    #BollingerPosition
+    df["STD20"] = (
+        df["종가"]
+        .rolling(20)
+        .std()
+    )
+    df["UpperBand"] = df["MA20"] + 2 * df["STD20"]
+    df["LowerBand"] = df["MA20"] - 2 * df["STD20"]
+    df["BollingerPosition"] = (
+        (df["종가"] - df["LowerBand"])
+        /
+        (df["UpperBand"] - df["LowerBand"])
+        * 100
+    )
+
     # RSI(14)
     delta = df["종가"].diff()
 
@@ -151,7 +166,8 @@ def make_dataset(df):
             "HIGH252",
             "HIGH252비율",
             "MA20_MA60_Gap",
-            "MA60_MA120_Gap"
+            "MA60_MA120_Gap",
+            "BollingerPosition"
         ]
     ]
 
