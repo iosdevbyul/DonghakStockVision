@@ -522,6 +522,31 @@ Observation
 - n_estimators=100 selected for future experiments.
 
 ---
+
+## v29
+
+Model
+- XGBoost
+
+Experiment
+- Tune learning_rate
+
+Results
+
+| learning_rate | Accuracy |
+|---------------|----------|
+| 0.30 | 56.33% |
+| 0.10 | 56.62% |
+| 0.05 | 56.54% |
+| 0.01 | 56.36% |
+
+Observation
+
+- Best performance at learning_rate=0.1.
+- Lower learning rates increasingly concentrated importance on MA60 Ratio.
+- Very low learning rates likely require more trees.
+- Selected learning_rate=0.1 for future experiments.
+
 ---
 ---
 ---
