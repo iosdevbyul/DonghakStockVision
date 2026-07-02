@@ -476,6 +476,27 @@ Decision
 - Reevaluate after switching to XGBoost.
 
 ---
+
+## v27
+
+Model
+- XGBoost (Default)
+
+Features
+- Same as RandomForest
+
+Accuracy
+56.33%
+
+Training Time
+17.24 sec
+
+Observation
+- Slightly lower accuracy than RandomForest.
+- Training speed improved dramatically (~13x faster).
+- MA60 Ratio became the most important feature.
+- Establishes XGBoost baseline before tuning.
+
 ---
 ---
 ---
