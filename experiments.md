@@ -548,6 +548,42 @@ Observation
 - Selected learning_rate=0.1 for future experiments.
 
 ---
+
+## v30
+
+Model
+- XGBoost
+
+Experiment
+- Tune max_depth
+
+Parameters
+- n_estimators = 100
+- learning_rate = 0.1
+
+Results
+
+| max_depth | Accuracy | Time |
+|-----------|----------|------|
+| 3 | 56.47% | 15.99 sec |
+| 5 | 56.57% | 16.29 sec |
+| 7 | 56.74% | 16.52 sec |
+| 10 | 56.67% | 18.30 sec |
+
+Observation
+
+- Best accuracy at max_depth=7.
+- Deeper trees beyond 7 did not improve performance.
+- Shallower trees relied heavily on MA60 Ratio.
+- Deeper trees distributed importance across more features.
+
+Decision
+
+- Selected:
+  - n_estimators = 100
+  - learning_rate = 0.1
+  - max_depth = 7
+
 ---
 ---
 ---

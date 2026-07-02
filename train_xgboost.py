@@ -52,7 +52,8 @@ X_train, X_test, y_train, y_test = train_test_split(
 # AI 모델 생성
 model = XGBClassifier(
     n_estimators=100,
-    learning_rate=0.01,
+    learning_rate=0.1,
+    max_depth = 10,
     random_state=42
 )
 
@@ -68,7 +69,7 @@ accuracy = accuracy_score(
     predictions
 )
 print("===== XGBoost =====")
-print("learning_rate=0.01")
+print("max_depth = 10")
 print(f"정확도 : {accuracy * 100:.2f}%")
 
 print("===== Feature Importance =====")
