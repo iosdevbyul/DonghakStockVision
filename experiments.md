@@ -498,6 +498,29 @@ Observation
 - Establishes XGBoost baseline before tuning.
 
 ---
+## v28
+
+Model
+- XGBoost
+
+Experiment
+- Tune n_estimators
+
+Results
+
+| n_estimators | Accuracy | Time |
+|--------------|----------|------|
+| 100 | 56.33% | 17.16 sec |
+| 300 | 55.89% | 19.51 sec |
+| 500 | 55.61% | 21.37 sec |
+| 1000 | 55.04% | 27.42 sec |
+
+Observation
+
+- Accuracy decreased as the number of trees increased.
+- The model appears to overfit with too many trees.
+- n_estimators=100 selected for future experiments.
+
 ---
 ---
 ---
