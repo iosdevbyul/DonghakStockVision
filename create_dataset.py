@@ -145,6 +145,10 @@ def create_label(df):
         * 100
     )
 
+    df["Target"] = (
+        df["20일후수익률"] >= 5
+    ).astype(int)
+
     return df
 
 
@@ -160,14 +164,13 @@ def make_dataset(df):
             "MA120비율",
             "RSI",
             "HIGH20비율",
-            "20일후수익률",
             "Volatility20",
             "Momentum20",
-            "HIGH252",
             "HIGH252비율",
             "MA20_MA60_Gap",
             "MA60_MA120_Gap",
-            "BollingerPosition"
+            "BollingerPosition",
+            "Target"
         ]
     ]
 
