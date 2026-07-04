@@ -585,7 +585,64 @@ Decision
   - max_depth = 7
 
 ---
+
+## vX - XGBoost GridSearchCV v1
+
+Features
+- 거래량비율
+- MA20비율
+- MA60비율
+- MA120비율
+- RSI
+- HIGH20비율
+- Volatility20
+- Momentum20
+- HIGH252비율
+- MA20_MA60_Gap
+- MA60_MA120_Gap
+- BollingerPosition
+
+GridSearch
+- n_estimators: [50, 100, 150]
+- learning_rate: [0.05, 0.1, 0.15]
+- max_depth: [6, 7, 8]
+
+Best Parameters
+- n_estimators = 150
+- learning_rate = 0.15
+- max_depth = 8
+
+Best CV Accuracy
+- 73.22%
+
+Test Accuracy
+- 73.28%
+
 ---
+
+vX - XGBoost GridSearchCV + scale_pos_weight
+
+Best Parameters
+- learning_rate = 0.15
+- max_depth = 8
+- n_estimators = 150
+- scale_pos_weight = 2.66
+
+Accuracy
+- 57.45%
+
+Precision
+- 0.34
+
+Recall
+- 0.59
+
+F1-score
+- 0.43
+
+Result
+- Accuracy는 감소했지만 Recall이 크게 향상되어 상승 종목 탐지 성능이 개선됨.
+
 ---
 ---
 ---
