@@ -57,7 +57,8 @@ model = XGBClassifier(
 param_grid = {
     "n_estimators": [50, 100, 150],
     "learning_rate": [0.05, 0.1, 0.15],
-    "max_depth": [6, 7, 8]
+    "max_depth": [6, 7, 8],
+    "min_child_weight": [1, 3, 5, 10]
 }
 
 grid_search = GridSearchCV(
