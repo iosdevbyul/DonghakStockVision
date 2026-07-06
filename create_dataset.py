@@ -109,6 +109,35 @@ def create_features(df):
         * 100
     )
 
+    #MACD
+    df["EMA12"] = (
+    df["종가"]
+    .ewm(span=12, adjust=False)
+    .mean()
+    )
+
+    df["EMA26"] = (
+        df["종가"]
+        .ewm(span=26, adjust=False)
+        .mean()
+    )
+
+    df["MACD"] = (
+        df["EMA12"]
+        - df["EMA26"]
+    )
+
+    df["MACDSignal"] = (
+        df["MACD"]
+        .ewm(span=9, adjust=False)
+        .mean()
+    )
+
+    df["MACDHistogram"] = (
+        df["MACD"]
+        - df["MACDSignal"]
+    )
+
     # RSI(14)
     delta = df["종가"].diff()
 
@@ -170,7 +199,10 @@ def make_dataset(df):
             "MA20_MA60_Gap",
             "MA60_MA120_Gap",
             "BollingerPosition",
-            "Target"
+            "Target",
+            "MACD", 
+            "MACDSignal", 
+            "MACDHistogram"
         ]
     ]
 

@@ -749,6 +749,30 @@ Conclusion
 모든 Feature를 사용하는 것이 가장 좋은 성능을 보였다.
 
 ---
+
+## vX
+
+Feature
+- MACD
+- MACDSignal
+- MACDHistogram 추가
+
+Model
+- XGBoost + GridSearchCV
+
+Best Parameters
+- learning_rate = 0.15
+- max_depth = 8
+- n_estimators = 150
+- colsample_bytree = 1.0
+
+Accuracy
+- CV : 57.86%
+- Test : 57.81%
+
+Result
+- MACD Feature 유지
+
 ---
 ---
 ---
