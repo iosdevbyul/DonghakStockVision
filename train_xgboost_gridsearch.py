@@ -53,14 +53,15 @@ model = XGBClassifier(
     eval_metric="logloss",
     scale_pos_weight=2.66,
     min_child_weight=1,
-    gamma=0
+    gamma=0,
+    subsample=0.8
 )
 
 param_grid = {
     "n_estimators": [100, 150],
     "learning_rate": [0.1, 0.15],
     "max_depth": [7, 8],
-    "subsample": [0.6, 0.8, 1.0]
+    "colsample_bytree": [0.6, 0.8, 1.0]
 }
 
 grid_search = GridSearchCV(

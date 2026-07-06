@@ -712,6 +712,42 @@ Conclusion
 subsample=0.8이 가장 좋은 성능을 보였다. 전체 데이터를 사용하는 것보다 일부 데이터를 랜덤하게 사용하는 것이 일반화 성능에 약간 더 유리했다.
 
 ---
+
+v14 - XGBoost + colsample_bytree
+
+Parameters
+- n_estimators : [100,150]
+- learning_rate : [0.1,0.15]
+- max_depth : [7,8]
+- colsample_bytree : [0.6,0.8,1.0]
+
+Fixed
+- scale_pos_weight = 2.66
+- gamma = 0
+- min_child_weight = 1
+- subsample = 0.8
+
+Best
+- n_estimators = 150
+- learning_rate = 0.15
+- max_depth = 8
+- colsample_bytree = 1.0
+
+Accuracy
+57.45%
+
+Precision
+0.34
+
+Recall
+0.59
+
+F1
+0.43
+
+Conclusion
+모든 Feature를 사용하는 것이 가장 좋은 성능을 보였다.
+
 ---
 ---
 ---
