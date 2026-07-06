@@ -167,6 +167,23 @@ def create_features(df):
         .mean()
     )
 
+    #OBV
+    price_change = df["종가"].diff()
+
+    direction = price_change.apply(
+        lambda x:
+        1 if x > 0 else (
+            -1 if x < 0 else 0
+        )
+    )
+
+    obv = (
+        direction
+        * df["거래량"]
+    )
+
+    df["OBV"] = obv.cumsum()
+
 
     # RSI(14)
     delta = df["종가"].diff()
@@ -233,7 +250,8 @@ def make_dataset(df):
             "MACD", 
             "MACDSignal", 
             "MACDHistogram",
-            "ATR"
+            "ATR",
+            "OBV"
         ]
     ]
 
