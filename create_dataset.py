@@ -138,6 +138,36 @@ def create_features(df):
         - df["MACDSignal"]
     )
 
+    #ATR
+    # 이전 종가
+    df["PrevClose"] = df["종가"].shift(1)
+
+    # True Range
+    tr1 = df["고가"] - df["저가"]
+
+    tr2 = (
+        df["고가"]
+        - df["PrevClose"]
+    ).abs()
+
+    tr3 = (
+        df["저가"]
+        - df["PrevClose"]
+    ).abs()
+
+    df["TR"] = pd.concat(
+        [tr1, tr2, tr3],
+        axis=1
+    ).max(axis=1)
+
+    # ATR(14)
+    df["ATR"] = (
+        df["TR"]
+        .rolling(14)
+        .mean()
+    )
+
+
     # RSI(14)
     delta = df["종가"].diff()
 
@@ -202,7 +232,8 @@ def make_dataset(df):
             "Target",
             "MACD", 
             "MACDSignal", 
-            "MACDHistogram"
+            "MACDHistogram",
+            "ATR"
         ]
     ]
 
