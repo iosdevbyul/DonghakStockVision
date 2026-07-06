@@ -51,15 +51,16 @@ X_train, X_test, y_train, y_test = train_test_split(
 model = XGBClassifier(
     random_state=42,
     eval_metric="logloss",
-    scale_pos_weight = 2.662
+    scale_pos_weight=2.66,
+    min_child_weight=1,
+    gamma=0
 )
 
 param_grid = {
-    "n_estimators": [50, 100, 150],
-    "learning_rate": [0.05, 0.1, 0.15],
-    "max_depth": [6, 7, 8],
-    #"min_child_weight": [1, 3, 5, 10]
-    "gamma": [0, 1, 3, 5]
+    "n_estimators": [100, 150],
+    "learning_rate": [0.1, 0.15],
+    "max_depth": [7, 8],
+    "subsample": [0.6, 0.8, 1.0]
 }
 
 grid_search = GridSearchCV(

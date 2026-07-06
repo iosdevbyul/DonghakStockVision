@@ -644,7 +644,73 @@ Result
 - Accuracy는 감소했지만 Recall이 크게 향상되어 상승 종목 탐지 성능이 개선됨.
 
 ---
+
+v11 - XGBoost + min_child_weight
+
+Parameters
+- n_estimators : [50,100,150]
+- learning_rate : [0.05,0.1,0.15]
+- max_depth : [6,7,8]
+- min_child_weight : [1,3,5,10]
+- scale_pos_weight = 2.66
+
+Best
+- n_estimators = 150
+- learning_rate = 0.15
+- max_depth = 8
+- min_child_weight = 1
+
+Accuracy
+57.45%
+
+Precision
+0.34
+
+Recall
+0.59
+
+F1
+0.43
+
+Conclusion
+min_child_weight는 현재 데이터셋에서 성능 향상을 가져오지 않았으며, 기본값(1)이 최적이었다.
+
 ---
+
+v13 - XGBoost + subsample
+
+Parameters
+- n_estimators : [100, 150]
+- learning_rate : [0.1, 0.15]
+- max_depth : [7, 8]
+- subsample : [0.6, 0.8, 1.0]
+
+Fixed
+- scale_pos_weight = 2.66
+- gamma = 0
+- min_child_weight = 1
+
+Best
+- n_estimators = 150
+- learning_rate = 0.15
+- max_depth = 8
+- subsample = 0.8
+
+Accuracy
+57.45%
+
+Precision
+0.34
+
+Recall
+0.59
+
+F1
+0.43
+
+Conclusion
+subsample=0.8이 가장 좋은 성능을 보였다. 전체 데이터를 사용하는 것보다 일부 데이터를 랜덤하게 사용하는 것이 일반화 성능에 약간 더 유리했다.
+
 ---
 ---
 ---
