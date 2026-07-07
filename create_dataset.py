@@ -249,27 +249,34 @@ def create_features(df):
     )
 
     # Williams %R
+    # high14 = (
+    #     df["고가"]
+    #     .rolling(14)
+    #     .max()
+    # )
 
-    high14 = (
-        df["고가"]
-        .rolling(14)
-        .max()
-    )
+    # low14 = (
+    #     df["저가"]
+    #     .rolling(14)
+    #     .min()
+    # )
 
-    low14 = (
-        df["저가"]
-        .rolling(14)
-        .min()
-    )
+    # df["WilliamsR"] = (
+    #     (high14 - df["종가"])
+    #     /
+    #     (high14 - low14)
+    #     * -100
+    # )
 
-    df["WilliamsR"] = (
-        (high14 - df["종가"])
+    #Gap
+    df["Gap"] = (
+        (
+            df["시가"] - df["종가"].shift(1)
+        )
         /
-        (high14 - low14)
-        * -100
+        df["종가"].shift(1)
+        * 100
     )
-
-
 
 
     # RSI(14)
@@ -341,7 +348,8 @@ def make_dataset(df):
             "OBV",
             "ADX",
             "MFI",
-            "WilliamsR",
+            # "WilliamsR",
+            "Gap",
         ]
     ]
 
