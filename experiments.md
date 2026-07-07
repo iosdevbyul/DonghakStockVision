@@ -774,9 +774,97 @@ Result
 - MACD Feature 유지
 
 ---
+
+## v13
+
+### Added Feature
+- MACD
+
+### Best Parameters
+- learning_rate = 0.15
+- max_depth = 8
+- n_estimators = 150
+- colsample_bytree = 1.0
+
+### Result
+CV Accuracy : 57.86%
+Test Accuracy : 57.81%
+
 ---
+
+## v14
+
+### Added Feature
+- ATR
+
+### Best Parameters
+- learning_rate = 0.15
+- max_depth = 8
+- n_estimators = 150
+- colsample_bytree = 1.0
+
+### Result
+CV Accuracy : 58.08%
+Test Accuracy : 58.00%
+
 ---
+
+## v15
+
+### Added Feature
+- OBV
+
+### Best Parameters
+- learning_rate = 0.15
+- max_depth = 8
+- n_estimators = 150
+- colsample_bytree = 1.0
+
+### Result
+CV Accuracy : 59.08%
+Test Accuracy : 59.13%
+
 ---
+
+## v8
+
+Features
+- 거래량비율
+- MA20비율
+- MA60비율
+- MA120비율
+- RSI
+- HIGH20비율
+- Volatility20
+- Momentum20
+- HIGH252비율
+- MA20_MA60_Gap
+- MA60_MA120_Gap
+- BollingerPosition
+- MACD
+- ATR
+- OBV
+- ADX
+- MFI
+- CCI
+
+Model
+- XGBoost
+- GridSearchCV
+
+Best Parameters
+- learning_rate = 0.15
+- max_depth = 8
+- n_estimators = 150
+- colsample_bytree = 1.0
+
+Accuracy
+- CV Accuracy : 59.28%
+- Test Accuracy : 59.27%
+
+Result
+- CCI 추가 후 소폭 성능 향상 (+0.02%)
+
 ---
 ---
 ---
