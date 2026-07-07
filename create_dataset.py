@@ -248,7 +248,26 @@ def create_features(df):
         )
     )
 
+    # Williams %R
 
+    high14 = (
+        df["고가"]
+        .rolling(14)
+        .max()
+    )
+
+    low14 = (
+        df["저가"]
+        .rolling(14)
+        .min()
+    )
+
+    df["WilliamsR"] = (
+        (high14 - df["종가"])
+        /
+        (high14 - low14)
+        * -100
+    )
 
 
 
@@ -321,7 +340,8 @@ def make_dataset(df):
             "ATR",
             "OBV",
             "ADX",
-            "MFI"
+            "MFI",
+            "WilliamsR",
         ]
     ]
 
