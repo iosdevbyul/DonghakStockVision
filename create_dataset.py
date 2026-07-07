@@ -1,5 +1,5 @@
 import pandas as pd
-
+from ta.trend import ADXIndicator
 
 def create_features(df):
 
@@ -184,6 +184,22 @@ def create_features(df):
 
     df["OBV"] = obv.cumsum()
 
+    #ADX
+    adx = ADXIndicator(
+        high=df["고가"],
+        low=df["저가"],
+        close=df["종가"],
+        window=14
+    )
+
+    df["ADX"] = adx.adx()
+
+
+
+
+
+
+
 
     # RSI(14)
     delta = df["종가"].diff()
@@ -251,7 +267,8 @@ def make_dataset(df):
             "MACDSignal", 
             "MACDHistogram",
             "ATR",
-            "OBV"
+            "OBV",
+            "ADX"
         ]
     ]
 
