@@ -194,7 +194,59 @@ def create_features(df):
 
     df["ADX"] = adx.adx()
 
+    #MFI
+    df["TypicalPrice"] = (
+        df["고가"]
+        + df["저가"]
+        + df["종가"]
+    ) / 3
 
+    df["MoneyFlow"] = (
+        df["TypicalPrice"]
+        * df["거래량"]
+    )
+
+    price_change = (
+        df["TypicalPrice"]
+        .diff()
+    )
+
+    df["PositiveFlow"] = df["MoneyFlow"].where(
+        price_change > 0,
+        0
+    )
+
+    df["NegativeFlow"] = df["MoneyFlow"].where(
+        price_change < 0,
+        0
+    )
+
+    positive = (
+        df["PositiveFlow"]
+        .rolling(14)
+        .sum()
+    )
+
+    negative = (
+        df["NegativeFlow"]
+        .rolling(14)
+        .sum()
+    )
+
+    money_ratio = (
+        positive
+        / negative
+    )
+
+    df["MFI"] = (
+        100
+        -
+        (
+            100
+            /
+            (1 + money_ratio)
+        )
+    )
 
 
 
@@ -268,7 +320,8 @@ def make_dataset(df):
             "MACDHistogram",
             "ATR",
             "OBV",
-            "ADX"
+            "ADX",
+            "MFI"
         ]
     ]
 
