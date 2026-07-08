@@ -283,13 +283,59 @@ def create_features(df):
     # df["EMA30비율"] = df["Close"] / df["Close"].ewm(span=30, adjust=False).mean()
     # df["EMA90비율"] = df["Close"] / df["Close"].ewm(span=90, adjust=False).mean()
 
+    # KDJ
 
+    # RSV
+    lowest = df["저가"].rolling(14).min()
+    highest = df["고가"].rolling(14).max()
 
+    range14 = highest - lowest
+    range14 = range14.replace(0, pd.NA)
 
+    df["RSV"] = (
+        (df["종가"] - lowest)
+        / range14
+        * 100
+    )
 
+    rsv = df["RSV"].tolist()
 
+    # K
+    k = [50]
 
+    for i in range(1, len(df)):
 
+        if pd.isna(rsv[i]):
+            k.append(k[-1])
+        else:
+            new_k = (
+                (2 / 3) * k[-1]
+                + (1 / 3) * rsv[i]
+            )
+            k.append(new_k)
+
+    # D
+    d = [50]
+
+    for i in range(1, len(df)):
+
+        if pd.isna(k[i]):
+            d.append(d[-1])
+        else:
+            new_d = (
+                (2 / 3) * d[-1]
+                + (1 / 3) * k[i]
+            )
+            d.append(new_d)
+
+    df["K"] = k
+    df["D"] = d
+
+    # J
+    df["J"] = (
+        3 * df["K"]
+        - 2 * df["D"]
+    )
 
     # RSI(14)
     delta = df["종가"].diff()
@@ -361,11 +407,14 @@ def make_dataset(df):
             "ADX",
             "MFI",
             # "WilliamsR",
-            "Gap",
+            # "Gap",
             # "EMA5비율",
             # "EMA10비율",
             # "EMA30비율",
             # "EMA90비율",
+            "K",
+            "D",
+            "J",
         ]
     ]
 

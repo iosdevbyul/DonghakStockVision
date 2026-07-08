@@ -11,6 +11,8 @@ from sklearn.model_selection import train_test_split
 
 from xgboost import XGBClassifier
 
+USE_DEV_DATA = False #True
+
 def evaluate_model(model, X_test, y_test):
 
     prediction = model.predict(X_test)
@@ -37,6 +39,9 @@ def evaluate_model(model, X_test, y_test):
     ))
 
 df = pd.read_csv("dataset.csv")
+
+if USE_DEV_DATA:
+    df = df.tail(1_000_000)
 
 X = df.drop(columns=["날짜", "Target"])
 y = df["Target"]
