@@ -278,6 +278,18 @@ def create_features(df):
         * 100
     )
 
+    # df["EMA5비율"] = df["Close"] / df["Close"].ewm(span=5, adjust=False).mean()
+    # df["EMA10비율"] = df["Close"] / df["Close"].ewm(span=10, adjust=False).mean()
+    # df["EMA30비율"] = df["Close"] / df["Close"].ewm(span=30, adjust=False).mean()
+    # df["EMA90비율"] = df["Close"] / df["Close"].ewm(span=90, adjust=False).mean()
+
+
+
+
+
+
+
+
 
     # RSI(14)
     delta = df["종가"].diff()
@@ -350,6 +362,10 @@ def make_dataset(df):
             "MFI",
             # "WilliamsR",
             "Gap",
+            # "EMA5비율",
+            # "EMA10비율",
+            # "EMA30비율",
+            # "EMA90비율",
         ]
     ]
 
