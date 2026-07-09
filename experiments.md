@@ -866,9 +866,111 @@ Result
 - CCI 추가 후 소폭 성능 향상 (+0.02%)
 
 ---
+
+## v9
+
+Features
+- Previous Features
+- Williams %R
+
+Model
+- XGBoost
+- GridSearchCV
+
+Best Parameters
+- learning_rate = 0.15
+- max_depth = 8
+- n_estimators = 150
+- colsample_bytree = 1.0
+
+Accuracy
+- CV Accuracy : 59.22%
+- Test Accuracy : 59.20%
+
+Result
+- Williams %R 추가
+- 성능 변화 거의 없음
+
 ---
+
+## v10
+
+Features
+- Previous Features
+- Gap
+
+Removed
+- Williams %R
+
+Model
+- XGBoost
+- GridSearchCV
+
+Best Parameters
+- learning_rate = 0.15
+- max_depth = 8
+- n_estimators = 150
+- colsample_bytree = 1.0
+
+Accuracy
+- CV Accuracy : 59.29%
+- Test Accuracy : 59.14%
+
+Result
+- Gap Feature 추가
+- Williams %R 제거
+- 성능 향상 없음
+
 ---
+
+
+## v9
+
+### Added Features
+- K
+- D
+- J (KDJ)
+
+### Result
+
+Best CV Accuracy
+59.22%
+
+Test Accuracy
+59.16%
+
+### Decision
+
+Remove
+
+Reason:
+- Test Accuracy was almost unchanged.
+- CV Accuracy decreased from 59.29% to 59.22%.
+- No meaningful improvement.
 ---
+
+## v13
+
+### Added Feature
+- CCI
+
+### Why
+- 가격이 평균에서 얼마나 벗어났는지 나타내는 지표
+- RSI와 다른 관점의 모멘텀 정보를 기대
+
+### Result
+CV Accuracy
+0.5925 → 0.5920
+
+Test Accuracy
+0.5920 → 0.5918
+
+### Decision
+Remove
+
+CCI는 기존 Feature들과 중복되는 정보가 많거나,
+현재 데이터셋에서는 성능 향상에 기여하지 못함.
+
 ---
 ---
 ---

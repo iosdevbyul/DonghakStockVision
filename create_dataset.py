@@ -1,5 +1,7 @@
 import pandas as pd
 from ta.trend import ADXIndicator
+import traceback
+import numpy as np
 
 def create_features(df):
 
@@ -185,14 +187,18 @@ def create_features(df):
     df["OBV"] = obv.cumsum()
 
     #ADX
-    adx = ADXIndicator(
-        high=df["고가"],
-        low=df["저가"],
-        close=df["종가"],
-        window=14
-    )
+    try:
+        adx = ADXIndicator(
+            high=df["고가"],
+            low=df["저가"],
+            close=df["종가"],
+            window=14
+        )
 
-    df["ADX"] = adx.adx()
+        df["ADX"] = adx.adx()
+
+    except Exception:
+        df["ADX"] = np.nan
 
     #MFI
     df["TypicalPrice"] = (
@@ -232,6 +238,8 @@ def create_features(df):
         .rolling(14)
         .sum()
     )
+
+    negative = negative.replace(0, np.nan)
 
     money_ratio = (
         positive
@@ -290,7 +298,7 @@ def create_features(df):
     highest = df["고가"].rolling(14).max()
 
     range14 = highest - lowest
-    range14 = range14.replace(0, pd.NA)
+    range14 = range14.replace(0, np.nan)
 
     df["RSV"] = (
         (df["종가"] - lowest)
@@ -337,6 +345,75 @@ def create_features(df):
         - 2 * df["D"]
     )
 
+    # Money Flow Multiplier
+    range_ = (
+        df["고가"]
+        - df["저가"]
+    )
+
+    range_ = range_.replace(0, np.nan)
+
+    df["MFM"] = (
+        (
+            (df["종가"] - df["저가"])
+            -
+            (df["고가"] - df["종가"])
+        )
+        / range_
+    )
+
+    # Money Flow Volume
+    df["MFV"] = (
+        df["MFM"]
+        * df["거래량"]
+    )
+
+    volume_sum = (
+        df["거래량"]
+        .rolling(20)
+        .sum()
+    )
+
+    volume_sum = volume_sum.replace(0, pd.NA)
+
+    df["CMF"] = (
+        df["MFV"]
+        .rolling(20)
+        .sum()
+        / volume_sum
+    )
+
+    #CCI
+    df["TP_MA20"] = (
+        df["TypicalPrice"]
+        .rolling(20)
+        .mean()
+    )
+
+    df["MeanDeviation"] = (
+        (
+            df["TypicalPrice"]
+            - df["TP_MA20"]
+        )
+        .abs()
+        .rolling(20)
+        .mean()
+    )
+
+    df["CCI"] = (
+        (
+            df["TypicalPrice"]
+            - df["TP_MA20"]
+        )
+        /
+        (
+            0.015
+            * df["MeanDeviation"]
+        )
+    )
+
+
+
     # RSI(14)
     delta = df["종가"].diff()
 
@@ -347,6 +424,8 @@ def create_features(df):
     avg_gain = gain.rolling(14).mean()
 
     avg_loss = loss.rolling(14).mean()
+
+    avg_loss = avg_loss.replace(0, pd.NA)
 
     rs = avg_gain / avg_loss
 
@@ -412,9 +491,11 @@ def make_dataset(df):
             # "EMA10비율",
             # "EMA30비율",
             # "EMA90비율",
-            "K",
-            "D",
-            "J",
+            # "K",
+            # "D",
+            # "J",
+            "CMF",
+            "CCI",
         ]
     ]
 
@@ -447,8 +528,11 @@ for _, row in tickers.iterrows():
 
         all_dataset.append(dataset)
 
+    
+
     except Exception as e:
         print(f"{ticker} 실패: {e}")
+        traceback.print_exc()
         continue
 
 final_dataset = pd.concat(

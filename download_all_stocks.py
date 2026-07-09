@@ -2,15 +2,30 @@ from pykrx import stock
 from datetime import datetime
 import pandas as pd
 
+# today = datetime.today().strftime("%Y%m%d")
+
+# # -----------------------------
+# # 종목 목록 생성
+# # -----------------------------
+# tickers = stock.get_market_ticker_list(
+#     date=today,
+#     market="ALL"
+# )
+
+
 today = datetime.today().strftime("%Y%m%d")
 
-# -----------------------------
-# 종목 목록 생성
-# -----------------------------
-tickers = stock.get_market_ticker_list(
+kospi = stock.get_market_ticker_list(
     date=today,
-    market="ALL"
+    market="KOSPI"
 )
+
+kosdaq = stock.get_market_ticker_list(
+    date=today,
+    market="KOSDAQ"
+)
+
+tickers = kospi + kosdaq
 
 rows = []
 
