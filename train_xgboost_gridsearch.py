@@ -1,4 +1,5 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from sklearn.metrics import (
     accuracy_score,
@@ -12,6 +13,46 @@ from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
 
 USE_DEV_DATA = False #True
+
+
+def show_feature_importance(model, feature_names):
+
+    importance = model.feature_importances_
+
+    feature_importance = pd.DataFrame({
+        "Feature": feature_names,
+        "Importance": importance
+    })
+
+    # 중요도 높은 순으로 정렬
+    feature_importance = feature_importance.sort_values(
+        by="Importance",
+        ascending=False
+    )
+
+    print()
+    print("===== Feature Importance =====")
+    print(feature_importance)
+
+    # CSV 저장
+    feature_importance.to_csv(
+        "feature_importance.csv",
+        index=False
+    )
+
+    # 그래프 출력
+    plt.figure(figsize=(10, 8))
+
+    plt.barh(
+        feature_importance["Feature"][::-1],
+        feature_importance["Importance"][::-1]
+    )
+
+    plt.xlabel("Importance")
+    plt.title("XGBoost Feature Importance")
+
+    plt.tight_layout()
+    plt.show()
 
 def evaluate_model(model, X_test, y_test):
 
@@ -37,6 +78,7 @@ def evaluate_model(model, X_test, y_test):
         y_test,
         prediction
     ))
+    
 
 df = pd.read_csv("dataset.csv")
 
@@ -95,3 +137,9 @@ evaluate_model(
     X_test,
     y_test
 )
+
+show_feature_importance(
+    best_model,
+    X_train.columns
+)
+

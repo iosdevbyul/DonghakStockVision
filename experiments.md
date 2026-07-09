@@ -1013,6 +1013,39 @@ Keep
 다음 단계에서는 Ablation Study를 통해 각 Feature의 기여도를 분석한다.
 
 ---
+
+## v14
+
+### Added Features
+- VWAPRatio
+- ATRRatio
+- VolumeSpike
+- LOW20비율
+- Position60
+- Position120
+- DonchianPosition
+
+### Analysis
+- Added XGBoost Feature Importance visualization
+- Export feature importance to CSV
+
+### Result
+
+Best CV Accuracy
+0.6005
+
+Test Accuracy
+0.6013
+
+### Decision
+
+Keep all newly added features.
+
+Feature Importance analysis showed that:
+- Volatility20 is the most influential feature.
+- ATRRatio is one of the top-ranked newly added features.
+- LOW20비율 and Position120 also contribute significantly.
+
 ---
 ---
 ---
