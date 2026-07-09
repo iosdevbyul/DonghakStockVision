@@ -972,6 +972,46 @@ CCI는 기존 Feature들과 중복되는 정보가 많거나,
 현재 데이터셋에서는 성능 향상에 기여하지 못함.
 
 ---
+
+## v14
+
+### Added Features
+- VWAPRatio
+- ATRRatio
+- VolumeSpike
+- LOW20비율
+- Position60
+- Position120
+
+### Why
+- 가격과 거래량을 함께 반영하는 Feature 추가
+- 변동성을 종목별 가격 수준에 맞게 정규화
+- 중장기 가격 위치 정보 추가
+
+### Result
+
+CV Accuracy
+0.5925 → 0.6005
+
+Test Accuracy
+0.5920 → 0.6013
+
+Precision (Class 1)
+0.35 → 0.36
+
+Recall (Class 1)
+0.60 → 0.61
+
+Weighted F1
+0.61 → 0.62
+
+### Decision
+
+Keep
+
+여러 Feature를 동시에 추가한 결과 약 0.93%의 Accuracy 향상을 확인.
+다음 단계에서는 Ablation Study를 통해 각 Feature의 기여도를 분석한다.
+
 ---
 ---
 ---

@@ -437,9 +437,117 @@ def create_features(df):
         * 100
     )
 
+    # VWAP
+    df["TPV"] = (
+        df["TypicalPrice"]
+        * df["거래량"]
+    )
 
+    cum_tpv = df["TPV"].cumsum()
+    cum_volume = df["거래량"].cumsum()
 
+    cum_volume = cum_volume.replace(0, np.nan)
 
+    df["VWAP"] = (
+        cum_tpv
+        / cum_volume
+    )
+
+    df["VWAPRatio"] = (
+        (
+            df["종가"]
+            - df["VWAP"]
+        )
+        /
+        df["VWAP"]
+        * 100
+    )
+
+    df["ATRRatio"] = (
+        df["ATR"]
+        /
+        df["종가"]
+        * 100
+    )
+
+    df["VolumeSpike"] = (
+        df["거래량비율"]
+        >= 3
+    ).astype(int)
+
+    # 최근 20일 최저가
+    df["LOW20"] = (
+        df["저가"]
+        .rolling(20)
+        .min()
+    )
+
+    # 최저가 대비 위치
+    df["LOW20비율"] = (
+        (
+            df["종가"]
+            - df["LOW20"]
+        )
+        /
+        df["LOW20"]
+        * 100
+    )
+
+    # 60일 최고/최저
+    df["HIGH60"] = (
+        df["고가"]
+        .rolling(60)
+        .max()
+    )
+
+    df["LOW60"] = (
+        df["저가"]
+        .rolling(60)
+        .min()
+    )
+
+    range60 = (
+        df["HIGH60"]
+        - df["LOW60"]
+    ).replace(0, np.nan)
+
+    df["Position60"] = (
+        (
+            df["종가"]
+            - df["LOW60"]
+        )
+        /
+        range60
+        * 100
+    )
+
+    # 120일 최고/최저
+    df["HIGH120"] = (
+        df["고가"]
+        .rolling(120)
+        .max()
+    )
+
+    df["LOW120"] = (
+        df["저가"]
+        .rolling(120)
+        .min()
+    )
+
+    range120 = (
+        df["HIGH120"]
+        - df["LOW120"]
+    ).replace(0, np.nan)
+
+    df["Position120"] = (
+        (
+            df["종가"]
+            - df["LOW120"]
+        )
+        /
+        range120
+        * 100
+    )
 
 
 
@@ -530,6 +638,12 @@ def make_dataset(df):
             "HIGH252비율",
             "DonchianPosition",
             "MA20_MA60_Gap",
+            "VWAPRatio",
+            "ATRRatio",
+            "VolumeSpike",
+            "LOW20비율",
+            "Position60",
+            "Position120",
         ]
     ]
 
