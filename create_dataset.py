@@ -412,6 +412,36 @@ def create_features(df):
         )
     )
 
+    # 최근 20일 최저가
+    df["LOW20"] = (
+        df["저가"]
+        .rolling(20)
+        .min()
+    )
+
+    # Donchian Channel Position
+    range20 = (
+        df["HIGH20"]
+        - df["LOW20"]
+    )
+
+    range20 = range20.replace(0, np.nan)
+
+    df["DonchianPosition"] = (
+        (
+            df["종가"]
+            - df["LOW20"]
+        )
+        /
+        range20
+        * 100
+    )
+
+
+
+
+
+
 
 
     # RSI(14)
@@ -496,6 +526,10 @@ def make_dataset(df):
             # "J",
             "CMF",
             "CCI",
+            "Momentum20",
+            "HIGH252비율",
+            "DonchianPosition",
+            "MA20_MA60_Gap",
         ]
     ]
 
