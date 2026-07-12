@@ -1075,6 +1075,33 @@ Best Parameters
 }
 
 ---
+
+# v10
+
+Features
+- Removed duplicated features
+- Added Feature Importance visualization
+- Added SHAP Summary visualization
+- Added prediction probability output
+- Optimized SHAP execution using 5,000 sampled rows
+- Saved SHAP summary as image file
+
+Best Parameters
+- n_estimators: 150
+- learning_rate: 0.15
+- max_depth: 8
+- colsample_bytree: 1.0
+
+Accuracy
+- CV Accuracy: 60.05%
+- Test Accuracy: 60.13%
+
+Observations
+- SHAP confirmed Volatility20 as the most influential feature.
+- ATRRatio, Position120, 거래량비율, OBV, ATR were also highly influential.
+- Feature Importance and SHAP rankings were largely consistent.
+- Sampling 5,000 rows greatly reduced SHAP execution time while preserving interpretability.
+
 ---
 ---
 ---

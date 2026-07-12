@@ -55,16 +55,23 @@ def show_feature_importance(model, feature_names):
     plt.tight_layout()
     plt.show()
 
-def show_shap_summary(model, X_train):
+def show_shap_summary(model, X):
 
     explainer = shap.TreeExplainer(model)
 
-    shap_values = explainer.shap_values(X_train)
+    shap_values = explainer.shap_values(X)
 
     shap.summary_plot(
         shap_values,
-        X_train
+        X,
+        show=False
     )
+
+    plt.tight_layout()
+    plt.savefig("shap_summary.png", dpi=300)
+    plt.close()
+
+    print("SHAP 저장 완료")
 
 def evaluate_model(model, X_test, y_test):
 
@@ -92,12 +99,38 @@ def evaluate_model(model, X_test, y_test):
     ))
     
 
+
+def show_prediction_probability(model, X_test):
+
+    probability = model.predict_proba(X_test)
+
+    result = pd.DataFrame({
+        "UpProbability": probability[:, 1],
+        "DownProbability": probability[:, 0]
+    })
+
+    print()
+    print("===== Prediction Probability =====")
+
+    print(result.head(20))
+
+
+
+
 df = pd.read_csv("dataset.csv")
 
 if USE_DEV_DATA:
     df = df.tail(1_000_000)
 
-X = df.drop(columns=["날짜", "Target"])
+# X = df.drop(columns=["날짜", "Target"])
+X = df.drop(
+    columns=[
+        "날짜",
+        "ticker",
+        "name",
+        "Target"
+    ]
+)
 y = df["Target"]
 
 X_train, X_test, y_train, y_test = train_test_split(
@@ -107,55 +140,80 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
+# model = XGBClassifier(
+#     random_state=42,
+#     eval_metric="logloss",
+#     scale_pos_weight=2.66,
+#     min_child_weight=1,
+#     gamma=0,
+#     subsample=0.8
+# )
+
 model = XGBClassifier(
     random_state=42,
     eval_metric="logloss",
     scale_pos_weight=2.66,
     min_child_weight=1,
     gamma=0,
-    subsample=0.8
+    subsample=0.8,
+    n_estimators=150,
+    learning_rate=0.15,
+    max_depth=8,
+    colsample_bytree=1.0
 )
 
-param_grid = {
-    "n_estimators": [100, 150],
-    "learning_rate": [0.1, 0.15],
-    "max_depth": [7, 8],
-    "colsample_bytree": [0.6, 0.8, 1.0]
-}
+model.fit(X_train, y_train)
 
-grid_search = GridSearchCV(
-    estimator=model,
-    param_grid=param_grid,
-    cv=5,
-    scoring="accuracy",
-    verbose=2,
-    n_jobs=-1,
-    refit=True
-)
+# param_grid = {
+#     "n_estimators": [100, 150],
+#     "learning_rate": [0.1, 0.15],
+#     "max_depth": [7, 8],
+#     "colsample_bytree": [0.6, 0.8, 1.0]
+# }
 
-grid_search.fit(X_train, y_train)
+# grid_search = GridSearchCV(
+#     estimator=model,
+#     param_grid=param_grid,
+#     cv=5,
+#     scoring="accuracy",
+#     verbose=2,
+#     n_jobs=-1,
+#     refit=True
+# )
+
+# grid_search.fit(X_train, y_train)
 
 
 
-best_model = grid_search.best_estimator_
+# best_model = grid_search.best_estimator_
 
-print(f"Best Parameters: {grid_search.best_params_}")
-print(f"Best CV Accuracy: {grid_search.best_score_:.4f}")
+# print(f"Best Parameters: {grid_search.best_params_}")
+# print(f"Best CV Accuracy: {grid_search.best_score_:.4f}")
 
 print()
 
 evaluate_model(
-    best_model,
+    model,
     X_test,
     y_test
 )
 
 show_feature_importance(
-    best_model,
+    model,
     X_train.columns
 )
 
+sample = X_train.sample(
+    n=5000,
+    random_state=42
+)
+
 show_shap_summary(
-    best_model,
-    X_train
+    model,
+    sample
+)
+
+show_prediction_probability(
+    model,
+    X_test
 )

@@ -603,6 +603,8 @@ def make_dataset(df):
     dataset = df[
         [
             "날짜",
+            "ticker",
+            "name",
             "거래량비율",
             "MA20비율",
             "MA60비율",
@@ -665,6 +667,8 @@ for _, row in tickers.iterrows():
 
         df = pd.read_csv(f"raw/{ticker}.csv")
 
+        df["ticker"] = ticker
+        df["name"] = name
         df = create_features(df)
 
         df = create_label(df)
