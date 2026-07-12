@@ -1047,6 +1047,33 @@ Feature Importance analysis showed that:
 - LOW20비율 and Position120 also contribute significantly.
 
 ---
+
+## v15
+
+### Added Features
+
+- VWAPRatio
+- ATRRatio
+- VolumeSpike
+- LOW20비율
+- Position60
+- Position120
+- DonchianPosition
+
+### Model
+
+XGBoost + GridSearchCV
+
+Best Parameters
+
+```python
+{
+    "colsample_bytree": 1.0,
+    "learning_rate": 0.15,
+    "max_depth": 8,
+    "n_estimators": 150
+}
+
 ---
 ---
 ---

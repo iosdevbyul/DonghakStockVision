@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import shap
 
 from sklearn.metrics import (
     accuracy_score,
@@ -53,6 +54,17 @@ def show_feature_importance(model, feature_names):
 
     plt.tight_layout()
     plt.show()
+
+def show_shap_summary(model, X_train):
+
+    explainer = shap.TreeExplainer(model)
+
+    shap_values = explainer.shap_values(X_train)
+
+    shap.summary_plot(
+        shap_values,
+        X_train
+    )
 
 def evaluate_model(model, X_test, y_test):
 
@@ -143,3 +155,7 @@ show_feature_importance(
     X_train.columns
 )
 
+show_shap_summary(
+    best_model,
+    X_train
+)
