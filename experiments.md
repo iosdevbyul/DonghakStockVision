@@ -1073,7 +1073,7 @@ Best Parameters
     "max_depth": 8,
     "n_estimators": 150
 }
-
+```
 ---
 
 # v10
@@ -1103,7 +1103,74 @@ Observations
 - Sampling 5,000 rows greatly reduced SHAP execution time while preserving interpretability.
 
 ---
+
+# v11
+
+Features
+- Fixed XGBoost hyperparameters after GridSearch
+- Added threshold evaluation
+- Added confidence-based prediction analysis
+- Added SHAP summary image export
+- Added feature importance CSV export
+
+Model
+- n_estimators: 150
+- learning_rate: 0.15
+- max_depth: 8
+- colsample_bytree: 1.0
+
+Performance
+- Test Accuracy: 60.13%
+
+Threshold Evaluation
+
+| Threshold | Accuracy | Buy Count |
+|-----------|---------:|----------:|
+| 0.50 | 60.13% | 516161 |
+| 0.55 | 68.54% | 280414 |
+| 0.60 | 72.63% | 124557 |
+| 0.65 | 73.54% | 59480 |
+| 0.70 | 73.58% | 31128 |
+| 0.75 | 73.43% | 17405 |
+| 0.80 | 73.27% | 10594 |
+| 0.85 | 73.14% | 7053 |
+| 0.90 | 73.02% | 4552 |
+
+Observations
+- Increasing the prediction threshold reduced the number of buy signals.
+- Overall accuracy increased as the threshold increased, but this metric includes non-buy samples and is not sufficient for evaluating an investment strategy.
+- The next step is to evaluate precision and win rate for only the selected buy signals.
+
 ---
+
+## Threshold Evaluation
+
+Date
+- 2026-07-14
+
+Purpose
+- Evaluate prediction confidence by threshold.
+
+Result
+
+| Threshold | Precision |
+|-----------|-----------|
+| 0.50 | 36.39% |
+| 0.55 | 41.73% |
+| 0.60 | 49.79% |
+| 0.65 | 58.08% |
+| 0.70 | 66.27% |
+| 0.75 | 74.20% |
+| 0.80 | 81.23% |
+| 0.85 | 86.81% |
+| 0.90 | 92.44% |
+
+Conclusion
+
+- Prediction confidence correlates strongly with actual precision.
+- Higher thresholds produce significantly higher win rates while reducing the number of trading opportunities.
+- The model appears suitable for confidence-based stock selection.
+
 ---
 ---
 ---

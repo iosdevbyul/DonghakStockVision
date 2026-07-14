@@ -5,11 +5,16 @@ import shap
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
-    classification_report
+    classification_report,
+    precision_score,
+    recall_score,
+    f1_score
 )
 
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import precision_score, recall_score, f1_score
+
 
 from xgboost import XGBClassifier
 
@@ -115,6 +120,8 @@ def show_prediction_probability(model, X_test):
     print(result.head(20))
 
 
+from sklearn.metrics import precision_score, recall_score, f1_score
+
 def evaluate_threshold(model, X_test, y_test):
 
     probability = model.predict_proba(X_test)[:, 1]
@@ -124,8 +131,10 @@ def evaluate_threshold(model, X_test, y_test):
 
     print(
         f"{'Threshold':<10}"
-        f"{'Accuracy':<12}"
-        f"{'Buy Count':<12}"
+        f"{'Buy':<10}"
+        f"{'Precision':<12}"
+        f"{'Recall':<12}"
+        f"{'F1':<12}"
     )
 
     for threshold in [
@@ -144,17 +153,32 @@ def evaluate_threshold(model, X_test, y_test):
             probability >= threshold
         ).astype(int)
 
-        accuracy = accuracy_score(
+        buy_count = prediction.sum()
+
+        precision = precision_score(
             y_test,
-            prediction
+            prediction,
+            zero_division=0
         )
 
-        buy_count = prediction.sum()
+        recall = recall_score(
+            y_test,
+            prediction,
+            zero_division=0
+        )
+
+        f1 = f1_score(
+            y_test,
+            prediction,
+            zero_division=0
+        )
 
         print(
             f"{threshold:<10.2f}"
-            f"{accuracy:<12.4f}"
-            f"{buy_count:<12}"
+            f"{buy_count:<10}"
+            f"{precision:<12.4f}"
+            f"{recall:<12.4f}"
+            f"{f1:<12.4f}"
         )
 
 df = pd.read_csv("dataset.csv")
