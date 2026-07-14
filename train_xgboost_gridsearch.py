@@ -115,7 +115,47 @@ def show_prediction_probability(model, X_test):
     print(result.head(20))
 
 
+def evaluate_threshold(model, X_test, y_test):
 
+    probability = model.predict_proba(X_test)[:, 1]
+
+    print()
+    print("===== Threshold Evaluation =====")
+
+    print(
+        f"{'Threshold':<10}"
+        f"{'Accuracy':<12}"
+        f"{'Buy Count':<12}"
+    )
+
+    for threshold in [
+        0.50,
+        0.55,
+        0.60,
+        0.65,
+        0.70,
+        0.75,
+        0.80,
+        0.85,
+        0.90
+    ]:
+
+        prediction = (
+            probability >= threshold
+        ).astype(int)
+
+        accuracy = accuracy_score(
+            y_test,
+            prediction
+        )
+
+        buy_count = prediction.sum()
+
+        print(
+            f"{threshold:<10.2f}"
+            f"{accuracy:<12.4f}"
+            f"{buy_count:<12}"
+        )
 
 df = pd.read_csv("dataset.csv")
 
@@ -216,4 +256,10 @@ show_shap_summary(
 show_prediction_probability(
     model,
     X_test
+)
+
+evaluate_threshold(
+    model,
+    X_test,
+    y_test
 )
