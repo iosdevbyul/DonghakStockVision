@@ -1193,6 +1193,17 @@ Conclusion
 - Dataset is now ready for realistic trading strategy evaluation.
 
 ---
+
+## Experiment 15 - Backtest 데이터 준비
+
+### 변경사항
+- create_dataset.py에 20일후수익률 컬럼 추가
+- backtest_xgboost.py 생성
+- 모델 예측확률과 실제 20일 후 수익률을 함께 출력하도록 구현
+
+### 목적
+Threshold별 실제 수익률을 계산하기 위한 기반 작업
+
 ---
 ---
 ---
