@@ -618,6 +618,7 @@ def make_dataset(df):
             "MA60_MA120_Gap",
             "BollingerPosition",
             "Target",
+            "20일후수익률",
             "MACD", 
             "MACDSignal", 
             "MACDHistogram",

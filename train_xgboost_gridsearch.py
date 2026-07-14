@@ -192,7 +192,8 @@ X = df.drop(
         "날짜",
         "ticker",
         "name",
-        "Target"
+        "Target",
+        "20일후수익률"
     ]
 )
 y = df["Target"]

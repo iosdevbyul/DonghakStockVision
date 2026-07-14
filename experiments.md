@@ -1172,6 +1172,26 @@ Conclusion
 - The model appears suitable for confidence-based stock selection.
 
 ---
+
+## Dataset Update
+
+Date
+- 2026-07-15
+
+Purpose
+- Preserve future return information for investment backtesting.
+
+Changes
+- Added '20일후수익률' column to dataset.csv.
+- Excluded '20일후수익률' from training features.
+
+Result
+- Dataset regenerated successfully.
+- Total samples: 5,550,435
+
+Conclusion
+- Dataset is now ready for realistic trading strategy evaluation.
+
 ---
 ---
 ---
