@@ -1205,6 +1205,14 @@ Conclusion
 Threshold별 실제 수익률을 계산하기 위한 기반 작업
 
 ---
+
+Experiment: Threshold-based Backtest
+
+- Added probability-based backtesting.
+- Evaluates average return and win rate for each prediction threshold.
+- Enables comparison between prediction confidence and actual investment performance.
+- This shifts evaluation from classification accuracy to real trading profitability.
+
 ---
 ---
 ---

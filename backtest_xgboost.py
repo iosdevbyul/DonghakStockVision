@@ -53,3 +53,40 @@ result = pd.DataFrame({
 })
 
 print(result.head())
+
+
+print()
+
+print("===== Threshold Backtest =====")
+
+for threshold in [
+    0.50,
+    0.55,
+    0.60,
+    0.65,
+    0.70,
+    0.75,
+    0.80,
+    0.85,
+    0.90
+]:
+
+    selected = result[
+        result["Probability"] >= threshold
+    ]
+
+    if len(selected) == 0:
+        continue
+
+    average_return = selected["FutureReturn"].mean()
+
+    win_rate = (
+        selected["FutureReturn"] > 0
+    ).mean() * 100
+
+    print(
+        f"{threshold:.2f}"
+        f" | Count={len(selected):6d}"
+        f" | AvgReturn={average_return:7.2f}%"
+        f" | WinRate={win_rate:6.2f}%"
+    )
