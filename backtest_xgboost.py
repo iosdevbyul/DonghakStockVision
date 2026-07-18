@@ -1,13 +1,24 @@
 import pandas as pd
+
+from sklearn.model_selection import train_test_split
+
 from xgboost import XGBClassifier
 
-# 데이터 불러오기
+
+# ==========================================
+# 1. 데이터 불러오기
+# ==========================================
+
 df = pd.read_csv(
     "dataset.csv",
     low_memory=False
 )
 
-# 학습에 사용하지 않는 컬럼 제거
+
+# ==========================================
+# 2. Feature / Label 분리
+# ==========================================
+
 X = df.drop(
     columns=[
         "날짜",
@@ -20,9 +31,59 @@ X = df.drop(
 
 y = df["Target"]
 
-future_return = df["20일후수익률"]
 
-# 모델 생성
+# ==========================================
+# 3. Train / Test 분리
+#
+# 중요:
+# shuffle=False
+#
+# 과거 데이터 -> Train
+# 미래 데이터 -> Test
+#
+# 실제 투자 상황에 가까운 방식으로 백테스트
+# ==========================================
+
+(
+    X_train,
+    X_test,
+    y_train,
+    y_test,
+    train_df,
+    test_df
+) = train_test_split(
+    X,
+    y,
+    df,
+    test_size=0.2,
+    shuffle=False
+)
+
+
+print(f"Train 데이터: {len(X_train):,}개")
+print(f"Test 데이터:  {len(X_test):,}개")
+
+print()
+
+print(
+    f"Train 기간: "
+    f"{train_df['날짜'].iloc[0]} ~ "
+    f"{train_df['날짜'].iloc[-1]}"
+)
+
+print(
+    f"Test 기간:  "
+    f"{test_df['날짜'].iloc[0]} ~ "
+    f"{test_df['날짜'].iloc[-1]}"
+)
+
+
+# ==========================================
+# 4. XGBoost 모델 생성
+#
+# GridSearch에서 찾은 최적 파라미터 사용
+# ==========================================
+
 model = XGBClassifier(
     random_state=42,
     eval_metric="logloss",
@@ -36,28 +97,68 @@ model = XGBClassifier(
     colsample_bytree=1.0
 )
 
+
+# ==========================================
+# 5. 모델 학습
+# ==========================================
+
+print()
 print("학습 중...")
 
-model.fit(X, y)
+model.fit(
+    X_train,
+    y_train
+)
+
+
+# ==========================================
+# 6. 미래 데이터 예측
+# ==========================================
 
 print("예측 중...")
 
-probability = model.predict_proba(X)[:, 1]
+probability = model.predict_proba(
+    X_test
+)[:, 1]
+
+
+# ==========================================
+# 7. 예측 결과 생성
+# ==========================================
 
 result = pd.DataFrame({
-    "날짜": df["날짜"],
-    "ticker": df["ticker"],
-    "name": df["name"],
+    "날짜": test_df["날짜"].values,
+    "ticker": test_df["ticker"].values,
+    "name": test_df["name"].values,
     "Probability": probability,
-    "FutureReturn": future_return
+    "FutureReturn": test_df["20일후수익률"].values
 })
-
-print(result.head())
 
 
 print()
 
+print("===== Prediction Result =====")
+
+print(
+    result.head()
+)
+
+
+# ==========================================
+# 8. Threshold별 백테스트
+# ==========================================
+
+print()
+
 print("===== Threshold Backtest =====")
+
+print(
+    f"{'Threshold':<10}"
+    f"{'Count':<12}"
+    f"{'AvgReturn':<15}"
+    f"{'WinRate':<12}"
+)
+
 
 for threshold in [
     0.50,
@@ -71,22 +172,32 @@ for threshold in [
     0.90
 ]:
 
+    # 해당 Threshold 이상인 종목만 선택
     selected = result[
         result["Probability"] >= threshold
     ]
 
+
+    # 선택된 종목이 없으면 건너뜀
     if len(selected) == 0:
         continue
 
-    average_return = selected["FutureReturn"].mean()
 
+    # 평균 20일 후 수익률
+    average_return = (
+        selected["FutureReturn"].mean()
+    )
+
+
+    # 실제 상승한 비율
     win_rate = (
         selected["FutureReturn"] > 0
     ).mean() * 100
 
+
     print(
-        f"{threshold:.2f}"
-        f" | Count={len(selected):6d}"
-        f" | AvgReturn={average_return:7.2f}%"
-        f" | WinRate={win_rate:6.2f}%"
+        f"{threshold:<10.2f}"
+        f"{len(selected):<12,}"
+        f"{average_return:<15.2f}%"
+        f"{win_rate:<12.2f}%"
     )

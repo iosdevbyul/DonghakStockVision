@@ -1214,6 +1214,41 @@ Experiment: Threshold-based Backtest
 - This shifts evaluation from classification accuracy to real trading profitability.
 
 ---
+
+## Experiment: Time-Series Backtest with shuffle=False
+
+- Model: XGBoost
+- n_estimators: 150
+- learning_rate: 0.15
+- max_depth: 8
+- colsample_bytree: 1.0
+- subsample: 0.8
+- scale_pos_weight: 2.66
+- Train/Test Split: 80/20
+- shuffle: False
+
+### Results
+
+| Threshold | Count | Avg 20-Day Return | Win Rate |
+|---|---:|---:|---:|
+| 0.50 | 600,684 | 1.25% | 46.02% |
+| 0.55 | 372,104 | 2.11% | 48.83% |
+| 0.60 | 198,812 | 3.63% | 53.23% |
+| 0.65 | 105,011 | 5.58% | 58.23% |
+| 0.70 | 57,200 | 7.97% | 63.29% |
+| 0.75 | 31,928 | 11.00% | 68.69% |
+| 0.80 | 18,288 | 14.72% | 74.33% |
+| 0.85 | 10,751 | 19.07% | 80.20% |
+| 0.90 | 6,410 | 25.10% | 87.07% |
+
+### Observation
+
+As the prediction probability threshold increases, both average future return and win rate increase consistently.
+
+The model shows a strong relationship between predicted probability and future 20-day return.
+
+However, the dataset ordering should be verified before considering this result a valid time-series backtest. The dataset may be ordered by ticker rather than by date, so the next experiment should sort the dataset chronologically before performing the train/test split.
+
 ---
 ---
 ---
