@@ -437,11 +437,18 @@ for i in range(
 
 
     # ======================================
-    # 포트폴리오 수익률 계산
+    # 거래 비용 반영
     # ======================================
 
-    portfolio_return = (
+    TRADING_COST = 0.003  # 왕복 거래비용 0.3%
+
+    gross_return = (
         portfolio["FutureReturn"].mean()
+    )
+
+    portfolio_return = (
+        gross_return
+        - TRADING_COST * 100
     )
 
 
