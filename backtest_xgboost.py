@@ -1,7 +1,4 @@
 import pandas as pd
-
-from sklearn.model_selection import train_test_split
-
 from xgboost import XGBClassifier
 
 
@@ -44,20 +41,31 @@ y = df["Target"]
 # 실제 투자 상황에 가까운 방식으로 백테스트
 # ==========================================
 
-(
-    X_train,
-    X_test,
-    y_train,
-    y_test,
-    train_df,
-    test_df
-) = train_test_split(
-    X,
-    y,
-    df,
-    test_size=0.2,
-    shuffle=False
-)
+# (
+#     X_train,
+#     X_test,
+#     y_train,
+#     y_test,
+#     train_df,
+#     test_df
+# ) = train_test_split(
+#     X,
+#     y,
+#     df,
+#     test_size=0.2,
+#     shuffle=False
+# )
+
+split_index = int(len(df) * 0.8)
+
+X_train = X.iloc[:split_index]
+X_test = X.iloc[split_index:]
+
+y_train = y.iloc[:split_index]
+y_test = y.iloc[split_index:]
+
+train_df = df.iloc[:split_index]
+test_df = df.iloc[split_index:]
 
 
 print(f"Train 데이터: {len(X_train):,}개")

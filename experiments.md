@@ -1250,6 +1250,54 @@ The model shows a strong relationship between predicted probability and future 2
 However, the dataset ordering should be verified before considering this result a valid time-series backtest. The dataset may be ordered by ticker rather than by date, so the next experiment should sort the dataset chronologically before performing the train/test split.
 
 ---
+
+Experiment: Time-Series Backtest
+
+Data:
+- Total: 5,550,435
+- Train: 4,440,348
+- Test: 1,110,087
+
+Train Period:
+- 2015-04-10 ~ 2017-08-25
+
+Test Period:
+- 2017-08-28 ~ 2025-02-27
+
+Model:
+- XGBoost
+- n_estimators=150
+- learning_rate=0.15
+- max_depth=8
+- colsample_bytree=1.0
+- subsample=0.8
+- scale_pos_weight=2.66
+- min_child_weight=1
+- gamma=0
+
+Data Split:
+- Time-series split
+- First 80%: Train
+- Last 20%: Test
+- shuffle=False
+
+Result:
+- Threshold 0.50: AvgReturn 1.25%, WinRate 46.02%
+- Threshold 0.55: AvgReturn 2.11%, WinRate 48.83%
+- Threshold 0.60: AvgReturn 3.63%, WinRate 53.23%
+- Threshold 0.65: AvgReturn 5.58%, WinRate 58.23%
+- Threshold 0.70: AvgReturn 7.97%, WinRate 63.29%
+- Threshold 0.75: AvgReturn 11.00%, WinRate 68.69%
+- Threshold 0.80: AvgReturn 14.72%, WinRate 74.33%
+- Threshold 0.85: AvgReturn 19.07%, WinRate 80.20%
+- Threshold 0.90: AvgReturn 25.10%, WinRate 87.07%
+
+Conclusion:
+- Probability가 증가할수록 미래 20일 수익률과 승률이 함께 증가
+- 시간순 분할에서도 모델 Probability와 실제 FutureReturn 사이에 유의미한 관계 확인
+- Threshold 0.80 이상에서 높은 승률 확인
+- 다음 단계: 실제 매매 규칙 기반 포트폴리오 백테스트 필요
+
 ---
 ---
 ---
