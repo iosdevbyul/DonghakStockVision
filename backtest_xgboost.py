@@ -320,71 +320,271 @@ print(
     f"{win_rate:.2f}%"
 )
 
+# ==========================================
+# 10. 실제 20거래일 보유 백테스트
+# ==========================================
 
-# ==========================================
-# 10. 20거래일마다 포트폴리오 교체
-# ==========================================
+THRESHOLD = 0.70
+TOP_N = 5
+HOLDING_DAYS = 20
 
 initial_capital = 10_000_000
-
 capital = initial_capital
 
 
-# 날짜 순서대로 정렬
-daily_portfolio_return = (
-    daily_portfolio_return
-    .sort_index()
+print()
+print("===== Real 20-Day Holding Backtest =====")
+
+print(
+    f"Threshold: {THRESHOLD:.2f}"
+)
+
+print(
+    f"Top N: {TOP_N}"
+)
+
+print(
+    f"Holding Period: {HOLDING_DAYS} trading days"
 )
 
 
-# # 20거래일마다 포트폴리오 교체
-# rebalance_returns = (
-#     daily_portfolio_return
-#     .iloc[::20]
-# )
+# ==========================================
+# 10-1. 날짜 정렬
+# ==========================================
 
-
-# print()
-
-# print(
-#     f"실제 투자 횟수: "
-#     f"{len(rebalance_returns):,}"
-# )
+result = result.sort_values(
+    by="날짜"
+).copy()
 
 
 # ==========================================
-# 11. 복리 계산
+# 10-2. Test 데이터의 거래일 목록 생성
 # ==========================================
 
-for return_rate in rebalance_returns:
+trading_dates = (
+    result["날짜"]
+    .drop_duplicates()
+    .sort_values()
+    .tolist()
+)
 
-    capital *= (
-        1 + return_rate / 100
+
+# ==========================================
+# 10-3. 실제 투자 결과 저장
+# ==========================================
+
+backtest_results = []
+
+
+# ==========================================
+# 10-4. 20거래일마다 포트폴리오 구성
+# ==========================================
+
+for i in range(
+    0,
+    len(trading_dates),
+    HOLDING_DAYS
+):
+
+    # 현재 투자 날짜
+    buy_date = trading_dates[i]
+
+
+    # 20거래일 후 매도 날짜가 존재하지 않으면 종료
+    sell_index = (
+        i + HOLDING_DAYS
+    )
+
+    if sell_index >= len(trading_dates):
+        break
+
+
+    sell_date = trading_dates[
+        sell_index
+    ]
+
+
+    # ======================================
+    # 현재 투자 날짜의 종목 선택
+    # ======================================
+
+    candidates = result[
+        (result["날짜"] == buy_date) &
+        (result["Probability"] >= THRESHOLD)
+    ].copy()
+
+
+    # Threshold를 통과한 종목이 없으면 건너뜀
+    if len(candidates) == 0:
+        continue
+
+
+    # Probability 기준 내림차순 정렬
+    candidates = candidates.sort_values(
+        by="Probability",
+        ascending=False
     )
 
 
+    # Top N 종목 선택
+    portfolio = candidates.head(
+        TOP_N
+    )
+
+
+    # 실제 선택된 종목 수
+    actual_top_n = len(portfolio)
+
+
+    # ======================================
+    # 포트폴리오 수익률 계산
+    # ======================================
+
+    portfolio_return = (
+        portfolio["FutureReturn"].mean()
+    )
+
+
+    # ======================================
+    # 자본 복리 계산
+    # ======================================
+
+    capital *= (
+        1 + portfolio_return / 100
+    )
+
+
+    # 결과 저장
+    backtest_results.append({
+
+        "BuyDate": buy_date,
+
+        "SellDate": sell_date,
+
+        "Count": actual_top_n,
+
+        "PortfolioReturn": portfolio_return,
+
+        "Capital": capital
+
+    })
+
+
 # ==========================================
-# 12. 누적 수익률 계산
+# 11. 백테스트 결과 DataFrame
 # ==========================================
 
-total_return = (
-    capital / initial_capital - 1
-) * 100
-
-
-print()
-
-print(
-    f"초기 자본: "
-    f"{initial_capital:,.0f}원"
+backtest_df = pd.DataFrame(
+    backtest_results
 )
 
-print(
-    f"최종 자산: "
-    f"{capital:,.0f}원"
-)
 
-print(
-    f"누적 수익률: "
-    f"{total_return:.2f}%"
-)
+# 결과가 없으면 종료
+if len(backtest_df) == 0:
+
+    print()
+
+    print(
+        "백테스트 결과가 없습니다."
+    )
+
+else:
+
+    # ======================================
+    # 12. 백테스트 결과 출력
+    # ======================================
+
+    print()
+
+    print(
+        f"실제 투자 횟수: "
+        f"{len(backtest_df):,}"
+    )
+
+
+    print(
+        f"총 투자 종목 수: "
+        f"{backtest_df['Count'].sum():,}"
+    )
+
+
+    # ======================================
+    # 13. 평균 포트폴리오 수익률
+    # ======================================
+
+    average_return = (
+        backtest_df[
+            "PortfolioReturn"
+        ].mean()
+    )
+
+
+    print()
+
+    print(
+        f"평균 20거래일 포트폴리오 수익률: "
+        f"{average_return:.2f}%"
+    )
+
+
+    # ======================================
+    # 14. 포트폴리오 승률
+    # ======================================
+
+    win_rate = (
+        backtest_df[
+            "PortfolioReturn"
+        ] > 0
+    ).mean() * 100
+
+
+    print(
+        f"포트폴리오 승률: "
+        f"{win_rate:.2f}%"
+    )
+
+
+    # ======================================
+    # 15. 최종 자산
+    # ======================================
+
+    total_return = (
+        capital /
+        initial_capital -
+        1
+    ) * 100
+
+
+    print()
+
+    print(
+        f"초기 자본: "
+        f"{initial_capital:,.0f}원"
+    )
+
+
+    print(
+        f"최종 자산: "
+        f"{capital:,.0f}원"
+    )
+
+
+    print(
+        f"누적 수익률: "
+        f"{total_return:.2f}%"
+    )
+
+
+    # ======================================
+    # 16. 최근 투자 결과 확인
+    # ======================================
+
+    print()
+
+    print(
+        "===== Recent Backtest Results ====="
+    )
+
+    print(
+        backtest_df.tail(10)
+    )
