@@ -550,6 +550,34 @@ else:
         f"{win_rate:.2f}%"
     )
 
+    # ======================================
+    # 14. 최대 낙폭(MDD) 계산
+    # ======================================
+
+    capital_series = (
+        backtest_df["Capital"]
+    )
+
+    running_max = (
+        capital_series
+        .cummax()
+    )
+
+    drawdown = (
+        capital_series / running_max - 1
+    )
+
+    max_drawdown = (
+        drawdown.min() * 100
+    )
+
+
+    print()
+
+    print(
+        f"최대 낙폭(MDD): "
+        f"{max_drawdown:.2f}%"
+    )
 
     # ======================================
     # 15. 최종 자산
