@@ -22,6 +22,11 @@
 ────────────────────────────
 
 □ Feature Engineering #2  
+    ✔ 데이터 수집
+    ✔ 백테스트
+    ✔ Feature Engineering
+    ✔ RandomForest
+    ✔ Hyperparameter Tuning
 
 □ XGBoost
 

@@ -92,8 +92,6 @@ for name, importance in zip(
 ):
     print(f"{name}: {importance:.4f}")
 
-model.fit(X_train, y_train)
-
 end = time.time()
 
 print(f"학습시간 : {end - start:.2f}초")
