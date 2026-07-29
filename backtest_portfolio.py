@@ -109,6 +109,7 @@ def build_market_data():
                         "고가",
                         "저가",
                         "종가",
+                        "거래량비율",
                         "signal",
                     ]
                 ]
@@ -322,6 +323,11 @@ def run_portfolio_backtest(
                     positions.keys()
                 )
             ]
+
+            candidates = candidates.sort_values(
+                "거래량비율",
+                ascending=False
+            )
 
             # 최대 슬롯 수만큼만 진입
             candidates = candidates.head(

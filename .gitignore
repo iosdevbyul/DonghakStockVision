@@ -17,3 +17,7 @@ raw/
 # 결과 파일
 *.xlsx
 *.csv
+
+backtest_trades.csv
+portfolio_history.csv
+portfolio_trades.csv
