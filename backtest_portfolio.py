@@ -22,6 +22,13 @@ STOP_LOSS = -5.0
 
 TAKE_PROFIT = 15.0
 
+def calculate_score(df):
+
+    return (
+        df["거래량비율"] * 0.5
+        + df["MA_GAP"] * 100 * 0.3
+        + df["BREAKOUT"] * 100 * 0.2
+    )
 
 def load_stock_data(file_path):
 
@@ -67,6 +74,11 @@ def load_stock_data(file_path):
         .shift(1)
     )
 
+    df["MA_GAP"] = (
+        (df["MA20"] - df["MA60"])
+        / df["MA60"]
+    )
+
     # 매수 시그널
     df["signal"] = (
         (df["거래량비율"] >= VOLUME_THRESHOLD)
@@ -74,6 +86,13 @@ def load_stock_data(file_path):
         & (df["MA20"] > df["MA60"])
         & (df["종가"] >= df["HIGH20"])
     )
+
+    df["BREAKOUT"] = (
+        (df["종가"] - df["HIGH20"])
+        / df["HIGH20"]
+    )
+
+    df["score"] = calculate_score(df)
 
     df["ticker"] = ticker
 
@@ -102,7 +121,7 @@ def build_market_data():
 
             all_data.append(
                 df[
-                    [
+                    [   
                         "날짜",
                         "ticker",
                         "시가",
@@ -110,6 +129,9 @@ def build_market_data():
                         "저가",
                         "종가",
                         "거래량비율",
+                        "MA_GAP",
+                        "BREAKOUT",
+                        "score",
                         "signal",
                     ]
                 ]
@@ -324,10 +346,12 @@ def run_portfolio_backtest(
                 )
             ]
 
+            print("=" * 80)
+
             candidates = candidates.sort_values(
-                "거래량비율",
+                "score",
                 ascending=False
-            )
+            ).head(10)
 
             # 최대 슬롯 수만큼만 진입
             candidates = candidates.head(
