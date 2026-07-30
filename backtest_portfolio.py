@@ -22,6 +22,9 @@ STOP_LOSS = -5.0
 
 TAKE_PROFIT = 15.0
 
+COMMISSION = 0.001      # 0.1%
+SLIPPAGE = 0.001        # 0.1%
+
 def calculate_score(df):
 
     return (
@@ -269,12 +272,20 @@ def run_portfolio_backtest(
                     "shares"
                 ]
 
+                sell_price *= (1 - SLIPPAGE)
+
                 proceeds = (
                     shares
                     * sell_price
                 )
 
-                cash += proceeds
+                # cash += proceeds
+                commission = proceeds * COMMISSION
+
+                cash += (
+                    proceeds
+                    - commission
+                )
 
                 return_percent = (
                     (
@@ -325,6 +336,25 @@ def run_portfolio_backtest(
         # 2. 신규 매수
         # =========================
 
+        # 현재 포트폴리오 가치 계산
+        portfolio_value = cash
+
+        for ticker, position in positions.items():
+
+            stock_data = today_data[
+                today_data["ticker"] == ticker
+            ]
+
+            if stock_data.empty:
+                continue
+
+            current_price = stock_data.iloc[0]["종가"]
+
+            portfolio_value += (
+                position["shares"]
+                * current_price
+            )
+
         available_slots = (
             MAX_POSITIONS
             - len(positions)
@@ -345,8 +375,6 @@ def run_portfolio_backtest(
                     positions.keys()
                 )
             ]
-
-            print("=" * 80)
 
             candidates = candidates.sort_values(
                 "score",
@@ -372,7 +400,14 @@ def run_portfolio_backtest(
                     "종가"
                 ]
 
+                buy_price *= (1 + SLIPPAGE)
+
                 # 종목당 목표 투자금
+                # target_amount = (
+                #     portfolio_value
+                #     * POSITION_SIZE
+                # )
+
                 target_amount = (
                     INITIAL_CAPITAL
                     * POSITION_SIZE
@@ -388,6 +423,9 @@ def run_portfolio_backtest(
                     invested_amount
                     / buy_price
                 )
+
+                commission = invested_amount * COMMISSION
+                cash -= commission
 
                 if shares <= 0:
 
