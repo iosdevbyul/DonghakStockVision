@@ -111,7 +111,7 @@ TRADING_COST = 0.003
 # ==========================================
 
 all_results = []
-
+all_predictions = []
 
 # ==========================================
 # 6. Walk-Forward 실행
@@ -298,7 +298,7 @@ for period in periods:
             ].values
 
     })
-
+    all_predictions.append(result)
 
     # ======================================
     # Threshold × Top N
@@ -691,6 +691,15 @@ for period in periods:
 # ==========================================
 # 7. 전체 결과
 # ==========================================
+prediction_df = pd.concat(
+    all_predictions,
+    ignore_index=True
+)
+
+prediction_df.to_csv(
+    "prediction.csv",
+    index=False
+)
 
 results_df = pd.DataFrame(
 
