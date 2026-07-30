@@ -701,6 +701,23 @@ prediction_df.to_csv(
     index=False
 )
 
+importance = pd.DataFrame({
+    "Feature": X_train.columns,
+    "Importance": model.feature_importances_
+})
+
+importance = importance.sort_values(
+    "Importance",
+    ascending=False
+)
+
+print(importance)
+
+importance.to_csv(
+    "feature_importance.csv",
+    index=False
+)
+
 results_df = pd.DataFrame(
 
     all_results
