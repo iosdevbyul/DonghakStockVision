@@ -1,6 +1,7 @@
 import pandas as pd
 from xgboost import XGBClassifier
-
+from sklearn.calibration import CalibratedClassifierCV
+import numpy as np
 
 # ==========================================
 # 1. 데이터 불러오기
@@ -16,7 +17,6 @@ df = pd.read_csv(
 df["날짜"] = pd.to_datetime(
     df["날짜"]
 )
-
 
 # 날짜 기준 정렬
 df = df.sort_values(
@@ -220,7 +220,7 @@ for period in periods:
     # XGBoost 모델
     # ======================================
 
-    model = XGBClassifier(
+    base_model = XGBClassifier(
 
         random_state=42,
 
@@ -244,6 +244,12 @@ for period in periods:
 
     )
 
+    # model = CalibratedClassifierCV(
+    #     base_model,
+    #     method="isotonic",
+    #     cv=3
+    # )
+
 
     # ======================================
     # 모델 학습
@@ -255,12 +261,54 @@ for period in periods:
         "학습 중..."
     )
 
-    model.fit(
+    # model.fit(
+    #     X_train,
+    #     y_train
+    # )
+
+    base_model.fit(
         X_train,
         y_train
     )
 
+    # importance = np.mean(
+    #     [
+    #         clf.estimator.feature_importances_
+    #         for clf in model.calibrated_classifiers_
+    #     ],
+    #     axis=0
+    # )
 
+    importance = base_model.feature_importances_
+
+    feature_importance = pd.DataFrame({
+        "Feature": X_train.columns,
+        "Importance": importance
+    })
+
+    feature_importance = feature_importance.sort_values(
+        "Importance",
+        ascending=False
+    )
+
+    feature_importance.to_csv(
+        f"feature_importance_{period['name']}.csv",
+        index=False
+    )
+
+    print()
+    print(feature_importance)
+
+
+
+    raw_probability = base_model.fit(
+        X_train,
+        y_train
+    ).predict_proba(X_test)[:, 1]
+
+    # cal_probability = model.predict_proba(X_test)[:, 1]
+
+    
     # ======================================
     # 예측
     # ======================================
@@ -269,10 +317,13 @@ for period in periods:
         "예측 중..."
     )
 
-    probability = model.predict_proba(
+    # probability = model.predict_proba(
+    #     X_test
+    # )[:, 1]
+
+    probability = base_model.predict_proba(
         X_test
     )[:, 1]
-
 
     # ======================================
     # 예측 결과 생성
@@ -298,7 +349,66 @@ for period in periods:
             ].values
 
     })
+
     all_predictions.append(result)
+
+
+    # ======================================
+    # Probability 확인
+    # ======================================
+
+    print()
+    print("=" * 60)
+    print(period["name"])
+    print("=" * 60)
+
+    print(result["Probability"].describe())
+
+    print()
+    print(
+        result["Probability"].quantile([
+            0.90,
+            0.95,
+            0.99,
+            0.999
+        ])
+    )
+
+    print()
+    print("0.70 이상 :", (result["Probability"] >= 0.70).sum())
+    print("0.75 이상 :", (result["Probability"] >= 0.75).sum())
+    print("0.80 이상 :", (result["Probability"] >= 0.80).sum())
+    print("0.85 이상 :", (result["Probability"] >= 0.85).sum())
+    print("0.90 이상 :", (result["Probability"] >= 0.90).sum())
+
+    print("=" * 60)
+
+
+    # ==================================
+    # 거래일 목록
+    # ==================================
+
+    trading_dates = (
+
+        result[
+            "날짜"
+        ]
+
+        .drop_duplicates()
+
+        .sort_values()
+
+        .tolist()
+
+    )
+
+    print("=" * 60)
+    print(period["name"])
+
+    print("전체 예측 :", len(result))
+    print("거래일 :", result["날짜"].nunique())
+
+    print(result["Probability"].describe())
 
     # ======================================
     # Threshold × Top N
@@ -306,39 +416,20 @@ for period in periods:
 
     for threshold in THRESHOLDS:
 
+        if threshold == 0.70:
+            daily_counts = (
+                result[result["Probability"] >= threshold]
+                .groupby("날짜")
+                .size()
+            )
+
+            count = (result["Probability"] >= threshold).sum()
+            days = result.loc[
+                result["Probability"] >= threshold,
+                "날짜"
+            ].nunique()
+
         for top_n in TOP_NS:
-
-            print()
-
-            print(
-                f"Threshold: "
-                f"{threshold:.2f}"
-            )
-
-            print(
-                f"Top N: "
-                f"{top_n}"
-            )
-
-
-            # ==================================
-            # 거래일 목록
-            # ==================================
-
-            trading_dates = (
-
-                result[
-                    "날짜"
-                ]
-
-                .drop_duplicates()
-
-                .sort_values()
-
-                .tolist()
-
-            )
-
 
             # ==================================
             # 자본 초기화
@@ -357,15 +448,9 @@ for period in periods:
             # ==================================
 
             for i in range(
-
                 0,
-
-                len(
-                    trading_dates
-                ),
-
+                len(trading_dates),
                 HOLDING_DAYS
-
             ):
 
 
@@ -430,7 +515,6 @@ for period in periods:
                 if len(
                     candidates
                 ) == 0:
-
                     continue
 
 
@@ -467,7 +551,18 @@ for period in periods:
 
                 )
 
+                print(
+                    buy_date,
+                    "Threshold:", threshold,
+                    "TopN:", top_n,
+                    "선택종목:", len(portfolio)
+                )
 
+                print(
+                    portfolio[
+                        ["ticker", "Probability", "FutureReturn"]
+                    ]
+                )
                 # ==================================
                 # 수익률 계산
                 # ==================================
@@ -701,22 +796,8 @@ prediction_df.to_csv(
     index=False
 )
 
-importance = pd.DataFrame({
-    "Feature": X_train.columns,
-    "Importance": model.feature_importances_
-})
-
-importance = importance.sort_values(
-    "Importance",
-    ascending=False
-)
-
-print(importance)
-
-importance.to_csv(
-    "feature_importance.csv",
-    index=False
-)
+print()
+print("all_results 개수 :", len(all_results))
 
 results_df = pd.DataFrame(
 
@@ -724,43 +805,20 @@ results_df = pd.DataFrame(
 
 )
 
-
-print()
-print()
-print("=" * 100)
-
-print(
-    "Walk-Forward 전체 백테스트 결과"
+results_df.to_csv(
+    "walk_forward_results.csv",
+    index=False
 )
 
-print("=" * 100)
+pd.set_option("display.max_rows", None)
+pd.set_option("display.max_columns", None)
 
+print(results_df)
 
-print(
+print("=" * 50)
+print(period["name"])
 
-    results_df.to_string(
+print("전체 예측 개수 :", len(result))
+print("거래일 수 :", result["날짜"].nunique())
 
-        index=False,
-
-        formatters={
-
-            "AverageReturn":
-                "{:.2f}%".format,
-
-            "WinRate":
-                "{:.2f}%".format,
-
-            "MDD":
-                "{:.2f}%".format,
-
-            "FinalCapital":
-                "{:,.0f}원".format,
-
-            "TotalReturn":
-                "{:.2f}%".format
-
-        }
-
-    )
-
-)
+print(result["Probability"].describe())
