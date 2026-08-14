@@ -1,20 +1,26 @@
 import pandas as pd
 import numpy as np
 import xgboost as xgb
+
 from pykrx import stock
-from collections import defaultdict
 
 
 # ============================================================
 # CONFIG
 # ============================================================
 
-BUY_DATASET_PATH = "dataset.csv"
+BUY_DATASET = "dataset.csv"
+SELL_DATASET = "sell_dataset_v2.csv"
+
+BUY_TARGET = "Target"
+SELL_TARGET = "SELL_TARGET"
 
 TRAIN_END = pd.Timestamp("2023-04-12")
 TEST_START = pd.Timestamp("2023-04-13")
 
-BUY_THRESHOLD_LIST = [
+SELL_THRESHOLD = 0.50
+
+BUY_THRESHOLDS = [
     0.70,
     0.75,
     0.80,
@@ -23,18 +29,21 @@ BUY_THRESHOLD_LIST = [
     0.95,
 ]
 
-FORWARD_DAYS = [
+TOP_N_LIST = [
+    1,
     3,
     5,
     10,
     20,
 ]
 
-MIN_DATA_DAYS = 30
+INITIAL_CAPITAL = 10_000_000
+
+HOLD_DAYS = 20
 
 
 # ============================================================
-# FEATURES
+# BUY FEATURES
 # ============================================================
 
 BUY_FEATURE_COLUMNS = [
@@ -70,6 +79,56 @@ BUY_FEATURE_COLUMNS = [
 
 
 # ============================================================
+# SELL FEATURES
+# ============================================================
+
+SELL_FEATURE_COLUMNS = [
+    "거래량비율",
+    "MA20비율",
+    "MA60비율",
+    "MA120비율",
+    "RSI",
+    "HIGH20비율",
+    "Volatility20",
+    "Momentum20",
+    "HIGH252비율",
+    "MA20_MA60_Gap",
+    "MA60_MA120_Gap",
+    "BollingerPosition",
+    "MACD",
+    "MACDSignal",
+    "MACDHistogram",
+    "ATR",
+    "OBV",
+    "ADX",
+    "MFI",
+    "CMF",
+    "CCI",
+    "DonchianPosition",
+    "VWAPRatio",
+    "ATRRatio",
+    "VolumeSpike",
+    "LOW20비율",
+    "Position60",
+    "Position120",
+    "Return3",
+    "Return5",
+    "Return10",
+    "Drawdown5",
+    "Drawdown10",
+    "Drawdown20",
+    "MA20Slope5",
+    "MA60Slope5",
+    "MA120Slope5",
+    "RSIChange3",
+    "RSIChange5",
+    "VolumeRatio5",
+    "VolumeRatio10",
+    "PriceVolumeDown",
+]
+
+
+# ============================================================
 # UTILS
 # ============================================================
 
@@ -101,108 +160,188 @@ def find_ticker_column(df):
 def validate_columns(df, columns, name):
 
     missing = [
-        c for c in columns
-        if c not in df.columns
+        column
+        for column in columns
+        if column not in df.columns
     ]
 
     if missing:
 
         raise ValueError(
-            f"{name}에 필요한 컬럼이 없습니다:\n{missing}"
+            f"{name}에 필요한 컬럼이 없습니다:\n"
+            f"{missing}"
         )
 
 
 # ============================================================
-# LOAD DATASET
+# LOAD BUY DATASET
 # ============================================================
 
 print("=" * 70)
-print("BUY SIGNAL QUALITY ANALYSIS")
+print("BUY DATASET Loading")
 print("=" * 70)
 
-print()
-print("Dataset Loading...")
 
-
-df = pd.read_csv(
-    BUY_DATASET_PATH,
+buy_df = pd.read_csv(
+    BUY_DATASET,
     low_memory=False
 )
 
 
-ticker_col = find_ticker_column(df)
-
-
-df["날짜"] = pd.to_datetime(
-    df["날짜"]
+buy_ticker_col = find_ticker_column(
+    buy_df
 )
 
 
-df = normalize_ticker(
-    df,
-    ticker_col
+buy_df["날짜"] = pd.to_datetime(
+    buy_df["날짜"]
+)
+
+
+buy_df = normalize_ticker(
+    buy_df,
+    buy_ticker_col
 )
 
 
 validate_columns(
-    df,
-    BUY_FEATURE_COLUMNS + ["Target"],
+    buy_df,
+    BUY_FEATURE_COLUMNS + [BUY_TARGET],
     "BUY dataset"
 )
 
 
-df = (
-    df
+buy_df = (
+    buy_df
     .sort_values(
-        ["날짜", ticker_col]
+        ["날짜", buy_ticker_col]
     )
     .reset_index(drop=True)
 )
 
 
 print(
-    f"전체 데이터 : {len(df):,}"
+    f"BUY Dataset : {len(buy_df):,}"
+)
+
+
+buy_train = buy_df[
+    buy_df["날짜"] <= TRAIN_END
+].copy()
+
+
+buy_test = buy_df[
+    buy_df["날짜"] >= TEST_START
+].copy()
+
+
+print(
+    f"BUY Train   : {len(buy_train):,}"
+)
+
+print(
+    f"BUY Test    : {len(buy_test):,}"
+)
+
+print(
+    f"BUY Train 기간 : "
+    f"{buy_train['날짜'].min().date()} ~ "
+    f"{buy_train['날짜'].max().date()}"
+)
+
+print(
+    f"BUY Test 기간  : "
+    f"{buy_test['날짜'].min().date()} ~ "
+    f"{buy_test['날짜'].max().date()}"
 )
 
 
 # ============================================================
-# TRAIN / TEST
+# LOAD SELL DATASET
 # ============================================================
-
-train_df = df[
-    df["날짜"] <= TRAIN_END
-].copy()
-
-
-test_df = df[
-    df["날짜"] >= TEST_START
-].copy()
-
 
 print()
+print("=" * 70)
+print("SELL DATASET Loading")
+print("=" * 70)
+
+
+sell_df = pd.read_csv(
+    SELL_DATASET,
+    low_memory=False
+)
+
+
+sell_ticker_col = find_ticker_column(
+    sell_df
+)
+
+
+sell_df["날짜"] = pd.to_datetime(
+    sell_df["날짜"]
+)
+
+
+sell_df = normalize_ticker(
+    sell_df,
+    sell_ticker_col
+)
+
+
+validate_columns(
+    sell_df,
+    SELL_FEATURE_COLUMNS + [SELL_TARGET],
+    "SELL dataset"
+)
+
+
+sell_df = (
+    sell_df
+    .sort_values(
+        ["날짜", sell_ticker_col]
+    )
+    .reset_index(drop=True)
+)
+
+
 print(
-    f"Train : {len(train_df):,}"
+    f"SELL Dataset : {len(sell_df):,}"
+)
+
+
+sell_train = sell_df[
+    sell_df["날짜"] <= TRAIN_END
+].copy()
+
+
+sell_test = sell_df[
+    sell_df["날짜"] >= TEST_START
+].copy()
+
+
+print(
+    f"SELL Train   : {len(sell_train):,}"
 )
 
 print(
-    f"Test  : {len(test_df):,}"
+    f"SELL Test    : {len(sell_test):,}"
 )
 
 print(
-    f"Train 기간 : "
-    f"{train_df['날짜'].min().date()} ~ "
-    f"{train_df['날짜'].max().date()}"
+    f"SELL Train 기간 : "
+    f"{sell_train['날짜'].min().date()} ~ "
+    f"{sell_train['날짜'].max().date()}"
 )
 
 print(
-    f"Test 기간 : "
-    f"{test_df['날짜'].min().date()} ~ "
-    f"{test_df['날짜'].max().date()}"
+    f"SELL Test 기간  : "
+    f"{sell_test['날짜'].min().date()} ~ "
+    f"{sell_test['날짜'].max().date()}"
 )
 
 
 # ============================================================
-# XGBOOST
+# TRAIN BUY XGBOOST
 # ============================================================
 
 print()
@@ -211,7 +350,7 @@ print("BUY XGBoost 학습")
 print("=" * 70)
 
 
-model = xgb.XGBClassifier(
+buy_model = xgb.XGBClassifier(
     n_estimators=150,
     max_depth=8,
     learning_rate=0.15,
@@ -223,14 +362,42 @@ model = xgb.XGBClassifier(
 )
 
 
-model.fit(
-    train_df[BUY_FEATURE_COLUMNS],
-    train_df["Target"]
+buy_model.fit(
+    buy_train[BUY_FEATURE_COLUMNS],
+    buy_train[BUY_TARGET]
 )
 
 
 # ============================================================
-# PROBABILITY
+# TRAIN SELL XGBOOST
+# ============================================================
+
+print()
+print("=" * 70)
+print("SELL XGBoost 학습")
+print("=" * 70)
+
+
+sell_model = xgb.XGBClassifier(
+    n_estimators=150,
+    max_depth=8,
+    learning_rate=0.15,
+    objective="binary:logistic",
+    eval_metric="logloss",
+    tree_method="hist",
+    random_state=42,
+    n_jobs=-1,
+)
+
+
+sell_model.fit(
+    sell_train[SELL_FEATURE_COLUMNS],
+    sell_train[SELL_TARGET]
+)
+
+
+# ============================================================
+# BUY PROBABILITY
 # ============================================================
 
 print()
@@ -239,64 +406,82 @@ print("BUY Probability 계산")
 print("=" * 70)
 
 
-test_df["Probability"] = (
-    model
+buy_test["BUY_Probability"] = (
+    buy_model
     .predict_proba(
-        test_df[BUY_FEATURE_COLUMNS]
+        buy_test[BUY_FEATURE_COLUMNS]
     )[:, 1]
 )
 
 
-print(
-    test_df["Probability"]
-    .describe()
-)
-
-
 # ============================================================
-# SIGNAL SUMMARY
+# SELL PROBABILITY
 # ============================================================
 
 print()
 print("=" * 70)
-print("BUY SIGNAL 분포")
+print("SELL Probability 계산")
 print("=" * 70)
 
 
-for threshold in BUY_THRESHOLD_LIST:
-
-    count = (
-        test_df["Probability"] >= threshold
-    ).sum()
-
-    print(
-        f"{threshold:.2f} 이상 : "
-        f"{count:,}"
-    )
+sell_test["SELL_Probability"] = (
+    sell_model
+    .predict_proba(
+        sell_test[SELL_FEATURE_COLUMNS]
+    )[:, 1]
+)
 
 
-# ============================================================
-# SIGNAL DATE / TICKER
-# ============================================================
-
-signal_df = test_df[
-    test_df["Probability"] >= min(
-        BUY_THRESHOLD_LIST
-    )
+sell_signal_df = sell_test[
+    sell_test["SELL_Probability"] >= SELL_THRESHOLD
 ].copy()
 
 
-print()
 print(
-    f"분석 대상 Signal : "
-    f"{len(signal_df):,}"
+    f"SELL Threshold : "
+    f"{SELL_THRESHOLD}"
 )
 
+print(
+    f"SELL Signal 수 : "
+    f"{len(sell_signal_df):,}"
+)
+
+
+# ============================================================
+# BUY SIGNAL
+# ============================================================
+
+buy_signal_df = buy_test.copy()
+
+
+# SELL signal lookup
+sell_lookup = set(
+    zip(
+        sell_signal_df[sell_ticker_col],
+        sell_signal_df["날짜"]
+    )
+)
+
+
+# ============================================================
+# REQUIRED TICKERS
+# ============================================================
 
 required_tickers = sorted(
-    signal_df[ticker_col]
-    .unique()
+    set(
+        buy_signal_df[
+            buy_signal_df["BUY_Probability"]
+            >= min(BUY_THRESHOLDS)
+        ][buy_ticker_col]
+    )
 )
+
+
+print()
+print("=" * 70)
+print("필요 종목 계산")
+print("=" * 70)
 
 
 print(
@@ -315,13 +500,21 @@ print("pykrx OHLCV 사전 로딩")
 print("=" * 70)
 
 
-# ------------------------------------------------------------
-# Signal 이후 20거래일까지 필요하므로
-# 마지막 테스트 날짜보다 충분히 뒤까지 조회
-# ------------------------------------------------------------
+signal_dates = buy_signal_df[
+    buy_signal_df["BUY_Probability"]
+    >= min(BUY_THRESHOLDS)
+]["날짜"]
+
+
+if signal_dates.empty:
+
+    raise ValueError(
+        "BUY signal이 없습니다."
+    )
+
 
 signal_last_date = (
-    signal_df["날짜"].max()
+    signal_dates.max()
 )
 
 
@@ -332,14 +525,12 @@ ohlcv_end_date = (
 
 
 start_date = (
-    TEST_START
-    .strftime("%Y%m%d")
+    TEST_START.strftime("%Y%m%d")
 )
 
 
 end_date = (
-    ohlcv_end_date
-    .strftime("%Y%m%d")
+    ohlcv_end_date.strftime("%Y%m%d")
 )
 
 
@@ -415,62 +606,70 @@ for count, ticker in enumerate(
 
 print()
 print(
-    f"OHLCV 로딩 완료 : "
+    f"OHLCV 로딩 완료: "
     f"{len(ohlcv_dict):,} rows"
 )
 
 
 # ============================================================
-# TRADING DATES
+# TICKER DATE CACHE
 # ============================================================
 
-all_ohlcv_dates = sorted(
-    {
+ticker_dates_dict = {}
+
+
+for ticker, date in ohlcv_dict.keys():
+
+    if ticker not in ticker_dates_dict:
+
+        ticker_dates_dict[ticker] = []
+
+    ticker_dates_dict[ticker].append(
         date
-        for (
-            ticker,
-            date
-        ) in ohlcv_dict.keys()
-    }
-)
-
-
-date_index = {
-    date: idx
-    for idx, date in enumerate(
-        all_ohlcv_dates
     )
-}
+
+
+for ticker in ticker_dates_dict:
+
+    ticker_dates_dict[ticker] = sorted(
+        ticker_dates_dict[ticker]
+    )
 
 
 # ============================================================
-# SIGNAL RETURN CALCULATION
+# SIGNAL DATA
+# ============================================================
+
+signal_candidates = buy_signal_df[
+    buy_signal_df["BUY_Probability"]
+    >= min(BUY_THRESHOLDS)
+].copy()
+
+
+# ============================================================
+# FORWARD RETURN
 # ============================================================
 
 print()
 print("=" * 70)
-print("BUY SIGNAL Forward Return 계산")
+print("BUY Signal Forward Return 계산")
 print("=" * 70)
 
 
-records = []
+trade_records = []
 
 
-for row in signal_df.itertuples():
+for row in signal_candidates.itertuples():
 
     ticker = getattr(
         row,
-        ticker_col
+        buy_ticker_col
     )
 
     signal_date = row.날짜
 
-    probability = row.Probability
+    probability = row.BUY_Probability
 
-
-    # --------------------------------------------------------
-    # Signal 당일 종가
-    # --------------------------------------------------------
 
     current_data = ohlcv_dict.get(
         (ticker, signal_date)
@@ -478,7 +677,6 @@ for row in signal_df.itertuples():
 
 
     if current_data is None:
-
         continue
 
 
@@ -488,441 +686,439 @@ for row in signal_df.itertuples():
 
 
     if signal_close <= 0:
-
         continue
 
 
-    ticker_dates = [
-        date
-        for (
-            t,
-            date
-        ) in ohlcv_dict.keys()
-        if t == ticker
-    ]
-
-
-    ticker_dates = sorted(
-        ticker_dates
+    ticker_dates = ticker_dates_dict.get(
+        ticker,
+        []
     )
 
 
-    # --------------------------------------------------------
-    # signal date 위치
-    # --------------------------------------------------------
-
-    try:
-
-        signal_idx = (
-            ticker_dates.index(
-                signal_date
-            )
-        )
-
-    except ValueError:
-
+    if signal_date not in ticker_dates:
         continue
 
 
-    result = {
+    signal_idx = ticker_dates.index(
+        signal_date
+    )
+
+
+    future_idx = (
+        signal_idx + HOLD_DAYS
+    )
+
+
+    if future_idx >= len(ticker_dates):
+        continue
+
+
+    future_date = ticker_dates[
+        future_idx
+    ]
+
+
+    future_data = ohlcv_dict.get(
+        (ticker, future_date)
+    )
+
+
+    if future_data is None:
+        continue
+
+
+    future_close = (
+        future_data["close"]
+    )
+
+
+    forward_return = (
+        future_close /
+        signal_close
+        - 1
+    ) * 100
+
+
+    trade_records.append({
+
         "ticker": ticker,
+
         "signal_date": signal_date,
-        "Probability": probability,
+
+        "BUY_Probability": probability,
+
         "signal_close": signal_close,
-    }
+
+        "future_date": future_date,
+
+        "future_close": future_close,
+
+        "return": forward_return,
+
+    })
 
 
-    valid_signal = True
-
-
-    for forward_day in FORWARD_DAYS:
-
-        future_idx = (
-            signal_idx +
-            forward_day
-        )
-
-
-        if future_idx >= len(
-            ticker_dates
-        ):
-
-            result[
-                f"Return{forward_day}"
-            ] = np.nan
-
-            continue
-
-
-        future_date = (
-            ticker_dates[
-                future_idx
-            ]
-        )
-
-
-        future_data = (
-            ohlcv_dict.get(
-                (
-                    ticker,
-                    future_date
-                )
-            )
-        )
-
-
-        if future_data is None:
-
-            result[
-                f"Return{forward_day}"
-            ] = np.nan
-
-            continue
-
-
-        future_close = (
-            future_data["close"]
-        )
-
-
-        forward_return = (
-            future_close /
-            signal_close
-            - 1
-        ) * 100
-
-
-        result[
-            f"Return{forward_day}"
-        ] = forward_return
-
-
-    records.append(result)
-
-
-analysis_df = pd.DataFrame(
-    records
+trades_df = pd.DataFrame(
+    trade_records
 )
 
 
 print(
-    f"분석 완료 Signal : "
-    f"{len(analysis_df):,}"
+    f"분석 가능 Signal : "
+    f"{len(trades_df):,}"
 )
 
 
 # ============================================================
-# SIGNAL QUALITY BY THRESHOLD
+# PARAMETER SWEEP
 # ============================================================
 
 print()
 print("=" * 70)
-print("BUY SIGNAL QUALITY")
+print("BUY THRESHOLD + TOP_N PARAMETER SWEEP")
 print("=" * 70)
 
 
-quality_results = []
+results = []
 
 
-for threshold in BUY_THRESHOLD_LIST:
+for threshold in BUY_THRESHOLDS:
 
-    subset = analysis_df[
-        analysis_df["Probability"]
+    threshold_df = trades_df[
+        trades_df["BUY_Probability"]
         >= threshold
     ].copy()
 
 
-    if subset.empty:
+    if threshold_df.empty:
         continue
 
 
-    result = {
-        "Threshold": threshold,
-        "Signals": len(subset),
-    }
+    threshold_df = (
+        threshold_df
+        .sort_values(
+            [
+                "signal_date",
+                "BUY_Probability"
+            ],
+            ascending=[
+                True,
+                False
+            ]
+        )
+    )
 
 
-    for forward_day in FORWARD_DAYS:
+    for top_n in TOP_N_LIST:
 
-        column = (
-            f"Return{forward_day}"
+        print(
+            f"THRESHOLD={threshold:.2f} "
+            f"TOP_N={top_n}"
         )
 
 
-        returns = (
-            subset[column]
-            .dropna()
-        )
+        selected_records = []
 
 
-        if returns.empty:
+        for date, group in (
+            threshold_df
+            .groupby("signal_date")
+        ):
 
-            result[
-                f"AvgReturn{forward_day}"
-            ] = np.nan
+            selected = group.head(
+                top_n
+            )
 
-            result[
-                f"MedianReturn{forward_day}"
-            ] = np.nan
+            selected_records.append(
+                selected
+            )
 
-            result[
-                f"WinRate{forward_day}"
-            ] = np.nan
 
-            result[
-                f"PositiveCount{forward_day}"
-            ] = 0
-
+        if not selected_records:
             continue
 
 
-        result[
-            f"AvgReturn{forward_day}"
-        ] = returns.mean()
+        selected_df = pd.concat(
+            selected_records,
+            ignore_index=True
+        )
 
 
-        result[
-            f"MedianReturn{forward_day}"
-        ] = returns.median()
+        returns = selected_df[
+            "return"
+        ].values
 
 
-        result[
-            f"WinRate{forward_day}"
-        ] = (
-            returns > 0
+        if len(returns) == 0:
+            continue
+
+
+        capital = (
+            INITIAL_CAPITAL
+        )
+
+
+        equity_curve = [
+            capital
+        ]
+
+
+        for return_pct in returns:
+
+            capital *= (
+                1 + return_pct / 100
+            )
+
+            equity_curve.append(
+                capital
+            )
+
+
+        equity = np.array(
+            equity_curve
+        )
+
+
+        running_max = np.maximum.accumulate(
+            equity
+        )
+
+
+        drawdown = (
+            equity /
+            running_max
+            - 1
+        ) * 100
+
+
+        mdd = drawdown.min()
+
+
+        average_return = (
+            selected_df["return"]
+            .mean()
+        )
+
+
+        median_return = (
+            selected_df["return"]
+            .median()
+        )
+
+
+        win_rate = (
+            selected_df["return"] > 0
         ).mean() * 100
 
 
-        result[
-            f"PositiveCount{forward_day}"
-        ] = (
-            returns > 0
-        ).sum()
+        final_capital = capital
 
 
-    quality_results.append(
-        result
-    )
+        total_return = (
+            final_capital /
+            INITIAL_CAPITAL
+            - 1
+        ) * 100
 
 
-quality_df = pd.DataFrame(
-    quality_results
+        results.append({
+
+            "BUY_THRESHOLD": threshold,
+
+            "TOP_N": top_n,
+
+            "Trades": len(
+                selected_df
+            ),
+
+            "AverageReturn":
+                average_return,
+
+            "MedianReturn":
+                median_return,
+
+            "WinRate":
+                win_rate,
+
+            "MDD":
+                mdd,
+
+            "FinalCapital":
+                final_capital,
+
+            "TotalReturn":
+                total_return,
+
+        })
+
+
+# ============================================================
+# RESULTS
+# ============================================================
+
+result_df = pd.DataFrame(
+    results
 )
 
 
 print()
-
-
-if quality_df.empty:
-
-    print(
-        "Signal quality 결과가 없습니다."
-    )
-
-else:
-
-    print(
-        quality_df.to_string(
-            index=False
-        )
-    )
-
-
-# ============================================================
-# PROBABILITY BUCKET
-# ============================================================
-
-print()
 print("=" * 70)
-print("Probability Bucket 분석")
+print("BUY THRESHOLD + TOP_N 결과")
 print("=" * 70)
 
 
-analysis_df["ProbabilityBucket"] = pd.cut(
-    analysis_df["Probability"],
-    bins=[
-        0.00,
-        0.70,
-        0.75,
-        0.80,
-        0.85,
-        0.90,
-        0.95,
-        1.00,
-    ],
-    include_lowest=True
-)
+if result_df.empty:
 
-
-bucket_results = []
-
-
-for bucket, group in (
-    analysis_df
-    .groupby(
-        "ProbabilityBucket",
-        observed=False
-    )
-):
-
-    result = {
-        "ProbabilityBucket": str(bucket),
-        "Signals": len(group),
-    }
-
-
-    for forward_day in FORWARD_DAYS:
-
-        column = (
-            f"Return{forward_day}"
-        )
-
-
-        returns = (
-            group[column]
-            .dropna()
-        )
-
-
-        if returns.empty:
-
-            result[
-                f"AvgReturn{forward_day}"
-            ] = np.nan
-
-            result[
-                f"WinRate{forward_day}"
-            ] = np.nan
-
-        else:
-
-            result[
-                f"AvgReturn{forward_day}"
-            ] = returns.mean()
-
-
-            result[
-                f"WinRate{forward_day}"
-            ] = (
-                returns > 0
-            ).mean() * 100
-
-
-    bucket_results.append(
-        result
+    print(
+        "결과가 없습니다."
     )
 
+    raise SystemExit
 
-bucket_df = pd.DataFrame(
-    bucket_results
+
+result_df = (
+    result_df
+    .sort_values(
+        "TotalReturn",
+        ascending=False
+    )
 )
 
 
 print(
-    bucket_df.to_string(
+    result_df.to_string(
         index=False
     )
 )
 
 
 # ============================================================
-# BEST THRESHOLD
+# MDD FILTER
+# ============================================================
+
+for mdd_limit in [
+    -30,
+    -40,
+    -50,
+]:
+
+    print()
+    print("=" * 70)
+
+    print(
+        f"MDD {mdd_limit}% 이내 전략"
+    )
+
+    print("=" * 70)
+
+
+    filtered = result_df[
+        result_df["MDD"]
+        >= mdd_limit
+    ]
+
+
+    if filtered.empty:
+
+        print(
+            "조건을 만족하는 전략이 없습니다."
+        )
+
+    else:
+
+        print(
+            filtered.to_string(
+                index=False
+            )
+        )
+
+
+# ============================================================
+# BEST STRATEGY
 # ============================================================
 
 print()
 print("=" * 70)
-print("BEST BUY THRESHOLD")
+print("BEST STRATEGY")
 print("=" * 70)
 
 
-if not quality_df.empty:
-
-    # --------------------------------------------------------
-    # 20일 평균수익률 기준
-    # --------------------------------------------------------
-
-    best_20d = (
-        quality_df
-        .sort_values(
-            "AvgReturn20",
-            ascending=False
-        )
-        .iloc[0]
-    )
+best_strategy = (
+    result_df
+    .iloc[0]
+)
 
 
-    print(
-        f"20일 평균수익률 기준 BEST"
-    )
+print(
+    f"BUY Threshold : "
+    f"{best_strategy['BUY_THRESHOLD']:.2f}"
+)
 
-    print(
-        f"Threshold : "
-        f"{best_20d['Threshold']:.2f}"
-    )
 
-    print(
-        f"Signals : "
-        f"{int(best_20d['Signals'])}"
-    )
+print(
+    f"TOP_N         : "
+    f"{int(best_strategy['TOP_N'])}"
+)
 
-    print(
-        f"20일 평균수익률 : "
-        f"{best_20d['AvgReturn20']:.4f}%"
-    )
 
-    print(
-        f"20일 중앙값 : "
-        f"{best_20d['MedianReturn20']:.4f}%"
-    )
+print(
+    f"Trades        : "
+    f"{int(best_strategy['Trades'])}"
+)
 
-    print(
-        f"20일 승률 : "
-        f"{best_20d['WinRate20']:.2f}%"
-    )
+
+print(
+    f"Win Rate      : "
+    f"{best_strategy['WinRate']:.2f}%"
+)
+
+
+print(
+    f"Average Return: "
+    f"{best_strategy['AverageReturn']:.4f}%"
+)
+
+
+print(
+    f"Median Return : "
+    f"{best_strategy['MedianReturn']:.4f}%"
+)
+
+
+print(
+    f"MDD           : "
+    f"{best_strategy['MDD']:.2f}%"
+)
+
+
+print(
+    f"Final Capital : "
+    f"{best_strategy['FinalCapital']:,.0f}"
+)
+
+
+print(
+    f"Total Return  : "
+    f"{best_strategy['TotalReturn']:.2f}%"
+)
 
 
 # ============================================================
 # SAVE
 # ============================================================
 
-print()
-print("=" * 70)
-print("결과 저장")
-print("=" * 70)
-
-
-analysis_df.to_csv(
-    "buy_signal_quality_detail.csv",
+result_df.to_csv(
+    "buy_threshold_topn_sweep.csv",
     index=False
-)
-
-
-quality_df.to_csv(
-    "buy_signal_quality_threshold.csv",
-    index=False
-)
-
-
-bucket_df.to_csv(
-    "buy_signal_quality_probability_bucket.csv",
-    index=False
-)
-
-
-print(
-    "buy_signal_quality_detail.csv"
-)
-
-print(
-    "buy_signal_quality_threshold.csv"
-)
-
-print(
-    "buy_signal_quality_probability_bucket.csv"
 )
 
 
 print()
 print("=" * 70)
-print("완료")
+print("저장 완료")
 print("=" * 70)
+
+
+print(
+    "buy_threshold_topn_sweep.csv"
+)

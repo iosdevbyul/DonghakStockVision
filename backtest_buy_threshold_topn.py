@@ -1,302 +1,231 @@
-import pandas as pd
+import os
+import warnings
+
 import numpy as np
+import pandas as pd
 import xgboost as xgb
 from pykrx import stock
-from itertools import product
-from collections import defaultdict
+
+warnings.filterwarnings("ignore")
+
 
 # ============================================================
 # CONFIG
 # ============================================================
 
-BUY_DATASET_PATH = "dataset.csv"
-SELL_DATASET_PATH = "sell_dataset_v2.csv"
+BUY_DATASET = "dataset.csv"
+SELL_DATASET = "sell_dataset_v2.csv"
 
 INITIAL_CAPITAL = 10_000_000
 
-# 이번 실험 대상
-BUY_THRESHOLD_LIST = [
-    0.70,
-    0.75,
-    0.80,
-    0.85,
-    0.90,
-    0.95,
-]
+BUY_THRESHOLDS = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
+TOP_N_VALUES = [3, 5, 10, 20]
 
-TOP_N_LIST = [
-    1,
-    3,
-    5,
-    10,
-    20,
-]
+STOP_LOSSES = [-0.03, -0.05, -0.07, -0.10]
+TAKE_PROFITS = [0.05, 0.10, 0.15, 0.20]
+TRAILING_STOPS = [0.00, 0.03, 0.05]
 
-# Risk Management는 현재 BEST 조합으로 고정
-STOP_LOSS = -0.03
-TAKE_PROFIT = 0.20
-TRAILING_STOP = 0.03
+SELL_THRESHOLD = 0.50
 
-COMMISSION = 0.00015
-SLIPPAGE = 0.0005
+HOLD_DAYS = 20
 
-TRAIN_END = pd.Timestamp("2023-04-12")
-TEST_START = pd.Timestamp("2023-04-13")
+# 실제 투자금 기준
+POSITION_SIZE = 1.0
 
 
 # ============================================================
-# FEATURES
+# XGBOOST
 # ============================================================
 
-BUY_FEATURE_COLUMNS = [
-    "거래량비율",
-    "MA20비율",
-    "MA60비율",
-    "MA120비율",
-    "RSI",
-    "HIGH20비율",
-    "Volatility20",
-    "Momentum20",
-    "HIGH252비율",
-    "MA20_MA60_Gap",
-    "MA60_MA120_Gap",
-    "BollingerPosition",
-    "MACD",
-    "MACDSignal",
-    "MACDHistogram",
-    "ATR",
-    "OBV",
-    "ADX",
-    "MFI",
-    "CMF",
-    "CCI",
-    "DonchianPosition",
-    "VWAPRatio",
-    "ATRRatio",
-    "VolumeSpike",
-    "LOW20비율",
-    "Position60",
-    "Position120",
-]
-
-SELL_FEATURE_COLUMNS = [
-    "거래량비율",
-    "MA20비율",
-    "MA60비율",
-    "MA120비율",
-    "RSI",
-    "HIGH20비율",
-    "Volatility20",
-    "Momentum20",
-    "HIGH252비율",
-    "MA20_MA60_Gap",
-    "MA60_MA120_Gap",
-    "BollingerPosition",
-    "MACD",
-    "MACDSignal",
-    "MACDHistogram",
-    "ATR",
-    "OBV",
-    "ADX",
-    "MFI",
-    "CMF",
-    "CCI",
-    "DonchianPosition",
-    "VWAPRatio",
-    "ATRRatio",
-    "VolumeSpike",
-    "LOW20비율",
-    "Position60",
-    "Position120",
-    "Return3",
-    "Return5",
-    "Return10",
-    "Drawdown5",
-    "Drawdown10",
-    "Drawdown20",
-    "MA20Slope5",
-    "MA60Slope5",
-    "MA120Slope5",
-    "RSIChange3",
-    "RSIChange5",
-    "VolumeRatio5",
-    "VolumeRatio10",
-    "PriceVolumeDown",
-]
+XGB_PARAMS = {
+    "learning_rate": 0.15,
+    "max_depth": 8,
+    "n_estimators": 150,
+    "objective": "binary:logistic",
+    "eval_metric": "logloss",
+    "tree_method": "hist",
+    "random_state": 42,
+}
 
 
 # ============================================================
-# UTILS
+# COLUMN CONFIG
 # ============================================================
 
-def normalize_ticker(df, ticker_col):
-    df[ticker_col] = (
-        df[ticker_col]
-        .astype(str)
-        .str.replace(".0", "", regex=False)
-        .str.zfill(6)
-    )
-    return df
+TARGET_COLUMNS = {
+    "buy": "Target",
+    "sell": "SELL_TARGET",
+}
+
+EXCLUDE_COLUMNS = {
+    "BUY_TARGET",
+    "SELL_TARGET",
+    "date",
+    "날짜",
+    "종목코드",
+    "티커",
+    "ticker",
+    "Probability",
+}
 
 
-def find_ticker_column(df):
-    if "ticker" in df.columns:
-        return "ticker"
+# ============================================================
+# UTIL
+# ============================================================
 
-    if "종목코드" in df.columns:
-        return "종목코드"
-
-    raise ValueError(
-        "종목 코드 컬럼을 찾을 수 없습니다."
-    )
-
-
-def validate_columns(df, columns, name):
-    missing = [
-        c
-        for c in columns
-        if c not in df.columns
+def find_date_column(df):
+    candidates = [
+        "date",
+        "날짜",
+        "Date",
+        "DATE",
     ]
 
-    if missing:
-        raise ValueError(
-            f"{name}에 필요한 컬럼이 없습니다:\n{missing}"
-        )
+    for column in candidates:
+        if column in df.columns:
+            return column
+
+    raise ValueError("날짜 컬럼을 찾을 수 없습니다.")
+
+
+def find_code_column(df):
+    candidates = [
+        "종목코드",
+        "티커",
+        "ticker",
+        "code",
+        "Code",
+    ]
+
+    for column in candidates:
+        if column in df.columns:
+            return column
+
+    raise ValueError("종목코드 컬럼을 찾을 수 없습니다.")
+
+
+def get_feature_columns(df, target):
+    excluded = set(EXCLUDE_COLUMNS)
+    excluded.add(target)
+
+    features = [
+        column
+        for column in df.columns
+        if column not in excluded
+        and pd.api.types.is_numeric_dtype(df[column])
+    ]
+
+    if not features:
+        raise ValueError("사용 가능한 Feature가 없습니다.")
+
+    return features
 
 
 # ============================================================
-# LOAD BUY DATASET
+# DATA LOADING
 # ============================================================
 
 print("=" * 70)
 print("BUY DATASET Loading")
 print("=" * 70)
 
-buy_df = pd.read_csv(
-    BUY_DATASET_PATH,
-    low_memory=False
-)
+buy_df = pd.read_csv(BUY_DATASET)
 
-buy_ticker_col = find_ticker_column(
-    buy_df
-)
+buy_date_col = find_date_column(buy_df)
+buy_code_col = find_code_column(buy_df)
 
-buy_df["날짜"] = pd.to_datetime(
-    buy_df["날짜"]
-)
+buy_df[buy_date_col] = pd.to_datetime(buy_df[buy_date_col])
 
-buy_df = normalize_ticker(
-    buy_df,
-    buy_ticker_col
-)
+buy_df = buy_df.sort_values(
+    [buy_date_col, buy_code_col]
+).reset_index(drop=True)
 
-validate_columns(
-    buy_df,
-    BUY_FEATURE_COLUMNS + ["Target"],
-    "BUY dataset"
-)
+print(f"BUY Dataset : {len(buy_df):,}")
 
-buy_df = (
-    buy_df
-    .sort_values(
-        ["날짜", buy_ticker_col]
-    )
-    .reset_index(drop=True)
-)
+buy_split_index = int(len(buy_df) * 0.671)
 
-buy_train_df = buy_df[
-    buy_df["날짜"] <= TRAIN_END
-].copy()
+buy_train = buy_df.iloc[:buy_split_index].copy()
+buy_test = buy_df.iloc[buy_split_index:].copy()
 
-buy_test_df = buy_df[
-    buy_df["날짜"] >= TEST_START
-].copy()
-
-print(
-    f"BUY Dataset : {len(buy_df):,}"
-)
-
-print(
-    f"BUY Train   : {len(buy_train_df):,}"
-)
-
-print(
-    f"BUY Test    : {len(buy_test_df):,}"
-)
-
+print(f"BUY Train   : {len(buy_train):,}")
+print(f"BUY Test    : {len(buy_test):,}")
 print(
     f"BUY Train 기간 : "
-    f"{buy_train_df['날짜'].min().date()} ~ "
-    f"{buy_train_df['날짜'].max().date()}"
+    f"{buy_train[buy_date_col].min().date()} ~ "
+    f"{buy_train[buy_date_col].max().date()}"
 )
-
 print(
     f"BUY Test 기간  : "
-    f"{buy_test_df['날짜'].min().date()} ~ "
-    f"{buy_test_df['날짜'].max().date()}"
+    f"{buy_test[buy_date_col].min().date()} ~ "
+    f"{buy_test[buy_date_col].max().date()}"
 )
 
-
-# ============================================================
-# LOAD SELL DATASET
-# ============================================================
 
 print()
 print("=" * 70)
 print("SELL DATASET Loading")
 print("=" * 70)
 
-sell_df = pd.read_csv(
-    SELL_DATASET_PATH,
-    low_memory=False
-)
+sell_df = pd.read_csv(SELL_DATASET)
 
-sell_ticker_col = find_ticker_column(
-    sell_df
-)
+sell_date_col = find_date_column(sell_df)
+sell_code_col = find_code_column(sell_df)
 
-sell_df["날짜"] = pd.to_datetime(
-    sell_df["날짜"]
-)
+sell_df[sell_date_col] = pd.to_datetime(sell_df[sell_date_col])
 
-sell_df = normalize_ticker(
-    sell_df,
-    sell_ticker_col
-)
+sell_df = sell_df.sort_values(
+    [sell_date_col, sell_code_col]
+).reset_index(drop=True)
 
-validate_columns(
-    sell_df,
-    SELL_FEATURE_COLUMNS + ["SELL_TARGET"],
-    "SELL dataset"
-)
+print(f"SELL Dataset : {len(sell_df):,}")
 
-sell_df = (
-    sell_df
-    .sort_values(
-        ["날짜", sell_ticker_col]
-    )
-    .reset_index(drop=True)
-)
+sell_split_index = int(len(sell_df) * 0.668)
 
-sell_train_df = sell_df[
-    sell_df["날짜"] <= TRAIN_END
-].copy()
+sell_train = sell_df.iloc[:sell_split_index].copy()
+sell_test = sell_df.iloc[sell_split_index:].copy()
 
-sell_test_df = sell_df[
-    sell_df["날짜"] >= TEST_START
-].copy()
+print(f"SELL Train   : {len(sell_train):,}")
+print(f"SELL Test    : {len(sell_test):,}")
 
 print(
-    f"SELL Dataset : {len(sell_df):,}"
+    f"SELL Train 기간 : "
+    f"{sell_train[sell_date_col].min().date()} ~ "
+    f"{sell_train[sell_date_col].max().date()}"
 )
 
 print(
-    f"SELL Train   : {len(sell_train_df):,}"
+    f"SELL Test 기간  : "
+    f"{sell_test[sell_date_col].min().date()} ~ "
+    f"{sell_test[sell_date_col].max().date()}"
 )
 
-print(
-    f"SELL Test    : {len(sell_test_df):,}"
+
+# ============================================================
+# FEATURES
+# ============================================================
+
+buy_features = get_feature_columns(
+    buy_train,
+    TARGET_COLUMNS["buy"]
 )
+
+sell_features = get_feature_columns(
+    sell_train,
+    TARGET_COLUMNS["sell"]
+)
+
+# 두 모델에서 공통으로 사용할 feature만 사용
+features = [
+    column
+    for column in buy_features
+    if column in sell_features
+]
+
+print()
+print("=" * 70)
+print("FEATURES")
+print("=" * 70)
+print(f"Feature 수 : {len(features)}")
 
 
 # ============================================================
@@ -308,21 +237,23 @@ print("=" * 70)
 print("BUY XGBoost 학습")
 print("=" * 70)
 
+X_buy_train = buy_train[features]
+y_buy_train = buy_train[TARGET_COLUMNS["buy"]]
+
+X_buy_test = buy_test[features]
+
 buy_model = xgb.XGBClassifier(
-    n_estimators=150,
-    max_depth=8,
-    learning_rate=0.15,
-    objective="binary:logistic",
-    eval_metric="logloss",
-    tree_method="hist",
-    random_state=42,
-    n_jobs=-1,
+    **XGB_PARAMS
 )
 
 buy_model.fit(
-    buy_train_df[BUY_FEATURE_COLUMNS],
-    buy_train_df["Target"]
+    X_buy_train,
+    y_buy_train
 )
+
+buy_test["BUY_PROBABILITY"] = buy_model.predict_proba(
+    X_buy_test
+)[:, 1]
 
 
 # ============================================================
@@ -334,201 +265,176 @@ print("=" * 70)
 print("SELL XGBoost 학습")
 print("=" * 70)
 
+X_sell_train = sell_train[features]
+y_sell_train = sell_train[TARGET_COLUMNS["sell"]]
+
+X_sell_test = sell_test[features]
+
 sell_model = xgb.XGBClassifier(
-    n_estimators=150,
-    max_depth=8,
-    learning_rate=0.15,
-    objective="binary:logistic",
-    eval_metric="logloss",
-    tree_method="hist",
-    random_state=42,
-    n_jobs=-1,
+    **XGB_PARAMS
 )
 
 sell_model.fit(
-    sell_train_df[SELL_FEATURE_COLUMNS],
-    sell_train_df["SELL_TARGET"]
+    X_sell_train,
+    y_sell_train
 )
+
+sell_test["SELL_PROBABILITY"] = sell_model.predict_proba(
+    X_sell_test
+)[:, 1]
 
 
 # ============================================================
-# PROBABILITY
+# OHLCV CACHE
 # ============================================================
 
-print()
-print("=" * 70)
-print("Probability 계산")
-print("=" * 70)
-
-buy_test_df["BUY_PROBABILITY"] = (
-    buy_model.predict_proba(
-        buy_test_df[BUY_FEATURE_COLUMNS]
-    )[:, 1]
+all_codes = set(
+    buy_test[buy_code_col].astype(str)
 )
 
-sell_test_df["SELL_PROBABILITY"] = (
-    sell_model.predict_proba(
-        sell_test_df[SELL_FEATURE_COLUMNS]
-    )[:, 1]
+all_codes.update(
+    sell_test[sell_code_col].astype(str)
 )
 
-print(
-    "BUY Probability 완료"
-)
-
-print(
-    "SELL Probability 완료"
-)
-
-
-# ============================================================
-# TRADING CALENDAR
-# ============================================================
-
-trading_dates = sorted(
-    buy_test_df["날짜"].unique()
-)
-
-next_date_map = {}
-
-for i in range(
-    len(trading_dates) - 1
-):
-    next_date_map[
-        trading_dates[i]
-    ] = trading_dates[i + 1]
-
-
-# ============================================================
-# REQUIRED TICKERS
-#
-# threshold가 낮아지면 BUY 후보가 늘어날 수 있으므로
-# BUY 전체 테스트 데이터의 종목을 preload한다.
-# ============================================================
-
-required_tickers = set(
-    buy_test_df[
-        buy_test_df["BUY_PROBABILITY"] >=
-        min(BUY_THRESHOLD_LIST)
-    ][buy_ticker_col].unique()
-)
-
-required_tickers.update(
-    sell_test_df[
-        sell_test_df["SELL_PROBABILITY"] >= 0.50
-    ][sell_ticker_col].unique()
-)
-
-print()
-print("=" * 70)
-print("필요 종목 계산")
-print("=" * 70)
-
-print(
-    f"필요 종목 수 : "
-    f"{len(required_tickers)}"
-)
-
-
-# ============================================================
-# OHLCV PRELOAD
-# ============================================================
+all_codes = sorted(all_codes)
 
 print()
 print("=" * 70)
 print("pykrx OHLCV 사전 로딩")
 print("=" * 70)
 
-ohlcv_dict = {}
+ohlcv_cache = {}
 
-start_date = TEST_START.strftime(
-    "%Y%m%d"
-)
+for index, code in enumerate(all_codes, start=1):
 
-end_date = pd.Timestamp(
-    trading_dates[-1]
-).strftime(
-    "%Y%m%d"
-)
-
-for count, ticker in enumerate(
-    sorted(required_tickers),
-    start=1
-):
-    try:
-        ohlcv = stock.get_market_ohlcv(
-            start_date,
-            end_date,
-            ticker
-        )
-
-        if ohlcv.empty:
-            continue
-
-        ohlcv.index = pd.to_datetime(
-            ohlcv.index
-        )
-
-        for date, row in ohlcv.iterrows():
-            open_price = row["시가"]
-            high_price = row["고가"]
-            low_price = row["저가"]
-            close_price = row["종가"]
-
-            if (
-                pd.isna(open_price)
-                or pd.isna(high_price)
-                or pd.isna(low_price)
-                or pd.isna(close_price)
-            ):
-                continue
-
-            ohlcv_dict[
-                (ticker, date)
-            ] = (
-                float(open_price),
-                float(high_price),
-                float(low_price),
-                float(close_price),
-            )
-
-    except Exception as e:
-        print(
-            f"OHLCV 실패: "
-            f"{ticker} / {e}"
-        )
-
-    if count % 100 == 0:
+    if index % 100 == 0:
         print(
             f"OHLCV Loading: "
-            f"{count} / "
-            f"{len(required_tickers)}"
+            f"{index:,} / {len(all_codes):,}"
         )
+
+    try:
+
+        df = stock.get_market_ohlcv_by_date(
+            "20110101",
+            "20261231",
+            code
+        )
+
+        if df is None or df.empty:
+            continue
+
+        df = df.reset_index()
+
+        date_column = df.columns[0]
+
+        df[date_column] = pd.to_datetime(
+            df[date_column]
+        )
+
+        df = df.rename(
+            columns={
+                "시가": "OPEN",
+                "고가": "HIGH",
+                "저가": "LOW",
+                "종가": "CLOSE",
+            }
+        )
+
+        required = [
+            "OPEN",
+            "HIGH",
+            "LOW",
+            "CLOSE",
+        ]
+
+        if not all(
+            column in df.columns
+            for column in required
+        ):
+            continue
+
+        df = df[
+            [
+                date_column,
+                "OPEN",
+                "HIGH",
+                "LOW",
+                "CLOSE",
+            ]
+        ].copy()
+
+        df = df.rename(
+            columns={
+                date_column: "DATE"
+            }
+        )
+
+        df = df.set_index("DATE")
+
+        ohlcv_cache[code] = df
+
+    except Exception as e:
+        continue
 
 print(
     f"OHLCV 로딩 완료: "
-    f"{len(ohlcv_dict):,} rows"
+    f"{sum(len(df) for df in ohlcv_cache.values()):,} rows"
 )
 
 
 # ============================================================
-# SELL SIGNAL INDEX
+# PREPARE SIGNALS
 # ============================================================
 
-sell_signals_by_date = defaultdict(set)
+buy_signals = buy_test[
+    [
+        buy_date_col,
+        buy_code_col,
+        "BUY_PROBABILITY",
+    ]
+].copy()
 
-for row in sell_test_df.itertuples():
-    if row.SELL_PROBABILITY < 0.50:
-        continue
+sell_signals = sell_test[
+    [
+        sell_date_col,
+        sell_code_col,
+        "SELL_PROBABILITY",
+    ]
+].copy()
 
-    sell_signals_by_date[
-        row.날짜
-    ].add(
-        getattr(
-            row,
-            sell_ticker_col
-        )
+buy_signals = buy_signals.rename(
+    columns={
+        buy_date_col: "DATE",
+        buy_code_col: "CODE",
+    }
+)
+
+sell_signals = sell_signals.rename(
+    columns={
+        sell_date_col: "DATE",
+        sell_code_col: "CODE",
+    }
+)
+
+buy_signals["CODE"] = buy_signals["CODE"].astype(str)
+sell_signals["CODE"] = sell_signals["CODE"].astype(str)
+
+
+# ============================================================
+# SELL SIGNAL LOOKUP
+# ============================================================
+
+sell_lookup = {}
+
+for row in sell_signals.itertuples(index=False):
+
+    key = (
+        row.CODE,
+        pd.Timestamp(row.DATE)
     )
+
+    sell_lookup[key] = row.SELL_PROBABILITY
 
 
 # ============================================================
@@ -536,674 +442,242 @@ for row in sell_test_df.itertuples():
 # ============================================================
 
 def run_backtest(
-    buy_threshold,
-    top_n
+    threshold,
+    top_n,
+    stop_loss,
+    take_profit,
+    trailing_stop,
 ):
-    buy_signals_by_date = defaultdict(list)
 
-    filtered_buy = buy_test_df[
-        buy_test_df["BUY_PROBABILITY"]
-        >= buy_threshold
-    ]
+    signals = buy_signals[
+        buy_signals["BUY_PROBABILITY"] >= threshold
+    ].copy()
 
-    for row in filtered_buy.itertuples():
-        buy_signals_by_date[
-            row.날짜
-        ].append(row)
+    if signals.empty:
+        return [], pd.DataFrame()
 
-    cash = float(
-        INITIAL_CAPITAL
+    # 날짜별 Probability 순위
+    signals["RANK"] = (
+        signals
+        .groupby("DATE")["BUY_PROBABILITY"]
+        .rank(
+            method="first",
+            ascending=False
+        )
     )
 
-    positions = []
+    signals = signals[
+        signals["RANK"] <= top_n
+    ].copy()
+
+    signals = signals.sort_values(
+        ["DATE", "BUY_PROBABILITY"],
+        ascending=[True, False]
+    )
 
     trades = []
 
-    equity_curve = []
+    for row in signals.itertuples(index=False):
 
-    # ========================================================
-    # DATE LOOP
-    # ========================================================
+        code = row.CODE
+        entry_date = pd.Timestamp(row.DATE)
 
-    for current_date in trading_dates:
+        if code not in ohlcv_cache:
+            continue
 
-        # ====================================================
-        # 1. RISK EXIT
-        # ====================================================
+        price_df = ohlcv_cache[code]
 
-        remaining_positions = []
+        future = price_df[
+            price_df.index > entry_date
+        ].head(HOLD_DAYS)
 
-        for pos in positions:
-            ticker = pos["ticker"]
+        if future.empty:
+            continue
 
-            buy_price = pos["buy_price"]
+        entry_price = float(
+            future.iloc[0]["OPEN"]
+        )
 
-            previous_peak = pos["peak_price"]
+        if entry_price <= 0:
+            continue
 
-            entry_date = pos["entry_date"]
+        highest_price = entry_price
 
-            # -----------------------------------------------
-            # 매수 당일에는 risk exit하지 않음
-            # -----------------------------------------------
+        exit_price = None
+        exit_date = None
+        sell_reason = None
 
-            if current_date <= entry_date:
-                remaining_positions.append(
-                    pos
-                )
+        holding_days = 0
 
-                continue
+        for current_date, candle in future.iterrows():
 
-            ohlcv = ohlcv_dict.get(
-                (ticker, current_date)
+            holding_days += 1
+
+            open_price = float(candle["OPEN"])
+            high_price = float(candle["HIGH"])
+            low_price = float(candle["LOW"])
+            close_price = float(candle["CLOSE"])
+
+            highest_price = max(
+                highest_price,
+                high_price
             )
 
-            if ohlcv is None:
-                remaining_positions.append(
-                    pos
-                )
+            # ------------------------------------------------
+            # SELL SIGNAL
+            # ------------------------------------------------
 
-                continue
-
-            open_p, high_p, low_p, close_p = (
-                ohlcv
+            sell_probability = sell_lookup.get(
+                (code, pd.Timestamp(current_date)),
+                0.0
             )
 
-            stop_price = (
-                buy_price *
-                (1 + STOP_LOSS)
-            )
+            if sell_probability >= SELL_THRESHOLD:
 
-            tp_price = (
-                buy_price *
-                (1 + TAKE_PROFIT)
-            )
+                exit_price = close_price
+                exit_date = current_date
+                sell_reason = "SELL_SIGNAL"
 
-            trail_price = (
-                previous_peak *
-                (1 - TRAILING_STOP)
-            )
+                break
 
-            exit_reason = None
-            exit_price = None
-
+            # ------------------------------------------------
             # STOP LOSS
-            if low_p <= stop_price:
+            # ------------------------------------------------
+
+            stop_price = entry_price * (
+                1 + stop_loss
+            )
+
+            if low_price <= stop_price:
+
                 exit_price = stop_price
-                exit_reason = "STOP_LOSS"
+                exit_date = current_date
+                sell_reason = "STOP_LOSS"
 
+                break
+
+            # ------------------------------------------------
             # TAKE PROFIT
-            elif high_p >= tp_price:
-                exit_price = tp_price
-                exit_reason = "TAKE_PROFIT"
+            # ------------------------------------------------
 
+            take_price = entry_price * (
+                1 + take_profit
+            )
+
+            if high_price >= take_price:
+
+                exit_price = take_price
+                exit_date = current_date
+                sell_reason = "TAKE_PROFIT"
+
+                break
+
+            # ------------------------------------------------
             # TRAILING STOP
-            elif (
-                previous_peak > buy_price
-                and low_p <= trail_price
-            ):
-                exit_price = trail_price
-                exit_reason = "TRAILING_STOP"
+            # ------------------------------------------------
 
-            # -----------------------------------------------
-            # EXIT
-            # -----------------------------------------------
+            if trailing_stop > 0:
 
-            if exit_price is not None:
-                effective_buy_price = (
-                    buy_price *
-                    (1 + COMMISSION + SLIPPAGE)
+                trailing_price = highest_price * (
+                    1 - trailing_stop
                 )
 
-                effective_sell_price = (
-                    exit_price *
-                    (1 - COMMISSION - SLIPPAGE)
-                )
+                # entry 대비 상승한 이후에만 trailing
+                if (
+                    highest_price > entry_price
+                    and low_price <= trailing_price
+                ):
 
-                net_return = (
-                    effective_sell_price /
-                    effective_buy_price
-                ) - 1
+                    exit_price = trailing_price
+                    exit_date = current_date
+                    sell_reason = "TRAILING_STOP"
 
-                profit = (
-                    pos["capital"] *
-                    net_return
-                )
+                    break
 
-                cash += (
-                    pos["capital"] +
-                    profit
-                )
+        # ----------------------------------------------------
+        # BACKTEST END
+        # ----------------------------------------------------
 
-                trades.append({
-                    "ticker": ticker,
-                    "entry_date": entry_date,
-                    "exit_date": current_date,
-                    "buy_price": buy_price,
-                    "sell_price": exit_price,
-                    "NetReturn": net_return * 100,
-                    "Profit": profit,
-                    "SellReason": exit_reason,
-                })
+        if exit_price is None:
 
-            else:
-                pos["peak_price"] = max(
-                    previous_peak,
-                    high_p
-                )
-
-                remaining_positions.append(
-                    pos
-                )
-
-        positions = remaining_positions
-
-        # ====================================================
-        # 2. SELL SIGNAL EXIT
-        # ====================================================
-
-        next_date = next_date_map.get(
-            current_date
-        )
-
-        if next_date is not None:
-            current_sell_tickers = (
-                sell_signals_by_date.get(
-                    current_date,
-                    set()
-                )
+            last_date = future.index[-1]
+            last_close = float(
+                future.iloc[-1]["CLOSE"]
             )
 
-            if current_sell_tickers:
-                remaining_positions = []
-
-                for pos in positions:
-                    ticker = pos["ticker"]
-
-                    if (
-                        ticker
-                        not in current_sell_tickers
-                    ):
-                        remaining_positions.append(
-                            pos
-                        )
-
-                        continue
-
-                    next_ohlcv = ohlcv_dict.get(
-                        (ticker, next_date)
-                    )
-
-                    if next_ohlcv is None:
-                        remaining_positions.append(
-                            pos
-                        )
-
-                        continue
-
-                    next_open = next_ohlcv[0]
-
-                    if next_open <= 0:
-                        remaining_positions.append(
-                            pos
-                        )
-
-                        continue
-
-                    buy_price = pos["buy_price"]
-
-                    effective_buy_price = (
-                        buy_price *
-                        (1 + COMMISSION + SLIPPAGE)
-                    )
-
-                    effective_sell_price = (
-                        next_open *
-                        (1 - COMMISSION - SLIPPAGE)
-                    )
-
-                    net_return = (
-                        effective_sell_price /
-                        effective_buy_price
-                    ) - 1
-
-                    profit = (
-                        pos["capital"] *
-                        net_return
-                    )
-
-                    cash += (
-                        pos["capital"] +
-                        profit
-                    )
-
-                    trades.append({
-                        "ticker": ticker,
-                        "entry_date": pos["entry_date"],
-                        "exit_date": next_date,
-                        "buy_price": buy_price,
-                        "sell_price": next_open,
-                        "NetReturn": net_return * 100,
-                        "Profit": profit,
-                        "SellReason": "SELL_SIGNAL",
-                    })
-
-                positions = remaining_positions
-
-        # ====================================================
-        # 3. BUY SIGNAL
-        # ====================================================
-
-        day_buy_signals = (
-            buy_signals_by_date.get(
-                current_date,
-                []
-            )
-        )
-
-        next_date = next_date_map.get(
-            current_date
-        )
-
-        if (
-            day_buy_signals
-            and next_date is not None
-        ):
-
-            held_tickers = {
-                pos["ticker"]
-                for pos in positions
-            }
-
-            candidates = []
-
-            for sig in day_buy_signals:
-                ticker = getattr(
-                    sig,
-                    buy_ticker_col
-                )
-
-                if ticker in held_tickers:
-                    continue
-
-                next_ohlcv = ohlcv_dict.get(
-                    (ticker, next_date)
-                )
-
-                if next_ohlcv is None:
-                    continue
-
-                next_open = next_ohlcv[0]
-
-                if next_open <= 0:
-                    continue
-
-                candidates.append(sig)
-
-            candidates.sort(
-                key=lambda x:
-                    x.BUY_PROBABILITY,
-                reverse=True
-            )
-
-            available_slots = (
-                top_n -
-                len(positions)
-            )
-
-            if (
-                available_slots > 0
-                and cash > 0
-                and candidates
-            ):
-                selected = candidates[
-                    :available_slots
-                ]
-
-                alloc_capital = (
-                    cash /
-                    len(selected)
-                )
-
-                for sig in selected:
-                    ticker = getattr(
-                        sig,
-                        buy_ticker_col
-                    )
-
-                    next_ohlcv = (
-                        ohlcv_dict.get(
-                            (ticker, next_date)
-                        )
-                    )
-
-                    if next_ohlcv is None:
-                        continue
-
-                    next_open = next_ohlcv[0]
-
-                    if next_open <= 0:
-                        continue
-
-                    actual_capital = min(
-                        alloc_capital,
-                        cash
-                    )
-
-                    if actual_capital <= 0:
-                        continue
-
-                    cash -= actual_capital
-
-                    positions.append({
-                        "ticker": ticker,
-                        "buy_price": next_open,
-                        "capital": actual_capital,
-                        "peak_price": next_open,
-                        "entry_date": next_date,
-                    })
-
-                    held_tickers.add(
-                        ticker
-                    )
-
-        # ====================================================
-        # 4. EQUITY
-        # ====================================================
-
-        portfolio_value = cash
-
-        for pos in positions:
-            ticker = pos["ticker"]
-
-            ohlcv = ohlcv_dict.get(
-                (ticker, current_date)
-            )
-
-            if ohlcv is None:
-                current_price = pos[
-                    "buy_price"
-                ]
-
-            else:
-                current_price = ohlcv[3]
-
-            effective_buy_price = (
-                pos["buy_price"] *
-                (1 + COMMISSION + SLIPPAGE)
-            )
-
-            effective_current_price = (
-                current_price *
-                (1 - COMMISSION - SLIPPAGE)
-            )
-
-            unrealized_ratio = (
-                effective_current_price /
-                effective_buy_price
-            )
-
-            portfolio_value += (
-                pos["capital"] *
-                unrealized_ratio
-            )
-
-        equity_curve.append({
-            "date": current_date,
-            "equity": portfolio_value,
-        })
-
-    # ========================================================
-    # 5. BACKTEST END EXIT
-    # ========================================================
-
-    if positions:
-        last_date = trading_dates[-1]
-
-        for pos in positions:
-            ticker = pos["ticker"]
-
-            ohlcv = ohlcv_dict.get(
-                (ticker, last_date)
-            )
-
-            if ohlcv is None:
-                exit_price = pos[
-                    "buy_price"
-                ]
-
-            else:
-                exit_price = ohlcv[3]
-
-            effective_buy_price = (
-                pos["buy_price"] *
-                (1 + COMMISSION + SLIPPAGE)
-            )
-
-            effective_sell_price = (
-                exit_price *
-                (1 - COMMISSION - SLIPPAGE)
-            )
-
-            net_return = (
-                effective_sell_price /
-                effective_buy_price
-            ) - 1
-
-            profit = (
-                pos["capital"] *
-                net_return
-            )
-
-            cash += (
-                pos["capital"] +
-                profit
-            )
-
-            trades.append({
-                "ticker": ticker,
-                "entry_date": pos["entry_date"],
-                "exit_date": last_date,
-                "buy_price": pos["buy_price"],
-                "sell_price": exit_price,
-                "NetReturn": net_return * 100,
-                "Profit": profit,
-                "SellReason": "BACKTEST_END",
-            })
-
-    # ========================================================
-    # METRICS
-    # ========================================================
-
-    trades_df = pd.DataFrame(
-        trades
-    )
-
-    equity_df = pd.DataFrame(
-        equity_curve
-    )
-
-    if equity_df.empty:
-        return {
-            "BUY_THRESHOLD": buy_threshold,
-            "TOP_N": top_n,
-            "Trades": 0,
-            "AverageReturn": 0,
-            "MedianReturn": 0,
-            "WinRate": 0,
-            "ProfitFactor": 0,
-            "MDD": 0,
-            "CAGR": 0,
-            "FinalCapital": INITIAL_CAPITAL,
-            "TotalReturn": 0,
-            "SellSignalExits": 0,
-            "StopLossExits": 0,
-            "TakeProfitExits": 0,
-            "TrailingStopExits": 0,
-            "BacktestEndExits": 0,
-        }
-
-    equity_series = (
-        equity_df["equity"]
-    )
-
-    running_max = (
-        equity_series.cummax()
-    )
-
-    drawdown = (
-        equity_series /
-        running_max
-    ) - 1
-
-    mdd = (
-        drawdown.min() *
-        100
-    )
-
-    final_capital = (
-        equity_series.iloc[-1]
-    )
-
-    total_return = (
-        final_capital /
-        INITIAL_CAPITAL
-        - 1
-    ) * 100
-
-    # ========================================================
-    # CAGR
-    # ========================================================
-
-    first_date = pd.Timestamp(
-        equity_df["date"].iloc[0]
-    )
-
-    last_date = pd.Timestamp(
-        equity_df["date"].iloc[-1]
-    )
-
-    years = (
-        last_date - first_date
-    ).days / 365.25
-
-    if (
-        years > 0
-        and final_capital > 0
-    ):
-        cagr = (
-            (
-                final_capital /
-                INITIAL_CAPITAL
-            ) ** (1 / years)
-            - 1
+            exit_price = last_close
+            exit_date = last_date
+            sell_reason = "BACKTEST_END"
+
+        return_rate = (
+            exit_price / entry_price - 1
         ) * 100
 
-    else:
-        cagr = 0
-
-    # ========================================================
-    # TRADE METRICS
-    # ========================================================
-
-    if trades_df.empty:
-        average_return = 0
-        median_return = 0
-        win_rate = 0
-        profit_factor = 0
-
-    else:
-        average_return = (
-            trades_df["NetReturn"].mean()
+        trades.append(
+            {
+                "EntryDate": entry_date,
+                "ExitDate": pd.Timestamp(exit_date),
+                "Code": code,
+                "Probability": row.BUY_PROBABILITY,
+                "EntryPrice": entry_price,
+                "ExitPrice": exit_price,
+                "Return": return_rate,
+                "HoldingDays": holding_days,
+                "SellReason": sell_reason,
+                "Threshold": threshold,
+                "TOP_N": top_n,
+                "StopLoss": stop_loss,
+                "TakeProfit": take_profit,
+                "TrailingStop": trailing_stop,
+            }
         )
 
-        median_return = (
-            trades_df["NetReturn"].median()
+    if not trades:
+        return [], pd.DataFrame()
+
+    trades_df = pd.DataFrame(trades)
+
+    # --------------------------------------------------------
+    # EQUITY
+    # --------------------------------------------------------
+
+    capital = INITIAL_CAPITAL
+
+    equity = []
+
+    for trade in trades:
+
+        capital *= (
+            1 + trade["Return"] / 100
         )
 
-        win_rate = (
-            trades_df["NetReturn"] > 0
-        ).mean() * 100
-
-        gross_profit = (
-            trades_df.loc[
-                trades_df["Profit"] > 0,
-                "Profit"
-            ].sum()
+        equity.append(
+            {
+                "ExitDate": trade["ExitDate"],
+                "Capital": capital,
+            }
         )
 
-        gross_loss = abs(
-            trades_df.loc[
-                trades_df["Profit"] < 0,
-                "Profit"
-            ].sum()
-        )
+    equity_df = pd.DataFrame(equity)
 
-        if gross_loss > 0:
-            profit_factor = (
-                gross_profit /
-                gross_loss
-            )
-
-        else:
-            profit_factor = np.inf
-
-    # ========================================================
-    # EXIT BREAKDOWN
-    # ========================================================
-
-    if trades_df.empty:
-        exit_counts = {}
+    if equity_df.empty:
+        mdd = 0.0
 
     else:
-        exit_counts = (
-            trades_df["SellReason"]
-            .value_counts()
-            .to_dict()
-        )
 
-    return {
-        "BUY_THRESHOLD": buy_threshold,
-        "TOP_N": top_n,
-        "Trades": len(trades_df),
-        "AverageReturn": average_return,
-        "MedianReturn": median_return,
-        "WinRate": win_rate,
-        "ProfitFactor": profit_factor,
-        "MDD": mdd,
-        "CAGR": cagr,
-        "FinalCapital": final_capital,
-        "TotalReturn": total_return,
+        equity_values = equity_df["Capital"]
 
-        "SellSignalExits":
-            exit_counts.get(
-                "SELL_SIGNAL",
-                0
-            ),
+        peak = equity_values.cummax()
 
-        "StopLossExits":
-            exit_counts.get(
-                "STOP_LOSS",
-                0
-            ),
+        drawdown = (
+            equity_values / peak - 1
+        ) * 100
 
-        "TakeProfitExits":
-            exit_counts.get(
-                "TAKE_PROFIT",
-                0
-            ),
+        mdd = drawdown.min()
 
-        "TrailingStopExits":
-            exit_counts.get(
-                "TRAILING_STOP",
-                0
-            ),
-
-        "BacktestEndExits":
-            exit_counts.get(
-                "BACKTEST_END",
-                0
-            ),
-    }
+    return trades, equity_df.assign(
+        MDD=mdd
+    )
 
 
 # ============================================================
@@ -1212,75 +686,128 @@ def run_backtest(
 
 print()
 print("=" * 70)
-print("BUY THRESHOLD + TOP_N SWEEP")
+print(
+    "BUY THRESHOLD + TOP_N + "
+    "RISK MANAGEMENT PARAMETER SWEEP"
+)
 print("=" * 70)
-
-print(
-    f"STOP LOSS     : {STOP_LOSS * 100:.1f}%"
-)
-
-print(
-    f"TAKE PROFIT   : {TAKE_PROFIT * 100:.1f}%"
-)
-
-print(
-    f"TRAILING STOP : {TRAILING_STOP * 100:.1f}%"
-)
-
-print()
 
 results = []
 
-parameter_combinations = list(
-    product(
-        BUY_THRESHOLD_LIST,
-        TOP_N_LIST,
-    )
-)
+best_trades = None
+best_equity = None
+best_score = -np.inf
+best_params = None
 
-for (
-    buy_threshold,
-    top_n
-) in parameter_combinations:
-    print(
-        f"BUY_THRESHOLD="
-        f"{buy_threshold:.2f} "
-        f"TOP_N={top_n}"
-    )
 
-    result = run_backtest(
-        buy_threshold,
-        top_n
-    )
+for threshold in BUY_THRESHOLDS:
 
-    results.append(result)
+    for top_n in TOP_N_VALUES:
+
+        for stop_loss in STOP_LOSSES:
+
+            for take_profit in TAKE_PROFITS:
+
+                for trailing_stop in TRAILING_STOPS:
+
+                    print(
+                        f"THRESHOLD={threshold:.2f} "
+                        f"TOP_N={top_n} "
+                        f"STOP={stop_loss * 100:5.1f}% "
+                        f"TP={take_profit * 100:5.1f}% "
+                        f"TRAIL={trailing_stop * 100:5.1f}%"
+                    )
+
+                    trades, equity_df = run_backtest(
+                        threshold=threshold,
+                        top_n=top_n,
+                        stop_loss=stop_loss,
+                        take_profit=take_profit,
+                        trailing_stop=trailing_stop,
+                    )
+
+                    if not trades:
+                        continue
+
+                    trades_df = pd.DataFrame(trades)
+
+                    returns = trades_df["Return"]
+
+                    average_return = returns.mean()
+                    median_return = returns.median()
+
+                    win_rate = (
+                        returns > 0
+                    ).mean() * 100
+
+                    if equity_df.empty:
+
+                        mdd = 0.0
+                        final_capital = INITIAL_CAPITAL
+
+                    else:
+
+                        mdd = float(
+                            equity_df["MDD"].iloc[-1]
+                        )
+
+                        final_capital = float(
+                            equity_df["Capital"].iloc[-1]
+                        )
+
+                    total_return = (
+                        final_capital
+                        / INITIAL_CAPITAL
+                        - 1
+                    ) * 100
+
+                    result = {
+                        "BUY_THRESHOLD": threshold,
+                        "TOP_N": top_n,
+                        "StopLoss": stop_loss,
+                        "TakeProfit": take_profit,
+                        "TrailingStop": trailing_stop,
+                        "Trades": len(trades_df),
+                        "AverageReturn": average_return,
+                        "MedianReturn": median_return,
+                        "WinRate": win_rate,
+                        "MDD": mdd,
+                        "FinalCapital": final_capital,
+                        "TotalReturn": total_return,
+                    }
+
+                    results.append(result)
+
+                    # MDD -30% 이내에서
+                    # TotalReturn 최대 전략을 best로 선정
+                    if (
+                        mdd >= -30
+                        and total_return > best_score
+                    ):
+
+                        best_score = total_return
+
+                        best_params = result
+
+                        best_trades = trades_df.copy()
+                        best_equity = equity_df.copy()
 
 
 # ============================================================
-# RESULTS
+# RESULT
 # ============================================================
 
-results_df = pd.DataFrame(
-    results
-)
+results_df = pd.DataFrame(results)
 
 results_df = results_df.sort_values(
-    [
-        "TotalReturn",
-        "MDD",
-    ],
-    ascending=[
-        False,
-        False,
-    ]
-).reset_index(
-    drop=True
-)
+    "TotalReturn",
+    ascending=False
+).reset_index(drop=True)
 
 
 print()
 print("=" * 70)
-print("BUY THRESHOLD + TOP_N 결과")
+print("BUY + TOP_N + RISK MANAGEMENT 결과")
 print("=" * 70)
 
 print(
@@ -1291,166 +818,208 @@ print(
 
 
 # ============================================================
-# MDD FILTER
+# MDD FILTERS
 # ============================================================
 
-print()
-print("=" * 70)
-print("MDD -30% 이내 전략")
-print("=" * 70)
+for limit in [-20, -30, -40, -50]:
 
-mdd_30_df = results_df[
-    results_df["MDD"] >= -30
-]
-
-if mdd_30_df.empty:
+    print()
+    print("=" * 70)
     print(
-        "MDD -30% 이내 전략이 없습니다."
+        f"MDD {limit}% 이내 전략"
     )
+    print("=" * 70)
 
-else:
-    print(
-        mdd_30_df.to_string(
-            index=False
+    filtered = results_df[
+        results_df["MDD"] >= limit
+    ]
+
+    if filtered.empty:
+
+        print(
+            f"MDD {limit}% 이내 전략이 없습니다."
         )
-    )
 
+    else:
 
-print()
-print("=" * 70)
-print("MDD -40% 이내 전략")
-print("=" * 70)
-
-mdd_40_df = results_df[
-    results_df["MDD"] >= -40
-]
-
-if mdd_40_df.empty:
-    print(
-        "MDD -40% 이내 전략이 없습니다."
-    )
-
-else:
-    print(
-        mdd_40_df.to_string(
-            index=False
+        print(
+            filtered.head(20).to_string(
+                index=False
+            )
         )
-    )
 
 
 # ============================================================
-# BEST RETURN
+# BEST STRATEGY
 # ============================================================
-
-best_return = results_df.iloc[0]
 
 print()
 print("=" * 70)
-print("BEST RETURN STRATEGY")
+print("BEST STRATEGY")
 print("=" * 70)
+
+if best_params is None:
+
+    print(
+        "MDD -30% 이내의 전략이 없습니다."
+    )
+
+    # fallback
+    best_params = results_df.iloc[0].to_dict()
+
+    fallback = results_df.iloc[0]
+
+    trades, equity = run_backtest(
+        threshold=fallback["BUY_THRESHOLD"],
+        top_n=int(fallback["TOP_N"]),
+        stop_loss=fallback["StopLoss"],
+        take_profit=fallback["TakeProfit"],
+        trailing_stop=fallback["TrailingStop"],
+    )
+
+    best_trades = pd.DataFrame(trades)
+    best_equity = equity
 
 print(
     f"BUY Threshold : "
-    f"{best_return['BUY_THRESHOLD']:.2f}"
+    f"{best_params['BUY_THRESHOLD']:.2f}"
 )
 
 print(
-    f"TOP N         : "
-    f"{int(best_return['TOP_N'])}"
+    f"TOP_N         : "
+    f"{int(best_params['TOP_N'])}"
+)
+
+print(
+    f"Stop Loss     : "
+    f"{best_params['StopLoss'] * 100:.1f}%"
+)
+
+print(
+    f"Take Profit   : "
+    f"{best_params['TakeProfit'] * 100:.1f}%"
+)
+
+print(
+    f"Trailing Stop : "
+    f"{best_params['TrailingStop'] * 100:.1f}%"
 )
 
 print(
     f"Trades        : "
-    f"{int(best_return['Trades'])}"
+    f"{int(best_params['Trades'])}"
 )
 
 print(
     f"Win Rate      : "
-    f"{best_return['WinRate']:.2f}%"
+    f"{best_params['WinRate']:.2f}%"
 )
 
 print(
-    f"Profit Factor : "
-    f"{best_return['ProfitFactor']:.4f}"
+    f"Average Return: "
+    f"{best_params['AverageReturn']:.4f}%"
 )
 
 print(
-    f"CAGR          : "
-    f"{best_return['CAGR']:.2f}%"
+    f"Median Return : "
+    f"{best_params['MedianReturn']:.4f}%"
 )
 
 print(
     f"MDD           : "
-    f"{best_return['MDD']:.2f}%"
+    f"{best_params['MDD']:.2f}%"
 )
 
 print(
     f"Final Capital : "
-    f"{best_return['FinalCapital']:,.0f}"
+    f"{best_params['FinalCapital']:,.0f}"
 )
 
 print(
     f"Total Return  : "
-    f"{best_return['TotalReturn']:.2f}%"
+    f"{best_params['TotalReturn']:.2f}%"
 )
 
 
 # ============================================================
-# BEST MDD-CONSTRAINED STRATEGY
+# EXIT BREAKDOWN
 # ============================================================
 
-if not mdd_30_df.empty:
-    best_mdd30 = mdd_30_df.iloc[0]
+if best_trades is not None and not best_trades.empty:
+
+    print()
+    print("Exit Breakdown")
+
+    breakdown = (
+        best_trades["SellReason"]
+        .value_counts()
+    )
+
+    for reason in [
+        "SELL_SIGNAL",
+        "STOP_LOSS",
+        "TAKE_PROFIT",
+        "TRAILING_STOP",
+        "BACKTEST_END",
+    ]:
+
+        print(
+            f"{reason:16s}: "
+            f"{int(breakdown.get(reason, 0))}"
+        )
+
+
+# ============================================================
+# HOLDING ANALYSIS
+# ============================================================
+
+if best_trades is not None and not best_trades.empty:
 
     print()
     print("=" * 70)
-    print("BEST MDD -30% STRATEGY")
+    print("BEST STRATEGY 보유기간 분석")
     print("=" * 70)
 
-    print(
-        f"BUY Threshold : "
-        f"{best_mdd30['BUY_THRESHOLD']:.2f}"
+    holding_stats = (
+        best_trades
+        .groupby("SellReason")
+        .agg(
+            Trades=("Return", "count"),
+            AverageHoldingDays=(
+                "HoldingDays",
+                "mean"
+            ),
+            MedianHoldingDays=(
+                "HoldingDays",
+                "median"
+            ),
+            AverageReturn=(
+                "Return",
+                "mean"
+            ),
+            MedianReturn=(
+                "Return",
+                "median"
+            ),
+            WinRate=(
+                "Return",
+                lambda x: (
+                    x > 0
+                ).mean() * 100
+            ),
+        )
+        .reset_index()
     )
 
     print(
-        f"TOP N         : "
-        f"{int(best_mdd30['TOP_N'])}"
+        holding_stats.to_string(
+            index=False
+        )
     )
 
-    print(
-        f"Trades        : "
-        f"{int(best_mdd30['Trades'])}"
-    )
+else:
 
-    print(
-        f"Win Rate      : "
-        f"{best_mdd30['WinRate']:.2f}%"
-    )
-
-    print(
-        f"Profit Factor : "
-        f"{best_mdd30['ProfitFactor']:.4f}"
-    )
-
-    print(
-        f"CAGR          : "
-        f"{best_mdd30['CAGR']:.2f}%"
-    )
-
-    print(
-        f"MDD           : "
-        f"{best_mdd30['MDD']:.2f}%"
-    )
-
-    print(
-        f"Final Capital : "
-        f"{best_mdd30['FinalCapital']:,.0f}"
-    )
-
-    print(
-        f"Total Return  : "
-        f"{best_mdd30['TotalReturn']:.2f}%"
-    )
+    holding_stats = pd.DataFrame()
 
 
 # ============================================================
@@ -1458,7 +1027,24 @@ if not mdd_30_df.empty:
 # ============================================================
 
 results_df.to_csv(
-    "buy_threshold_topn_sweep.csv",
+    "buy_topn_risk_management_sweep.csv",
+    index=False
+)
+
+if best_trades is not None:
+    best_trades.to_csv(
+        "buy_topn_risk_management_best_trades.csv",
+        index=False
+    )
+
+if best_equity is not None:
+    best_equity.to_csv(
+        "buy_topn_risk_management_best_equity.csv",
+        index=False
+    )
+
+holding_stats.to_csv(
+    "buy_topn_risk_management_holding_stats.csv",
     index=False
 )
 
@@ -1468,5 +1054,17 @@ print("저장 완료")
 print("=" * 70)
 
 print(
-    "buy_threshold_topn_sweep.csv"
+    "buy_topn_risk_management_sweep.csv"
+)
+
+print(
+    "buy_topn_risk_management_best_trades.csv"
+)
+
+print(
+    "buy_topn_risk_management_best_equity.csv"
+)
+
+print(
+    "buy_topn_risk_management_holding_stats.csv"
 )
