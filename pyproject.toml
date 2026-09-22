@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "donghak-stock-vision"
+version = "2.0.0a1"
+description = "Korean equity market data pipeline — Phase 1"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "httpx>=0.28,<0.29",
+  "python-dotenv>=1.1,<2",
+  "tzdata>=2025.2; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3,<10", "ruff>=0.11,<1", "mypy>=1.15,<2", "build>=1.2,<2"]
+
+[project.scripts]
+dsv = "donghak_stock_vision.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/donghak_stock_vision"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/docs", "/pyproject.toml", "/README.md", "/.env.example"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src"]
+include = ["src/**/*.py", "tests/**/*.py", "pyproject.toml"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -m 'not live'"
+markers = ["live: explicit opt-in network test requiring an approved KRX key"]

@@ -21,3 +21,19 @@ raw/
 backtest_trades.csv
 portfolio_history.csv
 portfolio_trades.csv
+# DonghakStockVision 2.0 local artifacts and secrets
+.env
+.env.*
+!.env.example
+*.db
+*.db-*
+*.sqlite*
+.data/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
