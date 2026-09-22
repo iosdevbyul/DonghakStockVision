@@ -1,0 +1,39 @@
+name: CI
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [chore/bootstrap-market-data]
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install
+        run: python -m pip install -e '.[dev]'
+      - name: Ruff
+        run: |
+          ruff check src tests
+          ruff format --check src tests
+      - name: Mypy
+        run: mypy
+      - name: Offline tests
+        run: pytest
+      - name: Build
+        run: python -m build
+      - name: Installed wheel smoke test
+        run: |
+          python -m venv /tmp/dsv-wheel
+          /tmp/dsv-wheel/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/dsv-wheel/bin/dsv --db /tmp/smoke.sqlite3 collect --provider fake --tickers 005930 --start 2024-01-02 --end 2024-01-08
+          /tmp/dsv-wheel/bin/dsv --db /tmp/smoke.sqlite3 validate
