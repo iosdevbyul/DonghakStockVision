@@ -23,7 +23,9 @@ from donghak_stock_vision.storage.sqlite import SQLiteStore
 
 
 def parser() -> argparse.ArgumentParser:
-    root = argparse.ArgumentParser(description="DonghakStockVision 2.0 — market data only")
+    root = argparse.ArgumentParser(
+        description="DonghakStockVision 2.0 — market data and signal analysis"
+    )
     root.add_argument("--db", type=Path, help="SQLite path; overrides DSV_DB_PATH")
     sub = root.add_subparsers(dest="command", required=True)
     for name in ("collect", "update", "query"):
@@ -37,6 +39,9 @@ def parser() -> argparse.ArgumentParser:
         if name == "update":
             command.add_argument("--overlap-days", type=int, default=7)
     sub.add_parser("validate")
+    from donghak_stock_vision.learning_cli import add_commands
+
+    add_commands(sub)
     return root
 
 
@@ -49,6 +54,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         settings = Settings.from_env()
         path = args.db or settings.db_path
+        if args.command in {"train", "evaluate", "infer", "signals"}:
+            from donghak_stock_vision.learning_cli import run
+
+            return run(args, path)
         if args.command != "validate":
             validate_range(args.start, args.end)
             for ticker in args.tickers:

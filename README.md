@@ -1,11 +1,11 @@
 # DonghakStockVision 2.0
 
-한국 주식의 가격·거래량·거래대금을 축적하고, 향후 시장 전환 신호 학습과 매매 판단으로 확장하는 Python 프로젝트입니다. **현재 구현은 Phase 1 시장 데이터 파이프라인입니다.** 매매 신호, 학습 모델, 주문, 백테스트, 상시 스케줄러는 구현하지 않습니다.
+한국 주식의 가격·거래량·거래대금을 축적하고, 향후 시장 전환 신호 학습과 매매 판단으로 확장하는 Python 프로젝트입니다. **현재 Phase 1 시장 데이터 파이프라인과 Phase 2 조건부 신호 학습·평가·분석을 구현했습니다.** iOS·웹·외부 프로그램에서 사용할 독립 Python 엔진이며, HTTP 서버·매매 의사결정·주문·백테스트·상시 스케줄러는 구현하지 않습니다.
 
 | Phase | 목표 | 2.0 상태 |
 | --- | --- | --- |
 | 1 | 프로젝트 초기 설정·시장 데이터 수집·검증·저장 | 구현, KRX 실호출 검증은 인증 승인 후 |
-| 2 | 상승·하락 신호 학습 | 미구현 |
+| 2 | 상승·하락 신호 학습 | 구현, 실제 시장 성능·PIT 운영 검증은 미완료 |
 | 3 | 매수·보유·매도·관망 판단 | 미구현 |
 | 4 | 백테스트·모의거래 | 미구현 |
 | 5 | 상시 실행 | 미구현 |
@@ -19,11 +19,11 @@ Python **3.12 이상**이 필요합니다. 저장소 루트에서 실행합니�
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev]'
+python -m pip install -e '.[dev,learning]'
 cp .env.example .env
 ```
 
-Windows에서는 `.venv\Scripts\activate`로 활성화합니다. `python -m donghak_stock_vision`도 `dsv`와 같은 진입점입니다. 배포 시 `python -m build`로 wheel/sdist를 생성할 수 있습니다. 런타임 의존성은 HTTP 통신용 httpx와 `.env` 로딩용 python-dotenv입니다. Windows에서는 시간대 데이터베이스 tzdata도 설치합니다. SQLite는 표준 라이브러리를 사용합니다.
+Windows에서는 `.venv\Scripts\activate`로 활성화합니다. `python -m donghak_stock_vision`도 `dsv`와 같은 진입점입니다. 배포 시 `python -m build`로 wheel/sdist를 생성할 수 있습니다. Phase 1의 기본 런타임 의존성은 HTTP 통신용 httpx와 `.env` 로딩용 python-dotenv입니다. Windows에서는 시간대 데이터베이스 tzdata도 설치합니다. SQLite는 표준 라이브러리를 사용합니다. 학습은 선택적 `learning` extra(scikit-learn 1.9.1 이상 1.10 미만, NumPy 2.3 이상 3 미만)를 설치합니다. 모델은 안전한 JSON 수치로 저장하므로 조회·추론에는 과학 계산 라이브러리가 필요하지 않습니다. 학습 실행마다 실제 라이브러리 버전·시드·코드 hash를 기록합니다.
 
 ## 인증 없이 실행
 
@@ -73,6 +73,67 @@ KRX 키당 일 10,000회 이하 제한에 여유를 두어 로컬 기본값은 9
 
 실제 데이터 화면에는 “한국거래소 통계정보” 출처를 표시해야 합니다. KRX 약관의 비상업적 이용·제3자 제공 제한이 적용되므로 원본/DB를 Git에 넣지 않습니다. 향후 상업 서비스 또는 데이터 배포에는 별도 이용 권리 확인이 필요합니다. [제공업체 비교](docs/providers.md)에서 제한과 선택 근거를 확인하세요.
 
+## Phase 2: 학습·평가·분석
+
+라벨 `reversal_barrier_v1`은 **직전 반대 추세 문맥에서 5개 미래 세션 내 단기 역방향 장벽 최초 도달**을 예측합니다. 지속적 추세 반전, 검증된 상승 확률, 수익 또는 5일 보유 지시가 아닙니다. H=5, 최소 장벽 2%, 변동성 배수 2, 점수 임계값 0.5는 승인된 초기 가설로 고정했습니다. 상승 모델은 직전 5관측 로그수익률<0, 하락 모델은 >0인 모집단만 학습·평가합니다. 문맥 밖 점수는 `null/context_mismatch`, 평탄 문맥은 `no_context`입니다.
+
+두 모드를 명시적으로 선택합니다.
+
+| 모드 | 입력과 시간 | 사용 범위 |
+| --- | --- | --- |
+| `historical-research` | 실제 수집 cutoff의 불변 스냅샷, 과거 서울 16:00를 가상 EOD anchor로 사용 | `research_only`; 사후 수정·기업행사·생존편향 한계 |
+| `point-in-time` | 실제 `collected_at <= as_of`, 검증된 품질 manifest와 당시 가용 모델 | `pit_review_required`; 별도 검토·등록 이전 운영 조회 불가 |
+
+과거 일괄수집 자료를 PIT로 바꾸지 않습니다. 연구 스냅샷에는 가격·거래량·실제 거래대금·메타데이터를 복사하고 SHA-256 `snapshot_id`로 고정합니다. 학습 이후 원래 시장 DB가 수정·삭제돼도 특징·라벨·평가·연구 추론은 저장된 스냅샷만 읽습니다. 새 시장 데이터는 새 학습 스냅샷/모델을 만들거나 PIT 추론으로 명시적으로 분석합니다. 연구 모델의 다른 스냅샷 추론은 거부합니다.
+
+**실제 학습 최소량:** 전체 5종목·504개 적격 anchor 날짜; 방향별 train 1,000행·252날짜·양성/음성 각각 50개, validation/test 각각 200행·63날짜·양성/음성 각각 20개입니다. 특징은 최소 11개 적격 일봉이 필요합니다. 부족한 방향은 필요한 값과 실제 값, `insufficient_data`를 보고하며 점수를 만들어 내지 않습니다. 기본 Fake 데모 5일 데이터로 모델을 학습할 수 없습니다.
+
+다음 명령의 종목·기간·시각은 형식 예시이며 해당 데이터가 로컬 DB에 있어야 합니다. `--snapshot-as-of`는 데이터를 실제로 확보한 timezone 포함 시각으로 지정합니다. 연구 품질 자료가 없으면 한계를 명시적으로 동의해야 하며, 알려진 불량 구간은 동의해도 제외합니다.
+
+```bash
+dsv --db .data/market.sqlite3 train --mode historical-research \
+  --tickers 005930 000660 035420 035720 005380 \
+  --start 2019-01-02 --end 2024-12-30 \
+  --snapshot-as-of 2026-09-23T09:00:00+09:00 \
+  --acknowledge-research-limitations --analysis-db .data/analysis.sqlite3
+
+# train JSON의 model_version, snapshot_id를 아래 셸 변수에 넣습니다.
+MODEL_VERSION='<model_version>'
+SNAPSHOT_ID='<snapshot_id>'
+dsv evaluate --mode historical-research --model-version "$MODEL_VERSION" \
+  --analysis-db .data/analysis.sqlite3
+dsv infer --mode historical-research --model-version "$MODEL_VERSION" \
+  --snapshot-id "$SNAPSHOT_ID" --anchor-date 2024-12-27 --tickers 005930 \
+  --analysis-db .data/analysis.sqlite3
+dsv signals --scope research --model-version "$MODEL_VERSION" \
+  --snapshot-id "$SNAPSHOT_ID" --direction up --analysis-db .data/analysis.sqlite3
+```
+
+`evaluate`는 고정된 train-fit 모델과 스냅샷의 validation/test를 재현합니다. 공통 날짜축 60/20/20 분할 후 라벨 미래 구간이 경계에 닿으면 purge합니다. PIT는 라벨 수신 시각도 격리합니다. 표준화·가중치는 방향별 train에서만 계산합니다. C=0.1/1/10을 validation AP로 선택하고 최종 test로 재선택하지 않습니다. 조건부 빈도·단순 역방향 강도 기준 모델, Precision·Recall·AP·혼동행렬·Brier·미보정 구간 진단을 보고합니다. 계산 불가능한 지표는 null과 사유를 반환합니다. 반복 실험은 동일 holdout에 대한 독립 검증이 아닙니다.
+
+PIT는 확인한 품질 자료와 지속적으로 수신 시각을 보존한 데이터가 필요합니다. manifest 형식은 [데이터 계약](docs/data-contract.md#phase-2-품질-manifest)을 따릅니다. 부족한 품질을 연구 동의로 우회할 수 없습니다.
+
+```bash
+dsv --db .data/market.sqlite3 train --mode point-in-time \
+  --tickers 005930 000660 035420 035720 005380 \
+  --start 2019-01-02 --end 2024-12-30 --as-of 2026-09-23T09:00:00+09:00 \
+  --quality-manifest .data/quality.json --analysis-db .data/analysis.sqlite3
+# PIT_MODEL은 위 PIT 학습 결과의 model_version입니다.
+dsv --db .data/market.sqlite3 infer --mode point-in-time --model-version "$PIT_MODEL" \
+  --tickers 005930 --as-of 2026-09-23T10:00:00+09:00 \
+  --quality-manifest .data/quality.json --analysis-db .data/analysis.sqlite3
+dsv signals --scope analysis --mode point-in-time --model-version "$PIT_MODEL" \
+  --as-of 2026-09-23T10:00:00+09:00 --analysis-db .data/analysis.sqlite3
+dsv signals --scope operational --direction up --as-of 2026-09-23T10:00:00+09:00 \
+  --analysis-db .data/analysis.sqlite3
+```
+
+모든 모델은 `unregistered`로 생성합니다. `validation_qualified`(두 기준 모델의 AP 최댓값보다 0.02 이상 높음)는 운영 적격 판정이 아닙니다. 실제 데이터 품질·PIT·고정 최종 테스트·별도 승인 증거가 없으므로 현재 운영 조회는 `no_registered_model`과 빈 목록을 반환합니다. 강제 등록 CLI나 자동 승격은 없습니다. 연구·합성 모델은 운영 등록 대상이 아닙니다.
+
+새 명령의 stdout은 JSON입니다. 성공/정상 빈 조회는 종료 코드 0, 데이터·모델 부족/모드 위반/분석 불가는 1, 인자·파일·저장소 오류는 2입니다. 모델 파일은 pickle로 로드하지 않습니다. 실제 분석 시각·모델 생성 시각·시장 날짜·입력 상태·문맥·미보정 점수·선형 기여도를 함께 반환하며 기여도는 인과 설명이 아닙니다. 분석 DB는 시장 DB와 다른 경로를 요구합니다. `DSV_CODE_REVISION`은 배포 코드 SHA를 명시하는 선택 환경 변수이며 생략 시 Git SHA 또는 `unknown`을 기록하고 소스 hash도 보존합니다.
+
+오프라인 기능 검증용 합성 fixture에만 `train --synthetic-test`로 작은 표본 정책을 명시적으로 허용합니다. 소스가 전부 `fake`여야 하고 `synthetic_test_only` 제한은 영구적입니다. 실제 종목 추천이나 성능 증거로 사용할 수 없습니다.
+
 ## 검증과 CI
 
 ```bash
@@ -85,7 +146,7 @@ python -m build
 
 일반 테스트는 실제 키·네트워크 없이 실행되며 실제 TCP 접속 시도를 차단합니다. Mock HTTP 응답으로 KRX 헤더·필드 변환·재시도를 검증합니다. `tests/integration`의 일반 통합 테스트도 모두 로컬 SQLite/Mock을 사용합니다.
 
-GitHub Actions는 `main` 대상 PR에서 Python 3.12/3.13/3.14의 Ruff·mypy·pytest·패키지 빌드와 독립 가상환경 wheel 실행을 검사합니다. 비밀키가 필요 없으며 live 테스트는 기본 제외됩니다.
+GitHub Actions는 `main` 대상 PR·main push·수동 실행에서 Python 3.12/3.13/3.14의 Ruff·mypy·pytest·패키지 빌드와 독립 가상환경 wheel 실행을 검사합니다. 기본 wheel에서 Phase 1, learning extra 설치 후 합성 학습→평가→시장 DB 삭제→추론→조회까지 검사합니다. 비밀키가 필요 없으며 live 테스트는 기본 제외됩니다.
 
 승인 후 실제 API 테스트만 별도로 실행합니다. 이 테스트는 `.env`를 자동으로 읽지 않으므로 로컬 환경에 키를 export하세요(채팅·커밋에 키를 붙여넣지 마세요).
 
@@ -98,7 +159,8 @@ DSV_RUN_LIVE=1 pytest -m live tests/integration/test_live_krx.py
 
 ## 구조와 정책
 
-- [architecture.md](docs/architecture.md): 목표 구조와 Phase 1 경계, SQLite 선정 이유
+- [architecture.md](docs/architecture.md): 목표 구조와 Phase 1/2 경계, SQLite 선정 이유
+- [phase2-design.md](docs/phase2-design.md): 승인된 v2 라벨·표본량·시간순 검증·운영 등록 계약
 - [data-contract.md](docs/data-contract.md): 타입·시간대·원본·결측·거래정지·중복·수정주가 정책
 - [providers.md](docs/providers.md): 공식 출처 기반 공급자 비교 및 KRX 매핑
 

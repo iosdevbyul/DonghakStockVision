@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "donghak-stock-vision"
-version = "2.0.0a1"
-description = "Korean equity market data pipeline — Phase 1"
+version = "2.0.0a2"
+description = "Korean equity market data and conditional signal research engine"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -15,6 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+learning = ["scikit-learn>=1.9.1,<1.10", "numpy>=2.3,<3", "threadpoolctl>=3.6,<4"]
 dev = ["pytest>=8.3,<10", "ruff>=0.11,<1", "mypy>=1.15,<2", "build>=1.2,<2"]
 
 [project.scripts]
@@ -44,3 +45,7 @@ files = ["src", "tests"]
 testpaths = ["tests"]
 addopts = "-ra -m 'not live'"
 markers = ["live: explicit opt-in network test requiring an approved KRX key"]
+
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "threadpoolctl"]
+ignore_missing_imports = true
