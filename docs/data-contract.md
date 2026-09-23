@@ -48,3 +48,42 @@
 KRX 일별매매정보의 원천 일봉은 어댑터에서 `unadjusted`로 표기하고 어떤 기업행사 보정도 수행하지 않습니다. 수정계수·조정 기준일은 이 API 계약에 없으므로 임의의 adjusted close를 만들지 않습니다. 향후 수정주가 제공업체를 도입하면 기준일·기업행사 방법론·버전과 전체 역사 재수집을 설계해야 합니다. 이번 Phase에서 unknown 또는 adjusted라는 enum 값이 있다는 사실이 해당 데이터를 지원하거나 동등 비교할 수 있음을 뜻하지 않습니다.
 
 증분 재조회 기본 7일은 최근 정정/지연 대응용입니다. 더 오래된 수정, 상장 이벤트, 미수집 구간은 명시적 전체/범위 재수집이 필요합니다. 관측 가격 변화에서 신호·Target을 생성하지 않습니다.
+
+## Phase 2 분석 계약
+
+일봉 v1 필드·정수 단위·수신 시각과 Phase 1 CLI는 그대로 유지합니다. 전체 상세 정책은 [승인 설계 v2](phase2-design.md)를 따릅니다. 분석에서는 0거래·알려진 기업행사·의심 불연속(abs 로그수익률>0.20)·미확인 7달력일 초과 공백을 구간 경계로 삼습니다. 조사 기준이지 기업행사의 완전한 탐지가 아닙니다. 잘못된 행을 음성 라벨로 만들지 않고 필요한 lookback/H 구간을 제외합니다. 수정주가/비수정주가/공급자가 섞인 학습을 거부하며 수정주가는 확인된 방법까지 같은 가격 기준을 요구합니다.
+
+Historical Research의 `snapshot_as_of`는 실제 데이터 cutoff이고 `anchor_at`은 가상의 서울 16:00입니다. `snapshot_id`는 원천 OHLCV/거래대금·수신 시각·품질 자료·범위를 담은 불변 JSON 내용 hash입니다. 당시 존재한 정보라는 주장은 하지 않습니다. PIT는 수신 시각과 가용 모델을 검사하며 현재 DB에서 사라진 과거 revision을 임의 복원하지 않습니다. 최종 H개 일봉이 있어도 표본 생성 이후 수신된 특징 revision은 당시 특징으로 사용하지 않습니다. 과거 정보 cutoff 뒤 수정본만 남은 경우 누락 날짜로 보존하여 해당 구간을 차단합니다.
+
+모든 분석 결과는 `mode`, `usage_restriction`, `model_version`, `model_created_at`, `feature_version`, `label_version`, `event_description`, `session_basis`, `snapshot_id`, `snapshot_as_of`, `data_as_of`, `anchor_at`, `analyzed_at`, 마지막 거래일·수신 시각·입력 hash·품질 flags·문맥·방향별 점수/상태·검증 상태·운영 상태·기여도를 반환합니다. 연구의 `data_as_of`는 null입니다. 같은 내용의 재실행은 같은 analysis_id를 사용하되 실행 감사 시각은 추가됩니다. 조회의 analyzed_at은 해당 불변 결과의 최초 저장 시각입니다.
+
+점수는 미보정이며 상승 확률이라고 부르지 않습니다. r5<0에서는 down_score=null, r5>0에서는 up_score=null, r5=0에서는 둘 다 null입니다. 미래 H는 라벨 관측 구간이며 보유 기간이 아닙니다. 같은 봉에서 양 장벽 최초 도달은 ambiguous로 제외합니다. 검증된 캘린더가 없으면 H는 5개 관측 일봉이고 결과에 `observed_bars_unverified`와 한계 설명을 포함합니다.
+
+## Phase 2 품질 manifest
+
+`--quality-manifest PATH`의 JSON에는 다음 필드가 필요합니다. 이 예시는 **형식 설명 전용**이며 실제 검증 증거가 아닙니다. 실제로 확인한 거래소 세션·기업행사·가격 수정 기준을 기입해야 합니다. 시세에서 자동으로 "기업행사 없음"을 추정하지 않습니다.
+
+```json
+{
+  "schema_version": 1,
+  "source": "확인한 자료의 식별자/출처 및 검토 근거",
+  "verified_at": "2026-09-23T09:00:00+09:00",
+  "sessions": ["2024-01-02", "2024-01-03", "2024-01-04"],
+  "coverage": {
+    "005930": {
+      "start": "2024-01-02",
+      "end": "2024-01-04",
+      "adjustment": "unadjusted",
+      "excluded_dates": []
+    }
+  }
+}
+```
+
+`sessions`는 확인한 전체 거래일을 오름차순·중복 없이 기록합니다. coverage의 start/end는 양끝 포함이며 요청 종목과 기간을 포괄해야 완전한 품질 자료로 취급합니다. `excluded_dates`에는 확인된 기업행사·정지 등으로 학습에서 제외할 날짜를 기록합니다. `adjustment=adjusted`이면 비어 있지 않은 `adjustment_method`가 추가로 필요합니다. `unknown`은 차단합니다. verified_at은 snapshot cutoff 이하여야 합니다. 과거 anchor 뒤 확인된 검토는 `quality_review_may_be_retrospective`로 표시하며 그 자체가 당시 운영 가능성 증거는 아닙니다.
+
+PIT는 불완전 manifest를 거부합니다. 연구에서는 불완전/미제공 자료에 명시적 한계 동의를 요구하며 `corporate_actions_unverified`, `calendar_unverified`를 남깁니다. 모든 현재 입력에는 전체 종목 생애주기·revision 복원 한계에 따른 `universe_incomplete`, `revision_history_unavailable`가 남습니다. 최신 종목만 수집한 연구를 시장 전체의 역사적 성능으로 일반화할 수 없습니다.
+
+## 재현성과 데이터 보관
+
+분석 DB와 원본/정제 DB는 모두 Git에 포함하지 않습니다. JSON 모델을 별도 복사할 때 snapshot/dataset/모델의 hash 연결도 함께 보존해야 하며 임의 단독 파라미터 파일 로드는 제공하지 않습니다. 엄격한 재현은 같은 코드와 기록된 의존성 버전에서 수행합니다. 모델 파라미터를 이용한 추론의 수치 허용 오차는 1e-10입니다. 코드·라이브러리 변경은 새 모델 버전을 만들 수 있습니다. 모델 학습·평가·추론은 운영 registry를 변경하지 않습니다.

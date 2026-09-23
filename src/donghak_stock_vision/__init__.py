@@ -1,3 +1,3 @@
-"""DonghakStockVision 2.0: Phase 1 market data only."""
+"""DonghakStockVision 2.0: market data and conditional signal research."""
 
-__version__ = "2.0.0a1"
+__version__ = "2.0.0a2"

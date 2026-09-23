@@ -3,7 +3,8 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [chore/bootstrap-market-data]
+    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -19,7 +20,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install
-        run: python -m pip install -e '.[dev]'
+        run: python -m pip install -e '.[dev,learning]'
       - name: Ruff
         run: |
           ruff check src tests
@@ -37,3 +38,10 @@ jobs:
           cd /tmp
           /tmp/dsv-wheel/bin/dsv --db /tmp/smoke.sqlite3 collect --provider fake --tickers 005930 --start 2024-01-02 --end 2024-01-08
           /tmp/dsv-wheel/bin/dsv --db /tmp/smoke.sqlite3 validate
+      - name: Installed learning wheel smoke test
+        run: |
+          for wheel in "$GITHUB_WORKSPACE"/dist/*.whl; do
+            /tmp/dsv-wheel/bin/pip install "$wheel[learning]"
+          done
+          cd /tmp
+          PYTHONPATH="$GITHUB_WORKSPACE" /tmp/dsv-wheel/bin/python "$GITHUB_WORKSPACE/tests/learning/wheel_smoke.py"
