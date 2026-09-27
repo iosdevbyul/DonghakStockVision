@@ -38,6 +38,7 @@ jobs:
           cd /tmp
           /tmp/dsv-wheel/bin/dsv --db /tmp/smoke.sqlite3 collect --provider fake --tickers 005930 --start 2024-01-02 --end 2024-01-08
           /tmp/dsv-wheel/bin/dsv --db /tmp/smoke.sqlite3 validate
+          PYTHONPATH="$GITHUB_WORKSPACE" /tmp/dsv-wheel/bin/python "$GITHUB_WORKSPACE/tests/strategy/wheel_smoke.py"
       - name: Installed learning wheel smoke test
         run: |
           for wheel in "$GITHUB_WORKSPACE"/dist/*.whl; do
@@ -45,3 +46,7 @@ jobs:
           done
           cd /tmp
           PYTHONPATH="$GITHUB_WORKSPACE" /tmp/dsv-wheel/bin/python "$GITHUB_WORKSPACE/tests/learning/wheel_smoke.py"
+      - name: Installed decision wheel integration smoke test
+        run: |
+          cd /tmp
+          PYTHONPATH="$GITHUB_WORKSPACE" /tmp/dsv-wheel/bin/python "$GITHUB_WORKSPACE/tests/strategy/wheel_smoke.py" --learning

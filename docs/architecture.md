@@ -19,11 +19,15 @@ Phase 2 [구현]
    → research replay 또는 strict PIT inference → immutable signals
    → 연구 조회 / PIT 진단 조회 / 별도 registry를 통과한 운영 조회
 
-Phase 3~5 [미구현]
- strategy → backtest / trading → 상시 운영
+Phase 3 [연구용 구현]
+ 읽기 전용 분석 + 가상 snapshot + 명시 정책 → 순수 decide → 별도 Decision SQLite
+   → 연구 판단 조회 / 불변 replay (운영 요청은 항상 차단)
+
+Phase 4~5 [미구현]
+ backtest / trading → 상시 운영
 ```
 
-`src/donghak_stock_vision/` 아래 `config`, `data`, `providers`, `ingestion`, `validation`, `storage`가 Phase 1 모듈입니다. `features`, `signals`, `models`, `data.learning/snapshot`, `storage.analysis`, `learning_cli`가 Phase 2를 구성합니다. `strategy`, `backtest`, `trading`은 docstring만 있는 빈 패키지입니다. 기존 루트 실험 파일은 그대로 보존하되 새 패키지의 의존성·배포·자동 검증에 포함하지 않습니다.
+`src/donghak_stock_vision/` 아래 `config`, `data`, `providers`, `ingestion`, `validation`, `storage`가 Phase 1 모듈입니다. `features`, `signals`, `models`, `data.learning/snapshot`, `storage.analysis`, `learning_cli`가 Phase 2를 구성합니다. `strategy`, `storage.decision`, `decision_cli`가 Phase 3를 구성하며 `backtest`, `trading`은 빈 패키지입니다. 기존 루트 실험 파일은 그대로 보존하되 새 패키지의 의존성·배포·자동 검증에 포함하지 않습니다.
 
 실시간 시장 이벤트는 일봉과 시간 의미·정합성 요구가 다르므로 이후 별도 이벤트 계약을 설계해야 합니다. 이번에는 WebSocket·메시지 브로커·전략 기반 클래스·스케줄러를 만들지 않습니다.
 
@@ -68,3 +72,10 @@ Phase 1은 안전한 작은 증분 갱신이 중요해 SQLite를 선택했습니
 analysis DB의 `analysis_artifacts`는 내용 hash 기본키, 수정/삭제 차단 trigger 및 조회 checksum 검사를 사용합니다. snapshot/model/dataset/evaluation/signal과 실행 감사 이력 `analysis_executions`를 구분합니다. `operational_registry`는 방향별 모델·등록시각·검토 증거를 위한 별도 경계이며 이 Phase의 서비스에는 등록 쓰기 기능이 없습니다. validation 통과나 합성 테스트로 채우지 않습니다. 운영 조회는 최신 분석을 먼저 고른 뒤 신선도·문맥·등록을 확인하며 과거 적격 결과로 되돌아가지 않습니다.
 
 단일 머신 SQLite와 메모리 내 학습을 대상으로 합니다. 분석 artifact는 원천 일봉과 행별 특징·라벨·평가를 함께 보관하므로 시장 DB보다 저장량이 늘어날 수 있습니다. 프로세스가 직접 DB trigger를 제거하거나 파일을 변조하는 관리자 공격에 대한 서명 저장소는 아니며, 임의 SQL로 registry를 채우는 것은 지원하는 등록 절차가 아닙니다. 대규모 패널·PIT revision 저장소·운영 등록 워크플로는 향후 별도 검토 대상입니다.
+
+
+## Phase 3 구현 경계
+
+Phase 2 artifact → 읽기 전용 `strategy.adapter.assemble` → 불변 DecisionInput/DecisionPolicy → 순수 `strategy.engine.decide` → 별도 `storage.decision.DecisionStore` → `dsv decide/decisions`로 이어집니다. 계좌·주문·시장은 가상 snapshot입니다. Phase 2 저장소와 공개 명령의 계약을 변경하지 않습니다. 저장된 입력·정책만으로 replay합니다.
+
+BUY/HOLD/SELL/WAIT는 연구용 가상 판단이며 운영 scope는 항상 WAIT/blocked입니다. 실제 주문/계좌 변경, 운영 등록, 활성 리스크 청산, 백테스트를 포함하지 않습니다. 구체적인 시각·수량·차단·진단 계약은 [decision-contract.md](decision-contract.md), 승인 사항은 [phase3-design.md](phase3-design.md)에 있습니다.

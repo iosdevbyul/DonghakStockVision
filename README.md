@@ -1,12 +1,12 @@
 # DonghakStockVision 2.0
 
-한국 주식의 가격·거래량·거래대금을 축적하고, 향후 시장 전환 신호 학습과 매매 판단으로 확장하는 Python 프로젝트입니다. **현재 Phase 1 시장 데이터 파이프라인과 Phase 2 조건부 신호 학습·평가·분석을 구현했습니다.** iOS·웹·외부 프로그램에서 사용할 독립 Python 엔진이며, HTTP 서버·매매 의사결정·주문·백테스트·상시 스케줄러는 구현하지 않습니다.
+한국 주식의 가격·거래량·거래대금을 축적하고, 향후 시장 전환 신호 학습과 매매 판단으로 확장하는 Python 프로젝트입니다. **현재 Phase 1 시장 데이터, Phase 2 조건부 신호 분석, Phase 3 연구용 가상 판단을 구현했습니다.** iOS·웹·외부 프로그램에서 사용할 독립 Python 엔진이며, 운영 판단·HTTP 서버·실제 주문·백테스트·상시 스케줄러는 구현하지 않습니다.
 
 | Phase | 목표 | 2.0 상태 |
 | --- | --- | --- |
 | 1 | 프로젝트 초기 설정·시장 데이터 수집·검증·저장 | 구현, KRX 실호출 검증은 인증 승인 후 |
 | 2 | 상승·하락 신호 학습 | 구현, 실제 시장 성능·PIT 운영 검증은 미완료 |
-| 3 | 매수·보유·매도·관망 판단 | 미구현 |
+| 3 | 매수·보유·매도·관망 판단 | 연구용 가상 판단 구현, 운영은 항상 차단 |
 | 4 | 백테스트·모의거래 | 미구현 |
 | 5 | 상시 실행 | 미구현 |
 
@@ -159,9 +159,30 @@ DSV_RUN_LIVE=1 pytest -m live tests/integration/test_live_krx.py
 
 ## 구조와 정책
 
-- [architecture.md](docs/architecture.md): 목표 구조와 Phase 1/2 경계, SQLite 선정 이유
+- [architecture.md](docs/architecture.md): 목표 구조와 Phase 1/2/3 경계, SQLite 선정 이유
 - [phase2-design.md](docs/phase2-design.md): 승인된 v2 라벨·표본량·시간순 검증·운영 등록 계약
 - [data-contract.md](docs/data-contract.md): 타입·시간대·원본·결측·거래정지·중복·수정주가 정책
 - [providers.md](docs/providers.md): 공식 출처 기반 공급자 비교 및 KRX 매핑
 
 `validate`는 SQLite·스키마·원본 체크섬·참조 연결을 검사합니다. 공식 거래일 캘린더나 종목 생애주기 마스터를 갖고 있지 않아 “모든 거래일이 빠짐없이 존재함”을 보증하지는 않습니다. 현재 종목 목록을 과거에 적용해 상장폐지 종목을 지우지 않습니다.
+
+
+## Phase 3 연구용 가상 판단
+
+[설계 v2](docs/phase3-design.md)와 [입력·정책 계약](docs/decision-contract.md)에 따라 Phase 2의 정확한 analysis_id를 소비합니다. 독립 임계값·예산·매도 방식·한도·TTL·비용·재진입 정책을 JSON으로 명시해야 합니다. 생략 시 WAIT/blocked이며 거래 수치 기본값은 없습니다. 손절·익절·최대 보유 기간은 각각 disabled/parameters=null만 허용합니다. 기본 패키지로 판단·조회·replay가 가능하며 새 모델 학습만 learning extra가 필요합니다.
+
+아래 경로는 사용자가 준비한 불변 가상 snapshot과 명시 연구 정책입니다. 파일 구조와 합성 fixture는 계약 문서를 참고하세요. 날짜·ID·정책은 동일 연구 시나리오에 맞춰 지정합니다.
+
+```bash
+dsv decide --scope research --ticker 005930 --as-of '2024-01-08T16:00:00+09:00' \
+  --analysis-id ANALYSIS_ID --analysis-db .data/analysis.sqlite3 \
+  --decision-db .data/decisions.sqlite3 --policy research-policy.json \
+  --account virtual-account.json --orders virtual-orders.json --market-context virtual-market.json
+
+dsv decisions --decision-db .data/decisions.sqlite3 --scope research --ticker 005930
+dsv decisions --decision-db .data/decisions.sqlite3 --scope research --decision-id DECISION_ID --replay
+```
+
+정상 연구 판단은 virtual/종료 코드 0, 차단은 WAIT/blocked/1, 파일·형식 오류는 2입니다. 기본 decisions 조회 scope는 operational이며 연구 결과로 대체하지 않습니다. 운영 decide는 항상 차단합니다. 모든 결과의 operational_eligible/executable은 false이고 실제 주문·계좌 변경은 없습니다. HOLD는 안전성 보장이 아니며 하락 문맥에서 청산 모델이 비적용인 경우 그 사실과 비활성 리스크 규칙을 diagnostics에 보존합니다.
+
+별도 Decision SQLite에 입력·정책·결과를 원자적으로 저장합니다. 원본 시장/분석 DB를 수정하지 않으며 이후 DB·정책 파일 변경이나 삭제에도 replay는 최초 bundle을 사용합니다. 합성 테스트는 실제 매매 성능의 증거가 아닙니다. 당일 일봉, 운영 등록/철회 이력, 실제 리스크 청산 활성화는 후속 승인 대상입니다.
