@@ -59,7 +59,7 @@ class DecisionStore:
         computed_at = datetime.now(UTC).isoformat()
         with self.connection:
             self.connection.execute(
-                "INSERT OR IGNORE INTO decision_bundles VALUES(?,?,?,?,?,?,?,?)",
+                "INSERT INTO decision_bundles VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING",
                 (
                     result.identifier,
                     value["decision_scope"],
@@ -71,6 +71,23 @@ class DecisionStore:
                     computed_at,
                 ),
             )
+            # The INSERT holds SQLite's write lock through this check and audit write.
+            # A duplicate ID must never silently accept different immutable contents.
+            existing = self.connection.execute(
+                "SELECT input_json,policy_json,result_json,scope,ticker,as_of "
+                "FROM decision_bundles WHERE id=?",
+                (result.identifier,),
+            ).fetchone()
+            expected = (
+                inputs.payload_json,
+                policy.payload_json,
+                result.payload_json,
+                value["decision_scope"],
+                value["ticker"],
+                value["decision_as_of"],
+            )
+            if existing != expected:
+                raise ValueError("decision_bundle_conflict")
             self.connection.execute(
                 "INSERT INTO decision_executions(decision_id,computed_at) VALUES(?,?)",
                 (result.identifier, computed_at),
@@ -119,10 +136,17 @@ class DecisionStore:
     ) -> list[dict[str, Any]]:
         if scope not in {"research", "operational"} or type(limit) is not int or limit < 1:
             raise ValueError("invalid_decision_query")
-        cutoff = timestamp(as_of).isoformat() if as_of else None
+        cutoff = timestamp(as_of) if as_of else None
         rows = self.connection.execute(
-            "SELECT id FROM decision_bundles WHERE scope=? AND (? IS NULL OR ticker=?) "
-            "AND (? IS NULL OR as_of<=?) ORDER BY as_of DESC,id LIMIT ?",
-            (scope, ticker, ticker, cutoff, cutoff, limit),
+            "SELECT id,as_of FROM decision_bundles WHERE scope=? AND (? IS NULL OR ticker=?)",
+            (scope, ticker, ticker),
         ).fetchall()
-        return [self.get(row[0]) for row in rows]
+        # Compare UTC instants without rewriting legacy JSON, indexed text, or IDs.
+        # Apply LIMIT after chronological filtering/sorting, preserving id ASC ties.
+        instants = [(key, timestamp(instant)) for key, instant in rows]
+        eligible = [
+            (key, instant) for key, instant in instants if cutoff is None or instant <= cutoff
+        ]
+        eligible.sort(key=lambda row: row[0])
+        eligible.sort(key=lambda row: row[1], reverse=True)
+        return [self.get(key) for key, _ in eligible[:limit]]
