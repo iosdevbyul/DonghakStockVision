@@ -77,3 +77,10 @@ decision_bundles에 input_json/policy_json/result_json을 함께 INSERT하고 de
 query(scope="operational", ticker=None, as_of=None, limit=100)는 cutoff 이하 판단 이력을 최신순 조회하며 연구로 fallback하지 않는다. replay(decision_id)는 저장된 입력·정책으로 재계산하고 hash/결과가 같아야 한다. 정책·엔진 변경 시 예전 엔진을 자동 선택하지 않으며 불일치는 명시 오류다. computed_at은 최초 보관 시각, 반복 실행 시각은 별도 감사 테이블이다.
 
 완전한 합성 정책과 가상 snapshot 예시는 [tests/strategy/helpers.py](../tests/strategy/helpers.py)에 있다. 해당 수치는 테스트 fixture이며 실거래 기본값이나 추천 정책이 아니다.
+
+
+### 저장 멱등성과 시간 조회 호환성
+
+동일 decision_id 재저장은 기존 input_json/policy_json/result_json/scope/ticker/as_of 여섯 필드와 새 값이 **문자열까지 완전히 일치**해야 한다. 일치하면 최초 bundle/created_at을 보존하고 실행 감사만 추가한다. 하나라도 다르면 decision_bundle_conflict 오류로 트랜잭션 전체를 롤백하며 감사 이력을 추가하지 않는다. 같은 시각의 다른 offset 표기도 중복 저장에서 자동 동치화하지 않는다. save 응답의 computed_at은 해당 실행 감사 시각이고, get/replay의 computed_at은 최초 생성 시각이라는 기존 계약을 유지한다.
+
+query는 scope/ticker로 선택한 행의 as_of와 cutoff를 timezone-aware UTC datetime으로 해석한 후 경계 포함 필터와 실제 시각 내림차순 정렬을 적용한다. 같은 시각은 decision_id 오름차순이며 limit은 정렬 후 적용한다. +09:00, Z, 음수 offset과 마이크로초를 문자열 순서나 부동소수점 변환 없이 비교한다. 기존 JSON·indexed text·identifier를 재작성하지 않고 스키마 마이그레이션도 하지 않으므로 checksum/get/replay 계약은 바뀌지 않는다. 로컬 연구 DB 범위의 단순 구현으로 해당 scope/ticker의 시간 메타데이터를 메모리에서 정렬한다.
