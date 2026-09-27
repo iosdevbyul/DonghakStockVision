@@ -23,8 +23,11 @@ Phase 3 [연구용 구현]
  읽기 전용 분석 + 가상 snapshot + 명시 정책 → 순수 decide → 별도 Decision SQLite
    → 연구 판단 조회 / 불변 replay (운영 요청은 항상 차단)
 
-Phase 4~5 [미구현]
- backtest / trading → 상시 운영
+Phase 4 [설계 초안, 미구현]
+ 과거 백테스트 / 순차 가상 모의거래 (구현·정책 승인 전)
+
+Phase 5 [미구현]
+ 상시 운영
 ```
 
 `src/donghak_stock_vision/` 아래 `config`, `data`, `providers`, `ingestion`, `validation`, `storage`가 Phase 1 모듈입니다. `features`, `signals`, `models`, `data.learning/snapshot`, `storage.analysis`, `learning_cli`가 Phase 2를 구성합니다. `strategy`, `storage.decision`, `decision_cli`가 Phase 3를 구성하며 `backtest`, `trading`은 빈 패키지입니다. 기존 루트 실험 파일은 그대로 보존하되 새 패키지의 의존성·배포·자동 검증에 포함하지 않습니다.
@@ -79,3 +82,8 @@ analysis DB의 `analysis_artifacts`는 내용 hash 기본키, 수정/삭제 차�
 Phase 2 artifact → 읽기 전용 `strategy.adapter.assemble` → 불변 DecisionInput/DecisionPolicy → 순수 `strategy.engine.decide` → 별도 `storage.decision.DecisionStore` → `dsv decide/decisions`로 이어집니다. 계좌·주문·시장은 가상 snapshot입니다. Phase 2 저장소와 공개 명령의 계약을 변경하지 않습니다. 저장된 입력·정책만으로 replay합니다.
 
 BUY/HOLD/SELL/WAIT는 연구용 가상 판단이며 운영 scope는 항상 WAIT/blocked입니다. 실제 주문/계좌 변경, 운영 등록, 활성 리스크 청산, 백테스트를 포함하지 않습니다. 구체적인 시각·수량·차단·진단 계약은 [decision-contract.md](decision-contract.md), 승인 사항은 [phase3-design.md](phase3-design.md)에 있습니다.
+
+
+## Phase 4 설계 상태
+
+[Phase 4 설계 초안](phase4-design.md)은 기존 분석·연구 판단을 재사용하는 백테스트/순차 가상 모의거래의 시간 경계, 주문·체결 분리, 별도 원장, 재현성과 미결정 정책을 제안합니다. 현재 설계만 작성했으며 엔진·DB·CLI·테스트 구현은 없습니다. Phase 3의 운영 차단 계약은 유지합니다.
