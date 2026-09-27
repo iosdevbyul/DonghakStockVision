@@ -42,6 +42,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.learning_cli import add_commands
 
     add_commands(sub)
+    from donghak_stock_vision.decision_cli import add_commands as add_decisions
+
+    add_decisions(sub)
     return root
 
 
@@ -54,6 +57,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         settings = Settings.from_env()
         path = args.db or settings.db_path
+        if args.command in {"decide", "decisions"}:
+            from donghak_stock_vision.decision_cli import run as run_decision
+
+            return run_decision(args, path)
         if args.command in {"train", "evaluate", "infer", "signals"}:
             from donghak_stock_vision.learning_cli import run
 
