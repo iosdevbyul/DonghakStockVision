@@ -203,3 +203,9 @@ dsv backtest --input synthetic-request.json \
 현금·종목은 고정 입력과 일치해야 하며 시각에는 timezone offset이 필요합니다.
 평가 가격·TTL·반올림 정책을 명시해야 하고, mark가 부족하면 equity/return은 null입니다.
 종료 포지션을 강제 매도하지 않으며 결과는 실제 PIT/OOS 투자 성과가 아닙니다.
+
+실제 저장 일봉을 동결하는 입력 생성 전용 명령은 `dsv backtest-input`입니다.
+필수 manifest·정책·품질 입력과 분석 snapshot 제약은
+[historical-backtesting.md](docs/historical-backtesting.md)를 참고하세요.
+현재 실데이터 체결/Runner는 지원하지 않으며, 생성 결과에도 `execution_status=blocked`를
+명시합니다. 합성 체결 정책을 실데이터에 자동 적용하지 않습니다.

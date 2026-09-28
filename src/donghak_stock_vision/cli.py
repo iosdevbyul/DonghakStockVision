@@ -48,6 +48,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.backtest_cli import add_commands as add_backtest
 
     add_backtest(sub)
+    from donghak_stock_vision.historical_cli import add_commands as add_historical
+
+    add_historical(sub)
     return root
 
 
@@ -58,6 +61,10 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
+        if args.command == "backtest-input":
+            from donghak_stock_vision.historical_cli import run as run_historical
+
+            return run_historical(args)
         if args.command == "backtest":
             from donghak_stock_vision.backtest_cli import run as run_backtest
 
