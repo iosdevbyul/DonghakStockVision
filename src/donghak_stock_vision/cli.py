@@ -45,6 +45,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.decision_cli import add_commands as add_decisions
 
     add_decisions(sub)
+    from donghak_stock_vision.backtest_cli import add_commands as add_backtest
+
+    add_backtest(sub)
     return root
 
 
@@ -55,6 +58,10 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
+        if args.command == "backtest":
+            from donghak_stock_vision.backtest_cli import run as run_backtest
+
+            return run_backtest(args)
         settings = Settings.from_env()
         path = args.db or settings.db_path
         if args.command in {"decide", "decisions"}:
