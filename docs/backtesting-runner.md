@@ -82,7 +82,11 @@ concurrent_reservation_unsupported로 차단한다. 단일 pending 주문을 명
 순차 처리하며 계약을 완화하지 않는다. 다종목 판단 순서는 결정적이지만 동시
 다종목 예약 실행은 후속 revision 계약 확장이 필요하다.
 
-PR-D는 체결 후 완전한 청산/분석 lineage projection이 없어, fills가 있는 원장의
+아래 제약은 PR-F의 기본 무증거 경로에 해당한다. PR-F.1의
+[검증된 이력 경로](backtesting-position-history.md)를 명시적으로 선택하면
+실제 Ledger/판단/체결 증거로 완전한 청산 및 재진입을 연결한다.
+
+PR-D는 증거가 없는 경우 체결 후 완전한 청산/분석 lineage projection이 없어, fills가 있는 원장의
 새 후보를 exit_history_projection_unavailable로 차단한다.
 runner도 이를 우회하지 않는다. snapshot history_complete를 허위 true로 만들지 않는다.
 Phase 3 SELL이 생성되더라도 PR-D에서 막힐 수 있다.
