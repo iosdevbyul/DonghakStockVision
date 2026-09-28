@@ -51,7 +51,7 @@ checkpoint replay, 현금·주식·주문 snapshot을 검증한다. 기존 예�
 - PIT: PR-B의 모델 선택·과거 revision 증거 부족을 그대로 차단한다.
 - 실데이터: 시장 view의 not_execution_evidence는 거래 가능 증거가 아니다.
   실제 거래 가능 상태의 공개 증거 계약이 없으므로 실데이터 후보도 차단한다.
-- 체결 이력이 있는 원장: 완전한 청산→분석 연결 이력의 공개 projection이 없다.
+- 검증된 position_history를 제공하지 않은 체결 이력: 완전한 청산→분석 연결을 입증할 수 없다.
   이를 첫 진입으로 추정하지 않고 exit_history_projection_unavailable로 차단한다.
 
 따라서 현재 admitted 경로는 합성 historical 연구 fixture에 한정된다.
@@ -95,3 +95,8 @@ idempotency 구현은 제외한다. 체결, runner, 수익률, CLI도 구현하�
 예약/계좌 binding, revision/decision 충돌, 시간 공개 및 PIT 차단,
 합성 출처 전파, 계좌 불변성과 실제 Phase 3 저장/replay 연결을 검증한다.
 기존 Phase 1~3 및 PR-A~PR-C 회귀 테스트는 그대로 유지한다.
+
+PR-F.1은 선택적인 position_history 입력을 추가했다.
+[검증 계약](backtesting-position-history.md)에 따라 Ledger와 실제 판단/접수/체결을
+재생 검증한 경우에만 기존 exit_history 차단 대신 정확한 ticker별 last_exit를 대조한다.
+증거를 제공하지 않은 기존 호출은 변경 없이 차단한다.

@@ -10,6 +10,7 @@ from donghak_stock_vision.backtest.clock import VirtualClock
 from donghak_stock_vision.backtest.contracts import VirtualOrder
 from donghak_stock_vision.backtest.data import PROVENANCE, FrozenJSON, FrozenTape
 from donghak_stock_vision.backtest.ledger import LedgerState, checkpoint, restore
+from donghak_stock_vision.backtest.position_history import validate_position_history
 from donghak_stock_vision.backtest.validation import fields, integer, money, utc, validate_run
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.storage.decision import DecisionStore
@@ -109,6 +110,7 @@ def account_binding(
     market_items: list[dict[str, Any]],
     tape: FrozenTape,
     p: dict[str, Any],
+    position_history: FrozenJSON | None = None,
 ) -> Decimal:
     b, s = bundle.inputs.to_dict(), ledger.to_dict()
     ticker = b["request"]["ticker"]
@@ -139,12 +141,23 @@ def account_binding(
         for o in orders["items"]
     )
     gate(expected == observed, "orders_snapshot_mismatch")
-    # The public ledger lacks a complete position-exit/analysis lineage projection.
-    # Do not turn partial/missing exit history into first-entry permission.
-    gate(
-        not s["fills"] and orders["history_complete"] is True and orders["last_exit"] is None,
-        "exit_history_projection_unavailable",
-    )
+    if position_history is None:
+        gate(
+            not s["fills"] and orders["history_complete"] is True and orders["last_exit"] is None,
+            "exit_history_projection_unavailable",
+        )
+    else:
+        try:
+            verified = validate_position_history(
+                position_history, ledger, tape, cutoff=b["request"]["decision_as_of"]
+            )
+        except (ValueError, KeyError, TypeError) as error:
+            raise AdmissionFailure(f"position_history_invalid:{error}") from error
+        gate(
+            orders["history_complete"] is True
+            and orders["last_exit"] == verified["last_exits"].get(ticker),
+            "exit_history_snapshot_mismatch",
+        )
     prices: dict[str, Decimal] = {}
     needed = {ticker} | {t for t, pos in s["positions"].items() if pos["quantity"]}
     for symbol in sorted(needed):
@@ -198,6 +211,7 @@ def admit(
     admission_clock: VirtualClock,
     policy: dict[str, Any] | None,
     history: FrozenJSON,
+    position_history: FrozenJSON | None = None,
 ) -> tuple[FrozenJSON, FrozenJSON]:
     """Return immutable result and caller-held admission history; never change a ledger."""
     m, state, r = ledger.manifest.to_dict(), ledger.to_dict(), bundle.result.to_dict()
@@ -294,7 +308,9 @@ def admit(
             "rejected",
         )
         with localcontext(Context(prec=80)):
-            price = account_binding(bundle, ledger, market_view.to_dict()["items"], tape, p)
+            price = account_binding(
+                bundle, ledger, market_view.to_dict()["items"], tape, p, position_history
+            )
             qty = integer(r["proposed_quantity"], positive=True)
             gate(qty <= p["max_order_quantity"], "order_quantity_limit", "rejected")
             gate(ticker in p["ordered_tickers"], "order_sequence_missing")

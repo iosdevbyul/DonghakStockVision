@@ -11,6 +11,7 @@ from donghak_stock_vision.backtest.data import FrozenJSON, FrozenTape
 from donghak_stock_vision.backtest.decision_bridge import DecisionBundle, admit, policy_values
 from donghak_stock_vision.backtest.execution import accept_candidate, execute, settings
 from donghak_stock_vision.backtest.ledger import LedgerState, checkpoint, restore
+from donghak_stock_vision.backtest.position_history import build_position_history
 from donghak_stock_vision.backtest.validation import fields, integer, require, utc
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.data.schema import validate_ticker
@@ -32,8 +33,11 @@ class BacktestRunner:
 
     def validate(self) -> dict[str, Any]:
         c = fields(
-            self.config.to_dict(), "run_id start_at end_at tickers event_clock decision_steps"
+            self.config.to_dict(),
+            "run_id start_at end_at tickers event_clock decision_steps"
+            + (" history_mode" if "history_mode" in self.config.to_dict() else ""),
         )
+        require(c.get("history_mode") in {None, "verified_execution"}, "unsupported_history_mode")
         m = self.tape.manifest.to_dict()
         require(m["information_mode"] == "historical_research", "pit_runner_unsupported")
         require(m["data_origin"] == "synthetic", "real_runner_unsupported")
@@ -104,6 +108,7 @@ class BacktestRunner:
         step: dict[str, Any],
         analysis: FrozenAnalysis,
         clock: VirtualClock,
+        position_history: FrozenJSON | None = None,
     ) -> DecisionInput:
         """Read-only projection of the current virtual account, after the analysis gate."""
         view = self.tape.view(clock).to_dict()
@@ -159,8 +164,10 @@ class BacktestRunner:
             "account_ref": s["account_id"],
             "complete": True,
             # Do not invent missing post-fill exit/analysis lineage.
-            "history_complete": not bool(s["fills"]),
-            "last_exit": None,
+            "history_complete": position_history is not None or not bool(s["fills"]),
+            "last_exit": position_history.to_dict()["last_exits"].get(ticker)
+            if position_history
+            else None,
             "items": [
                 {
                     "ticker": o["current"]["ticker"],
@@ -222,9 +229,12 @@ class BacktestRunner:
         pending: dict[str, FrozenJSON],
         history: FrozenJSON,
         c: dict[str, Any],
+        records: dict[str, FrozenJSON] | None = None,
     ) -> tuple[LedgerState, dict[str, FrozenJSON], FrozenJSON, dict[str, Any]]:
         """Stage a whole event; the caller commits returned immutable state only on success."""
         pending = dict(pending)
+        records = dict(records or {})
+        verified_history = c.get("history_mode") == "verified_execution"
         e = event.to_dict()
         report: dict[str, Any] = {
             "sequence": clock.sequence,
@@ -259,6 +269,10 @@ class BacktestRunner:
             report["executions"].append(output.to_dict())
             state = updated
             if output.to_dict()["status"] == "filled":
+                if verified_history:
+                    packet = records[accepted["order_id"]].to_dict()
+                    packet["execution"] = output.to_dict()
+                    records[accepted["order_id"]] = FrozenJSON.freeze(packet)
                 del pending[ticker]
         artifacts = {a.bundle.to_dict()["analysis_id"]: a for a in self.analyses}
         steps = [s for s in c["decision_steps"] if s["sequence"] == clock.sequence]
@@ -269,7 +283,17 @@ class BacktestRunner:
             if public["status"] == "blocked":
                 report["blocked"].append({"ticker": step["ticker"], "reason": public["reason"]})
                 continue
-            inputs = self.project(state, step, analysis, clock)
+            proof = (
+                build_position_history(
+                    state,
+                    self.tape,
+                    tuple(v for v in records.values() if v.to_dict()["execution"]),
+                    cutoff=clock.cutoff,
+                )
+                if verified_history
+                else None
+            )
+            inputs = self.project(state, step, analysis, clock, proof)
             bundle = DecisionBundle.calculate(inputs, self.decision_policy, state)
             report["decisions"].append(
                 {
@@ -289,6 +313,7 @@ class BacktestRunner:
                 clock,
                 step["admission_policy"],
                 history,
+                position_history=proof,
             )
             report["candidates"].append(candidate.to_dict())
             if not candidate.to_dict()["virtual_order_eligible"]:
@@ -313,9 +338,31 @@ class BacktestRunner:
             )
             report["admissions"].append(acceptance.to_dict())
             if acceptance.to_dict()["status"] == "accepted":
+                if verified_history:
+                    records[acceptance.to_dict()["order_id"]] = FrozenJSON.freeze(
+                        {
+                            "decision_input": inputs.to_dict(),
+                            "decision_policy": self.decision_policy.to_dict(),
+                            "decision_result": bundle.result.to_dict(),
+                            "decision_ledger_hash": state.identifier,
+                            "analysis_bundle": analysis.bundle.to_dict(),
+                            "acceptance": acceptance.to_dict(),
+                            "execution": None,
+                        }
+                    )
                 state, history = updated, updated_history
                 pending[step["ticker"]] = acceptance
+        if verified_history:
+            proof = build_position_history(
+                state,
+                self.tape,
+                tuple(v for v in records.values() if v.to_dict()["execution"]),
+                cutoff=clock.cutoff,
+            )
+            report["position_history_hash"] = proof.identifier
         report["checkpoint_hash"] = checkpoint(state).identifier
+        if verified_history:
+            report["_staged_trade_records"] = records
         return state, pending, history, report
 
     def run(self) -> FrozenJSON:
@@ -323,6 +370,7 @@ class BacktestRunner:
         state, history = self.initial, FrozenJSON.freeze({})
         pending: dict[str, FrozenJSON] = {}
         reports: list[dict[str, Any]] = []
+        records: dict[str, FrozenJSON] = {}
         previous: VirtualClock | None = None
         for event in self.tape.events:
             e = event.to_dict()
@@ -336,7 +384,7 @@ class BacktestRunner:
             previous = clock
             try:
                 updated, next_pending, next_history, report = self.process_event(
-                    event, clock, state, pending, history, c
+                    event, clock, state, pending, history, c, records
                 )
             except (ValueError, KeyError, TypeError, ArithmeticError, RuntimeError) as error:
                 reports.append(
@@ -349,7 +397,8 @@ class BacktestRunner:
                     }
                 )
                 continue
-            state, pending, history = updated, next_pending, next_history
+            next_records = report.pop("_staged_trade_records", records)
+            state, pending, history, records = updated, next_pending, next_history, next_records
             reports.append(report)
         identity = {
             "config": c,
@@ -380,4 +429,13 @@ class BacktestRunner:
             "final_checkpoint": checkpoint(state).to_dict(),
             "final_checkpoint_hash": checkpoint(state).identifier,
         }
+        if c.get("history_mode") == "verified_execution":
+            proof = build_position_history(
+                state,
+                self.tape,
+                tuple(v for v in records.values() if v.to_dict()["execution"]),
+                cutoff=c["end_at"],
+            )
+            payload["position_history"] = proof.to_dict()
+            payload["position_history_hash"] = proof.identifier
         return FrozenJSON.freeze(payload)
