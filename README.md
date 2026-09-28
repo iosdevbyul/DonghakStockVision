@@ -186,3 +186,20 @@ dsv decisions --decision-db .data/decisions.sqlite3 --scope research --decision-
 정상 연구 판단은 virtual/종료 코드 0, 차단은 WAIT/blocked/1, 파일·형식 오류는 2입니다. 기본 decisions 조회 scope는 operational이며 연구 결과로 대체하지 않습니다. 운영 decide는 항상 차단합니다. 모든 결과의 operational_eligible/executable은 false이고 실제 주문·계좌 변경은 없습니다. HOLD는 안전성 보장이 아니며 하락 문맥에서 청산 모델이 비적용인 경우 그 사실과 비활성 리스크 규칙을 diagnostics에 보존합니다.
 
 별도 Decision SQLite에 입력·정책·결과를 원자적으로 저장합니다. 원본 시장/분석 DB를 수정하지 않으며 이후 DB·정책 파일 변경이나 삭제에도 replay는 최초 bundle을 사용합니다. 합성 테스트는 실제 매매 성능의 증거가 아닙니다. 당일 일봉, 운영 등록/철회 이력, 실제 리스크 청산 활성화는 후속 승인 대상입니다.
+
+## Phase 4 연구 성과 보고
+
+`dsv backtest`는 명시적 정책과 고정된 **합성 historical research 입력**을 받아
+Runner → Ledger → Performance → Report를 실행합니다. 실제 시장 데이터나 모델을 자동으로
+구성하지 않습니다. 입력 생성 API, 필수 정책과 한계는
+[backtesting-performance.md](docs/backtesting-performance.md)를 참고하세요.
+
+```bash
+dsv backtest --input synthetic-request.json \
+  --start 2026-01-05T00:00:00Z --end 2026-01-12T02:00:00Z \
+  --initial-cash 10000 --tickers 005930 --format text
+```
+
+현금·종목은 고정 입력과 일치해야 하며 시각에는 timezone offset이 필요합니다.
+평가 가격·TTL·반올림 정책을 명시해야 하고, mark가 부족하면 equity/return은 null입니다.
+종료 포지션을 강제 매도하지 않으며 결과는 실제 PIT/OOS 투자 성과가 아닙니다.
