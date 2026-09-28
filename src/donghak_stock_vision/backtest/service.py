@@ -33,6 +33,7 @@ def freeze_request(runner: BacktestRunner, valuation_policy: FrozenJSON) -> Froz
 def run_backtest(
     document: FrozenJSON, *, start: str, end: str, initial_cash: str, tickers: list[str]
 ) -> tuple[FrozenJSON, FrozenJSON, str]:
+    require(document.to_dict().get("kind") != "historical_input_v1", "real_runner_unsupported")
     d = fields(
         document.to_dict(),
         "version tape analyses initial_checkpoint decision_policy "
