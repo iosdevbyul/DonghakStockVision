@@ -34,10 +34,12 @@ from tests.strategy.helpers import policy as decision_policy
 class ControlledResearch(SignalService):
     """Override only the public analysis boundary; all admission/execution checks stay real."""
 
+    buy_days = (9,)
+
     def research(
         self, version: str, snapshot_id: str, tickers: list[str], anchor_date: date
     ) -> list[dict[str, Any]]:
-        buying = anchor_date.day == 9
+        buying = anchor_date.day in self.buy_days
         a = inputs(0, "prior_decline" if buying else "prior_rise", 0.8)["analysis"]
         a.update(
             ticker=tickers[0],
@@ -64,6 +66,8 @@ def historical_runner(
     decisions: tuple[int, ...] = (1, 3),
     end_day: int = 14,
     reserve_notional: str = "950",
+    session_days: tuple[int, ...] = (9, 12, 13, 14),
+    session_prices: tuple[int, ...] | None = None,
     **policy_changes: Any,
 ) -> BacktestRunner:
     import donghak_stock_vision.backtest.historical as builder
@@ -72,8 +76,8 @@ def historical_runner(
     analysis = AnalysisStore(path / "analysis.db")
     collected = datetime(2026, 2, 1, tzinfo=UTC)
     captured = datetime(2026, 2, 2, tzinfo=UTC)
-    days = [date(2026, 1, d) for d in (9, 12, 13, 14) if d <= end_day]
-    prices = [100, buy_open, 100, sell_open]
+    days = [date(2026, 1, d) for d in session_days if d <= end_day]
+    prices = list(session_prices) if session_prices else [100, buy_open, 100, sell_open]
     rows = [
         DailyBar(
             "005930",
@@ -148,7 +152,7 @@ def historical_runner(
 
     real(m)
     start = "2026-01-09T00:00:00+09:00"
-    m.update(start_at=start, end_at="2026-01-15T00:00:00+09:00")
+    m.update(start_at=start, end_at=f"2026-01-{end_day + 1:02d}T00:00:00+09:00")
     m["initial_account"].update(
         observed_at=start,
         received_at=start,

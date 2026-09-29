@@ -189,7 +189,7 @@ dsv decisions --decision-db .data/decisions.sqlite3 --scope research --decision-
 
 ## Phase 4 연구 성과 보고
 
-`dsv backtest`는 명시적 정책과 고정된 **합성 historical research 입력**을 받아
+`dsv backtest --input`은 명시적 정책과 고정된 **합성 historical research 입력**을 받아
 Runner → Ledger → Performance → Report를 실행합니다. 실제 시장 데이터나 모델을 자동으로
 구성하지 않습니다. 입력 생성 API, 필수 정책과 한계는
 [backtesting-performance.md](docs/backtesting-performance.md)를 참고하세요.
@@ -207,5 +207,13 @@ dsv backtest --input synthetic-request.json \
 실제 저장 일봉을 동결하는 입력 생성 전용 명령은 `dsv backtest-input`입니다.
 필수 manifest·정책·품질 입력과 분석 snapshot 제약은
 [historical-backtesting.md](docs/historical-backtesting.md)를 참고하세요.
-현재 실데이터 체결/Runner는 지원하지 않으며, 생성 결과에도 `execution_status=blocked`를
-명시합니다. 합성 체결 정책을 실데이터에 자동 적용하지 않습니다.
+입력 생성 전용 결과는 아직 execution policy가 바인딩되지 않아 `execution_status=blocked`를
+명시합니다. 아래 E2E 경로에서 명시적 historical 정책과 증거를 검증한 경우에만 실행합니다.
+합성 체결 정책을 실데이터에 자동 적용하지 않습니다.
+
+실제 historical DB에서 실행·성과·보고서까지 연결하는 경로는
+`dsv backtest --market-db ... --analysis-db ... --model-id ... --config ...
+--start YYYY-MM-DD --end YYYY-MM-DD --initial-cash ... --ticker 005930`입니다.
+명시적 historical execution/valuation 정책과 동일 모델 snapshot이 필요합니다.
+현재 실행은 단일 ticker 연구 시뮬레이션으로 제한됩니다.
+[필수 설정 및 실행 의미](docs/historical-backtest-e2e.md)를 확인하세요.

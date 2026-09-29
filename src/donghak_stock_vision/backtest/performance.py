@@ -26,8 +26,11 @@ def policy_values(policy: FrozenJSON) -> dict[str, Any]:
     p = fields(
         policy.to_dict(),
         "version field selection max_age_seconds money_quantum "
-        "money_rounding ratio_quantum ratio_rounding schedule external_cash_flow_krw",
+        "money_rounding ratio_quantum ratio_rounding schedule external_cash_flow_krw"
+        + (" historical_marks" if "historical_marks" in policy.to_dict() else ""),
     )
+    if "historical_marks" in p:
+        require(p["historical_marks"] == "verified_daily_research", "unsupported_historical_marks")
     text(p["version"])
     require(p["field"] in {"open", "high", "low", "close"}, "unsupported_valuation_field")
     require(p["selection"] == "latest_public_sequence", "unsupported_mark_selection")
@@ -89,8 +92,17 @@ def valuation(
                 mark["adjustment"] != "unadjusted"
                 or mark["quality_flags"]
                 or utc(event["quality_available_at"]) > utc(clock.cutoff)
-                or event["listing_status"] != "listed"
-                or event["halt_status"] != "trading"
+                or (
+                    not (
+                        p.get("historical_marks") == "verified_daily_research"
+                        and event["quality_status"] == "verified"
+                        and event["session"] == "closed"
+                        and event["listing_status"] == "unknown"
+                        and event["halt_status"] == "unknown"
+                        and event["public_fields"]["volume"] > 0
+                    )
+                    and (event["listing_status"] != "listed" or event["halt_status"] != "trading")
+                )
             ):
                 row["reason"] = "mark_quality_unavailable"
             else:
@@ -278,21 +290,42 @@ def drawdown(curve: list[dict[str, Any]], p: dict[str, Any]) -> dict[str, Any]:
 
 
 def calculate_performance(
-    run_result: FrozenJSON, tape: FrozenTape, valuation_policy: FrozenJSON
+    run_result: FrozenJSON,
+    tape: FrozenTape,
+    valuation_policy: FrozenJSON,
+    *,
+    historical_input: FrozenJSON | None = None,
 ) -> FrozenJSON:
     """Return immutable net research performance; require complete, verified fill lineage."""
     p = policy_values(valuation_policy)
     run = run_result.to_dict()
+    historical = tape.manifest.to_dict()["data_origin"] == "real"
+    if historical:
+        from donghak_stock_vision.backtest.historical_execution import MODE, validate_input
+
+        validate_input(tape, historical_input)
+        assert historical_input is not None
+        require(
+            run.get("historical_input_hash") == historical_input.identifier,
+            "performance_historical_input_mismatch",
+        )
+        require(run.get("execution_assumption") == MODE, "historical_execution_required")
+        require(
+            p.get("historical_marks") == "verified_daily_research",
+            "historical_valuation_assumption_required",
+        )
+    else:
+        require("historical_marks" not in p, "historical_marks_require_real_input")
     require(run["run_id"] == tape.manifest.identifier, "performance_run_mismatch")
     require(
         run["information_mode"] == "historical_research"
-        and run["usage_restriction"] == "synthetic_test_only"
+        and run["usage_restriction"] == ("research_only" if historical else "synthetic_test_only")
         and run["executable"] is False
         and run["operational_eligible"] is False,
         "research_performance_only",
     )
     require(
-        tape.manifest.to_dict()["data_origin"] == "synthetic"
+        tape.manifest.to_dict()["data_origin"] == ("real" if historical else "synthetic")
         and tape.manifest.to_dict()["information_mode"] == "historical_research"
         and tape.manifest.to_dict()["execution_mode"] == "backtest",
         "research_performance_only",
@@ -387,10 +420,16 @@ def calculate_performance(
         )
         mdd = drawdown(curve, p)
         limitations = [
-            "synthetic_historical_research_not_pit_or_oos",
+            (
+                "historical_research_not_pit_or_oos"
+                if historical
+                else "synthetic_historical_research_not_pit_or_oos"
+            ),
             "mdd_on_declared_observation_points_not_intraday",
             "no_external_cash_flows_or_forced_liquidation",
         ]
+        if historical:
+            limitations += run["limitations"] + ["daily_marks_listing_and_halt_status_unverified"]
         if not first["complete"]:
             limitations.append("initial_valuation_incomplete")
         if not last["complete"]:
@@ -406,7 +445,7 @@ def calculate_performance(
                 "run_hash": run_result.identifier,
                 "start_at": run["start_at"],
                 "end_at": run["end_at"],
-                "scope": "synthetic_historical_research",
+                "scope": "historical_research" if historical else "synthetic_historical_research",
                 "executable": False,
                 "operational_eligible": False,
                 "valuation_policy": p,

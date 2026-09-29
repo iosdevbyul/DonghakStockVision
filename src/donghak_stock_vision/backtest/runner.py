@@ -98,7 +98,12 @@ class BacktestRunner:
             seen.add((seq, s["ticker"]))
             p = policy_values(s["admission_policy"])
             require(p["ordered_tickers"] == c["tickers"], "universe_order_policy_mismatch")
-            fields(s["reservation"], "max_notional_krw max_cost_krw")
+            reservation = s["reservation"]
+            if set(reservation) == {"BUY", "SELL"}:
+                for side in ("BUY", "SELL"):
+                    fields(reservation[side], "max_notional_krw max_cost_krw")
+            else:
+                fields(reservation, "max_notional_krw max_cost_krw")
             require(isinstance(s["market"], dict), "market_context_required")
         previous: VirtualClock | None = None
         for e in self.tape.events:
@@ -346,7 +351,9 @@ class BacktestRunner:
                 clock,
                 clock,
                 self.execution_policy,
-                FrozenJSON.freeze(step["reservation"]),
+                FrozenJSON.freeze(
+                    step["reservation"].get(bundle.result.to_dict()["action"], step["reservation"])
+                ),
                 ledger_sequence=state.to_dict()["last_sequence"] + 1,
                 historical_input=self.historical_input,
             )
