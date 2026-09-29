@@ -15,6 +15,7 @@ from donghak_stock_vision.data.learning import (
     Sample,
     digest,
 )
+from donghak_stock_vision.data.research_split import ExplicitResearchSplit, explicit_split
 from donghak_stock_vision.data.schema import SEOUL, DailyBar
 from donghak_stock_vision.data.snapshot import snapshot_bars
 from donghak_stock_vision.features.engine import check_segment, feature_vector
@@ -112,7 +113,13 @@ def build_dataset(snapshot: dict[str, Any]) -> tuple[list[Sample], dict[str, int
     return sorted(samples, key=lambda s: (s.anchor_at, s.ticker)), dict(sorted(exclusions.items()))
 
 
-def split_dataset(samples: list[Sample], mode: str) -> dict[str, Any]:
+def split_dataset(
+    samples: list[Sample], mode: str, configuration: ExplicitResearchSplit | None = None
+) -> dict[str, Any]:
+    if configuration is not None:
+        if mode != "historical_research":
+            raise AnalysisError("explicit_split_requires_historical_research")
+        return explicit_split(samples, configuration)
     days = sorted({s.anchor_at.astimezone(SEOUL).date() for s in samples})
     if len(days) < 5:
         raise AnalysisError("insufficient_split_dates")
