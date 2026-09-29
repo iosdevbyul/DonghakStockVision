@@ -1,19 +1,20 @@
 # Historical market input 연결
 
-## 구현 범위와 실행 차단
+## 입력 생성 범위와 기본 실행 차단
 
 `backtest.historical.build_historical_input`은 Phase 1의 실제 `MarketDataStore.read`
 경계를 사용해 `HistoricalBacktestInput`을 만든다. 객체는 FrozenJSON, FrozenTape,
 FrozenAnalysis로 구성되며 Runner가 실행 중 DB를 읽는 경로를 만들지 않는다.
 
-현재 main의 Runner는 `real_runner_unsupported`, DecisionBridge는
-`market_state_evidence_unavailable`로 실데이터를 차단한다. PR-E는
-`synthetic_explicit_full_fill`만 지원한다. Performance도 synthetic 전용이다.
-따라서 **이번 연결은 실제 입력 생성까지 지원하고 실데이터 Runner/성과 실행은 차단한다.**
+historical execution 정책을 지정하지 않은 기본 Runner는 `real_runner_unsupported`, DecisionBridge는
+`market_state_evidence_unavailable`로 실데이터를 차단한다. 기존 synthetic 정책은
+`synthetic_explicit_full_fill`이다. Performance는 synthetic 전용이다.
+입력 생성 API/CLI는 실행 정책을 선택하지 않으며 생성 직후에는 execution_status=blocked다.
+추가된 [historical execution 정책](historical-execution.md)을 명시하면 Python Runner의
+연구용 체결 경로를 사용할 수 있다. 입력 생성 CLI 자체는 정책을 승인하거나 실행하지 않는다.
 이를 숨기거나 real을 synthetic으로 재표기하지 않는다. 기존 합성 Runner/Performance/
-Report 경로는 유지한다. 실제 E2E 체결을 지원하려면 별도로 명시적 historical 체결·유동성
-가정, 시장 상태 증거 및 Runner/Bridge/Performance의 provenance 확장 승인이 필요하다.
-새로운 체결 정책을 이번 작업에서 만들지 않았다.
+Report 경로는 유지한다. 새 정책은 가상 full-fill 가정과 bundle 증거를 함께 요구한다.
+Performance 및 성과 CLI의 real provenance 확장은 별도 후속 작업이다.
 
 ## 발견한 원본 계약
 
@@ -123,8 +124,8 @@ latest-only, revision 부재, PIT 미검증, 모델 cutoff 미검증, 시장 상
 오프라인 fixture SQLite에서 다종목 범위·중복·동결·공개 경계·결측·모델 부재 및 실제
 SignalService의 짧은 lookback 차단을 검증한다. fixture provider 이름은 저장 구조를 시험하기
 위한 것이며 실제 시장 데이터나 성과의 증거가 아니다. 합성 점수를 실데이터 경로에 넣어
-성공한 체결처럼 표시하지 않는다. 실데이터 실행 제한 때문에 요청된 historical→체결→성과
-E2E는 이번 PR에서 지원하지 않으며 기존 합성 E2E 회귀는 유지한다.
+실제 시장 성과로 표시하지 않는다. historical execution 테스트는 명시적 analysis test double을
+사용해 체결·원장까지 연결한다. 성과 E2E는 아직 지원하지 않으며 기존 합성 회귀는 유지한다.
 
 기존 capture_market 계약에 따라 한 tape의 provider/market/adjustment 조합은 하나여야 한다.
 여러 ticker 입력은 지원하지만 서로 다른 가격 기준·시장 프로필을 섞는 확장은 포함하지 않는다.

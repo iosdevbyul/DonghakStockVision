@@ -27,6 +27,7 @@ class BacktestRunner:
     decision_policy: DecisionPolicy
     execution_policy: FrozenJSON
     config: FrozenJSON
+    historical_input: FrozenJSON | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "analyses", tuple(self.analyses))
@@ -40,7 +41,17 @@ class BacktestRunner:
         require(c.get("history_mode") in {None, "verified_execution"}, "unsupported_history_mode")
         m = self.tape.manifest.to_dict()
         require(m["information_mode"] == "historical_research", "pit_runner_unsupported")
-        require(m["data_origin"] == "synthetic", "real_runner_unsupported")
+        if m["data_origin"] != "synthetic":
+            from donghak_stock_vision.backtest.historical_execution import MODE, validate_input
+
+            require(settings(self.execution_policy)["liquidity"] == MODE, "real_runner_unsupported")
+            evidence = validate_input(self.tape, self.historical_input)
+            require(self.analyses == evidence.analyses, "historical_analysis_evidence_mismatch")
+            require(
+                c["tickers"] == evidence.document.to_dict()["tickers"],
+                "historical_universe_mismatch",
+            )
+
         require(m["execution_mode"] == "backtest", "paper_runner_unsupported")
         require(c["run_id"] == self.tape.manifest.identifier, "run_id_mismatch")
         require(c["event_clock"] == "available_at", "unsupported_event_clock")
@@ -314,6 +325,8 @@ class BacktestRunner:
                 step["admission_policy"],
                 history,
                 position_history=proof,
+                execution_policy=self.execution_policy,
+                historical_input=self.historical_input,
             )
             report["candidates"].append(candidate.to_dict())
             if not candidate.to_dict()["virtual_order_eligible"]:
@@ -335,6 +348,7 @@ class BacktestRunner:
                 self.execution_policy,
                 FrozenJSON.freeze(step["reservation"]),
                 ledger_sequence=state.to_dict()["last_sequence"] + 1,
+                historical_input=self.historical_input,
             )
             report["admissions"].append(acceptance.to_dict())
             if acceptance.to_dict()["status"] == "accepted":
@@ -415,7 +429,7 @@ class BacktestRunner:
             "end_at": utc(c["end_at"]).isoformat(),
             "input_hash": digest(identity),
             "information_mode": "historical_research",
-            "usage_restriction": "synthetic_test_only",
+            "usage_restriction": self.tape.manifest.to_dict()["usage_restriction"],
             "operational_eligible": False,
             "executable": False,
             "status": "completed_with_failures"
@@ -438,4 +452,10 @@ class BacktestRunner:
             )
             payload["position_history"] = proof.to_dict()
             payload["position_history_hash"] = proof.identifier
+        if self.historical_input is not None:
+            from donghak_stock_vision.backtest.historical_execution import metadata
+
+            payload.update(
+                **metadata(self.tape), historical_input_hash=self.historical_input.identifier
+            )
         return FrozenJSON.freeze(payload)
