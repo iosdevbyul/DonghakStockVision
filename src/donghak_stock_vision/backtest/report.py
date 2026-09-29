@@ -20,7 +20,11 @@ def format_report(performance: FrozenJSON) -> str:
         return str(p[key]) if p[key] is not None else "unavailable"
 
     rows = [
-        "SYNTHETIC HISTORICAL RESEARCH SIMULATION — NOT PIT/OOS",
+        (
+            "HISTORICAL RESEARCH SIMULATION — NOT PIT/OOS"
+            if p["scope"] == "historical_research"
+            else "SYNTHETIC HISTORICAL RESEARCH SIMULATION — NOT PIT/OOS"
+        ),
         f"Backtest period: {p['start_at']} .. {p['end_at']}",
         f"Initial equity: {amount('initial_equity')} KRW",
         f"Final equity: {amount('final_equity')} KRW",
