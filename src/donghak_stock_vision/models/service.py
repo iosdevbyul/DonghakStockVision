@@ -14,6 +14,7 @@ from donghak_stock_vision.data.learning import (
     digest,
     event_contract,
 )
+from donghak_stock_vision.data.research_split import ExplicitResearchSplit
 from donghak_stock_vision.models.fit import fit_linear
 from donghak_stock_vision.models.linear import score, validate_parameters
 from donghak_stock_vision.models.metrics import baseline_scores, report
@@ -70,12 +71,16 @@ class TrainingService:
     def __init__(self, store: AnalysisStore) -> None:
         self.store = store
 
-    def train(self, snapshot_id: str) -> dict[str, Any]:
+    def train(
+        self, snapshot_id: str, *, split_configuration: ExplicitResearchSplit | None = None
+    ) -> dict[str, Any]:
         snapshot = self.store.get("snapshot", snapshot_id)
+        if split_configuration is not None:
+            split_configuration.validate_snapshot(snapshot)
         samples, exclusions = build_dataset(snapshot)
         minimums = Minimums.synthetic() if snapshot["data_origin"] == "synthetic" else Minimums()
         try:
-            split = split_dataset(samples, snapshot["mode"])
+            split = split_dataset(samples, snapshot["mode"], split_configuration)
         except AnalysisError:
             failure = {
                 "snapshot_id": snapshot_id,
@@ -295,7 +300,13 @@ class EvaluationService:
             "snapshot_id": model["snapshot_id"],
             "samples": [s.to_dict() for s in samples],
             "exclusions": exclusions,
-            "split": split_dataset(samples, mode),
+            "split": split_dataset(
+                samples,
+                mode,
+                ExplicitResearchSplit.from_dict(dataset["split"]["configuration"])
+                if "configuration" in dataset["split"]
+                else None,
+            ),
         }
         if digest(rebuilt) != model["dataset_id"] or dataset["snapshot_id"] != model["snapshot_id"]:
             raise AnalysisError("dataset_reproduction_mismatch")
