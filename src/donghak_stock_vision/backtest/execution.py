@@ -14,6 +14,12 @@ from typing import Any
 from donghak_stock_vision.backtest.clock import VirtualClock
 from donghak_stock_vision.backtest.contracts import MarketEvent, VirtualFill, VirtualOrder
 from donghak_stock_vision.backtest.data import PROVENANCE, FrozenJSON, FrozenTape
+from donghak_stock_vision.backtest.historical_execution import (
+    MODE,
+    metadata,
+    next_session,
+    validate_input,
+)
 from donghak_stock_vision.backtest.ledger import (
     LedgerCommand,
     LedgerState,
@@ -39,7 +45,9 @@ def settings(policy: FrozenJSON | None) -> dict[str, Any]:
     text(p["version"])
     require(p["scope"] == "research", "real_trading_forbidden")
     require(p["fill_mode"] == "full", "partial_fill_unsupported")
-    require(p["liquidity"] == "synthetic_explicit_full_fill", "liquidity_unproven")
+    require(p["liquidity"] in {"synthetic_explicit_full_fill", MODE}, "liquidity_unproven")
+    if p["liquidity"] == MODE:
+        require(p["execution_price_field"] == "open", "historical_open_only")
     require(
         p["execution_price_field"] in {"open", "high", "low", "close"}, "unsupported_price_field"
     )
@@ -77,17 +85,25 @@ def failure(error: Exception) -> FrozenJSON:
     )
 
 
-def synthetic(ledger: LedgerState, tape: FrozenTape) -> None:
+def synthetic(
+    ledger: LedgerState,
+    tape: FrozenTape,
+    policy: dict[str, Any],
+    historical_input: FrozenJSON | None = None,
+) -> None:
     m = ledger.manifest.to_dict()
     require(
         ledger.manifest == tape.manifest and ledger.tape_hash == tape.identifier,
         "run_or_tape_mismatch",
     )
     require(m["information_mode"] == "historical_research", "pit_evidence_missing")
-    require(
-        m["data_origin"] == "synthetic" and m["usage_restriction"] == "synthetic_test_only",
-        "liquidity_unproven",
-    )
+    if policy["liquidity"] == MODE:
+        validate_input(tape, historical_input)
+    else:
+        require(
+            m["data_origin"] == "synthetic" and m["usage_restriction"] == "synthetic_test_only",
+            "liquidity_unproven",
+        )
     require(restore(checkpoint(ledger)).identifier == ledger.identifier, "ledger_integrity_failure")
 
 
@@ -143,6 +159,7 @@ def accept_candidate(
     reservation: FrozenJSON,
     *,
     ledger_sequence: int,
+    historical_input: FrozenJSON | None = None,
 ) -> tuple[FrozenJSON, LedgerState]:
     """Explicit candidate -> open order -> ledger reservation, without any fill.
 
@@ -151,7 +168,7 @@ def accept_candidate(
     """
     try:
         p = settings(policy)
-        synthetic(ledger, tape)
+        synthetic(ledger, tape, p, historical_input)
         a = admission.to_dict()
         require(
             a["status"] == "admitted" and a["virtual_order_eligible"] is True,
@@ -163,6 +180,14 @@ def accept_candidate(
             and a["operational_eligible"] is False,
             "real_trading_forbidden",
         )
+        if p["liquidity"] == MODE:
+            require(
+                a.get("historical_policy_hash") == digest(p), "historical_admission_policy_mismatch"
+            )
+            require(
+                a.get("historical_input_hash") == validate_input(tape, historical_input).identifier,
+                "historical_admission_evidence_mismatch",
+            )
         candidate = VirtualOrder.from_dict(a["candidate"])
         o = candidate.to_dict()
         require(candidate.identifier == a["order_id"], "candidate_hash_mismatch")
@@ -233,9 +258,14 @@ def accept_candidate(
             },
             acceptance_clock={"cutoff": clock.cutoff, "sequence": clock.sequence},
             reservation_checkpoint=checkpoint(reserved).to_dict(),
+            **(
+                {"historical_input": historical_input.to_dict(), **metadata(tape)}
+                if historical_input is not None
+                else {}
+            ),
         ), reserved
     except (ValueError, KeyError, TypeError, ArithmeticError) as error:
-        return failure(error), ledger
+        return FrozenJSON.freeze({**failure(error).to_dict(), **metadata(tape)}), ledger
 
 
 def execute(
@@ -261,7 +291,19 @@ def execute(
         )
         p = settings(FrozenJSON.freeze(a["execution_policy"]))
         require(digest(p) == a["execution_policy_hash"], "execution_policy_hash_mismatch")
-        synthetic(ledger, tape)
+        synthetic(
+            ledger,
+            tape,
+            p,
+            FrozenJSON.freeze(a["historical_input"]) if "historical_input" in a else None,
+        )
+        if p["liquidity"] == MODE:
+            evidence = validate_input(tape, FrozenJSON.freeze(a["historical_input"]))
+            require(
+                a["admission"].get("historical_policy_hash") == digest(p)
+                and a["admission"].get("historical_input_hash") == evidence.identifier,
+                "historical_acceptance_evidence_mismatch",
+            )
         reserved = restore(FrozenJSON.freeze(a["reservation_checkpoint"]))
         require(
             reserved.manifest == ledger.manifest and reserved.tape_hash == tape.identifier,
@@ -328,13 +370,25 @@ def execute(
             x for x in tape.release_plan.to_dict()["releases"] if x["sequence"] == e["sequence"]
         )
         require(release["previous_revision"] is None, "revision_not_execution_event")
+        if p["liquidity"] == MODE:
+            next_session(
+                tape,
+                o["ticker"],
+                VirtualClock(**a["decision_clock"]),
+                VirtualClock(**a["acceptance_clock"]),
+                e,
+                clock,
+            )
         require(
-            e["quality_status"] == "verified"
-            and not e["quality_flags"]
-            and e["adjustment"] == "unadjusted"
-            and e["session"] == "open"
-            and e["halt_status"] == "trading"
-            and e["listing_status"] == "listed",
+            p["liquidity"] == MODE
+            or (
+                e["quality_status"] == "verified"
+                and not e["quality_flags"]
+                and e["adjustment"] == "unadjusted"
+                and e["session"] == "open"
+                and e["halt_status"] == "trading"
+                and e["listing_status"] == "listed"
+            ),
             "market_quality_blocked",
         )
         require(utc(e["quality_available_at"]) <= utc(clock.cutoff), "quality_not_public")
@@ -414,6 +468,16 @@ def execute(
             market_sequence=e["sequence"],
             candidate_id=a["candidate_id"],
             order_id=order.identifier,
+            **(
+                {
+                    **metadata(tape),
+                    "execution_session": e["trading_date"],
+                    "source_open": items[0]["public_fields"]["open"],
+                    "slippage_rate": p["slippage_rate"],
+                }
+                if p["liquidity"] == MODE
+                else {}
+            ),
         ), updated
     except (ValueError, KeyError, TypeError, ArithmeticError, StopIteration) as error:
-        return failure(error), ledger
+        return FrozenJSON.freeze({**failure(error).to_dict(), **metadata(tape)}), ledger

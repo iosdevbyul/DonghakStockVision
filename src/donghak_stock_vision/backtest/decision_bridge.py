@@ -212,6 +212,8 @@ def admit(
     policy: dict[str, Any] | None,
     history: FrozenJSON,
     position_history: FrozenJSON | None = None,
+    execution_policy: FrozenJSON | None = None,
+    historical_input: FrozenJSON | None = None,
 ) -> tuple[FrozenJSON, FrozenJSON]:
     """Return immutable result and caller-held admission history; never change a ledger."""
     m, state, r = ledger.manifest.to_dict(), ledger.to_dict(), bundle.result.to_dict()
@@ -282,7 +284,50 @@ def admit(
             else "analysis_not_public",
         )
         gate(m["information_mode"] == "historical_research", "pit_evidence_missing")
-        gate(m["data_origin"] == "synthetic", "market_state_evidence_unavailable")
+        if m["data_origin"] != "synthetic":
+            from donghak_stock_vision.backtest.execution import settings
+            from donghak_stock_vision.backtest.historical_execution import (
+                MODE,
+                decision_event,
+                market_context,
+                metadata,
+                quality,
+                validate_input,
+            )
+
+            gate(execution_policy is not None, "market_state_evidence_unavailable")
+            ep = settings(execution_policy)
+            gate(ep["liquidity"] == MODE, "market_state_evidence_unavailable")
+            evidence = validate_input(tape, historical_input)
+            gate(analysis in evidence.analyses, "historical_analysis_evidence_missing")
+            event = decision_event(tape, r["ticker"], decision_clock)
+            quality(event)
+            assert historical_input is not None
+            gate(
+                bundle.inputs.to_dict()["market"]
+                == market_context(
+                    tape,
+                    historical_input,
+                    r["ticker"],
+                    decision_clock,
+                    field=p["marks"][r["ticker"]]["field"],
+                ),
+                "historical_market_context_mismatch",
+            )
+            gate(
+                analysis.bundle.to_dict()["signal"]["last_trading_date"] == event["trading_date"],
+                "historical_analysis_session_mismatch",
+            )
+            gate(
+                p["marks"][r["ticker"]]["sequence"] == event["sequence"],
+                "historical_mark_not_current",
+            )
+            base.update(
+                **metadata(tape),
+                historical_policy_hash=digest(ep),
+                historical_input_hash=evidence.identifier,
+            )
+
         frozen = analysis.bundle.to_dict()
         gate(
             bundle.inputs.to_dict()["analysis"] == frozen["signal"]
