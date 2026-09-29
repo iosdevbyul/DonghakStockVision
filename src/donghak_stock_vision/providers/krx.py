@@ -33,23 +33,41 @@ class KRXProvider:
         current = start
         while current <= end:
             if current.weekday() < 5:
-                if current in self._cache:
-                    page = self._cache[current]
-                    self._cache.move_to_end(current)
-                else:
-                    body = self.http.get(
-                        f"https://data-dbg.krx.co.kr/svc/apis/sto/{ENDPOINTS[self.market]}",
-                        headers={"AUTH_KEY": self._api_key},
-                        params={"basDd": current.strftime("%Y%m%d")},
-                    )
-                    page = RawPage(body, datetime.now(UTC), current)
-                    self._cache[current] = page
-                    if len(self._cache) > 128:
-                        self._cache.popitem(last=False)
-                yield page
+                yield self.fetch_market(current)
             current += timedelta(days=1)
 
+    def fetch_market(self, day: date) -> RawPage:
+        """Fetch one complete market day, independently of the number of tickers.
+
+        The existing bounded retry/request gate remains responsible for HTTP failures.
+        Weekday iteration is the caller's responsibility; holidays may return an empty list.
+        """
+        validate_range(day, day)
+        minimum = date(2013, 7, 1) if self.market == "KONEX" else date(2010, 1, 4)
+        if day < minimum:
+            raise ProviderError(f"{self.market} history starts at {minimum}")
+        if day in self._cache:
+            self._cache.move_to_end(day)
+            return self._cache[day]
+        body = self.http.get(
+            f"https://data-dbg.krx.co.kr/svc/apis/sto/{ENDPOINTS[self.market]}",
+            headers={"AUTH_KEY": self._api_key},
+            params={"basDd": day.strftime("%Y%m%d")},
+        )
+        page = RawPage(body, datetime.now(UTC), day)
+        self._cache[day] = page
+        if len(self._cache) > 128:
+            self._cache.popitem(last=False)
+        return page
+
     def parse(self, page: RawPage, ticker: str) -> list[DailyBar]:
+        return self._parse(page, ticker)
+
+    def parse_market(self, page: RawPage) -> list[DailyBar]:
+        """Validate every row; malformed/mismatched rows invalidate the complete page."""
+        return self._parse(page, None)
+
+    def _parse(self, page: RawPage, ticker: str | None) -> list[DailyBar]:
         try:
             payload = json.loads(page.body)
             if not isinstance(payload, dict) or not isinstance(payload.get("OutBlock_1"), list):
@@ -58,7 +76,7 @@ class KRXProvider:
             for row in payload["OutBlock_1"]:
                 if not isinstance(row, dict) or not isinstance(row.get("ISU_CD"), str):
                     raise ValueError("malformed KRX row")
-                if row["ISU_CD"] != ticker:
+                if ticker is not None and row["ISU_CD"] != ticker:
                     continue
                 trading_date = datetime.strptime(row["BAS_DD"], "%Y%m%d").date()
                 if trading_date != page.source_date:
@@ -67,7 +85,7 @@ class KRXProvider:
                     raise ValueError("KRX returned a different market")
                 bars.append(
                     DailyBar(
-                        ticker=ticker,
+                        ticker=row["ISU_CD"],
                         trading_date=trading_date,
                         open=_integer(row["TDD_OPNPRC"]),
                         high=_integer(row["TDD_HGPRC"]),
@@ -82,9 +100,9 @@ class KRXProvider:
                     )
                 )
             return bars
-        except (ValueError, KeyError, TypeError, OverflowError) as error:
+        except (ValueError, KeyError, TypeError, OverflowError):
             # Do not include server response / exception text: it may echo credentials.
-            raise ProviderError("invalid KRX response or bar values") from error
+            raise ProviderError("invalid KRX response or bar values") from None
 
 
 def _integer(value: Any) -> int:
