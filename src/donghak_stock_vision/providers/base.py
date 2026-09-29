@@ -25,3 +25,10 @@ class MarketDataProvider(Protocol):
 
     def fetch(self, ticker: str, start: date, end: date) -> Iterator[RawPage]: ...
     def parse(self, page: RawPage, ticker: str) -> list[DailyBar]: ...
+
+
+def krx_market_scope(market: str) -> str:
+    """Reserved raw/audit scope, never a ticker or a wildcard for other providers."""
+    if market not in {"KOSPI", "KOSDAQ", "KONEX"}:
+        raise ValueError("unsupported KRX market")
+    return f"@krx_market:{market}"

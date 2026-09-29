@@ -8,7 +8,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from donghak_stock_vision.data.schema import DailyBar
-from donghak_stock_vision.providers.base import RawPage
+from donghak_stock_vision.providers.base import RawPage, krx_market_scope
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS raw_pages (
@@ -131,11 +131,17 @@ class SQLiteStore:
                 )
                 matching = [
                     raw_id
-                    for raw_id, provider, ticker in [
-                        *sources.get(None, []),
-                        *sources.get(key[1], []),
-                    ]
-                    if provider == bar.provider and ticker == bar.ticker
+                    for source_date in (None, key[1])
+                    for raw_id, provider, ticker in sources.get(source_date, [])
+                    if provider == bar.provider
+                    and (
+                        ticker == bar.ticker
+                        or (
+                            bar.provider == "krx"
+                            and source_date == key[1]
+                            and ticker == krx_market_scope(bar.market)
+                        )
+                    )
                 ]
                 if not matching:
                     raise ValueError("no matching raw provenance for bar")

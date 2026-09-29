@@ -14,7 +14,8 @@ from dotenv import load_dotenv
 
 from donghak_stock_vision.config.settings import Settings
 from donghak_stock_vision.data.schema import validate_range, validate_ticker
-from donghak_stock_vision.ingestion.pipeline import Pipeline
+from donghak_stock_vision.ingestion.market import KRXMarketPipeline
+from donghak_stock_vision.ingestion.pipeline import CollectionResult, Pipeline
 from donghak_stock_vision.providers.base import MarketDataProvider
 from donghak_stock_vision.providers.fake import FakeProvider
 from donghak_stock_vision.providers.http import RequestGate, RetryingHTTP
@@ -30,7 +31,14 @@ def parser() -> argparse.ArgumentParser:
     sub = root.add_subparsers(dest="command", required=True)
     for name in ("collect", "update", "query"):
         command = sub.add_parser(name)
-        command.add_argument("--tickers", nargs="+", required=True)
+        if name == "collect":
+            universe = command.add_mutually_exclusive_group(required=True)
+            universe.add_argument("--tickers", nargs="+")
+            universe.add_argument(
+                "--all", action="store_true", help="collect every KRX market row per date"
+            )
+        else:
+            command.add_argument("--tickers", nargs="+", required=True)
         command.add_argument("--start", type=date.fromisoformat, required=True)
         command.add_argument("--end", type=date.fromisoformat, required=True)
         if name != "query":
@@ -69,6 +77,9 @@ def main(argv: list[str] | None = None) -> int:
             from donghak_stock_vision.backtest_cli import run as run_backtest
 
             return run_backtest(args)
+        all_market = args.command == "collect" and args.all
+        if all_market and args.provider != "krx":
+            raise ValueError("--all is only supported with --provider krx")
         settings = Settings.from_env()
         path = args.db or settings.db_path
         if args.command in {"decide", "decisions"}:
@@ -81,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
             return run(args, path)
         if args.command != "validate":
             validate_range(args.start, args.end)
-            for ticker in args.tickers:
+            for ticker in args.tickers or []:
                 validate_ticker(ticker)
         if args.command in {"query", "validate"} and not path.is_file():
             raise ValueError("database does not exist; collect data first")
@@ -114,13 +125,18 @@ def main(argv: list[str] | None = None) -> int:
                 provider = KRXProvider(
                     settings.api_key, RetryingHTTP(client, gate), args.market or settings.market
                 )
-            result = Pipeline(provider, store).collect(
-                args.tickers,
-                args.start,
-                args.end,
-                incremental=args.command == "update",
-                overlap_days=getattr(args, "overlap_days", 7),
-            )
+            result: CollectionResult
+            if all_market:
+                assert isinstance(provider, KRXProvider)
+                result = KRXMarketPipeline(provider, store).collect(args.start, args.end)
+            else:
+                result = Pipeline(provider, store).collect(
+                    args.tickers,
+                    args.start,
+                    args.end,
+                    incremental=args.command == "update",
+                    overlap_days=getattr(args, "overlap_days", 7),
+                )
         print(json.dumps(asdict(result)))
         return 1 if result.failed else 0
     except ValueError as error:
