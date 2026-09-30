@@ -237,3 +237,9 @@ dsv backtest --input synthetic-request.json \
 명시적 historical execution/valuation 정책과 동일 모델 snapshot이 필요합니다.
 현재 실행은 단일 ticker 연구 시뮬레이션으로 제한됩니다.
 [필수 설정 및 실행 의미](docs/historical-backtest-e2e.md)를 확인하세요.
+
+## 로컬 Observability
+
+독립적인 Docker Compose 스택으로 Prometheus와 Grafana OSS를 실행할 수 있습니다.
+현재는 Prometheus 자체 지표만 수집하며 애플리케이션·학습·DB와 연결하지 않습니다.
+[실행, 인증 정보 설정, 검증 및 데이터 삭제 안내](docs/observability.md)를 확인하세요.
