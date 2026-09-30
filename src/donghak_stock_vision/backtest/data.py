@@ -20,6 +20,7 @@ from donghak_stock_vision.backtest.validation import (
     validate_run,
 )
 from donghak_stock_vision.data.learning import canonical, digest
+from donghak_stock_vision.data.research_calendar import calendar_policy, excluded_dates
 from donghak_stock_vision.data.schema import DailyBar, validate_range, validate_ticker
 from donghak_stock_vision.data.snapshot import covered, validate_quality
 from donghak_stock_vision.storage.base import MarketDataStore
@@ -219,6 +220,15 @@ class FrozenTape:
             "quality_hash_mismatch",
         )
         validate_quality(q)
+        if calendar_policy(q) is not None:
+            require(
+                m["information_mode"] == "historical_research",
+                "research_calendar_requires_historical_research",
+            )
+            require(
+                all(e.to_dict()["trading_date"] not in excluded_dates(q) for e in self.events),
+                "known_incomplete_trading_date",
+            )
         require(isinstance(plan["releases"], list), "release_evidence_missing")
         require(len(plan["releases"]) == len(self.events), "release_evidence_missing")
         sources = {s.identifier: s for s in self.sources}

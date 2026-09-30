@@ -16,6 +16,7 @@ from donghak_stock_vision.backtest.performance import calculate_performance, pol
 from donghak_stock_vision.backtest.report import format_report
 from donghak_stock_vision.backtest.runner import BacktestRunner
 from donghak_stock_vision.backtest.validation import fields, money, require, text
+from donghak_stock_vision.data.research_calendar import calendar_policy
 from donghak_stock_vision.data.schema import SEOUL, validate_range, validate_ticker
 from donghak_stock_vision.storage.analysis import AnalysisStore
 from donghak_stock_vision.storage.base import MarketDataStore
@@ -47,8 +48,10 @@ class HistoricalBacktestRequest:
             self.config.to_dict(),
             "manifest policy captured_at quality availability_assumption "
             "decision_policy execution_policy ledger_policy valuation_policy "
-            "admission_policy reservation_by_side decision_dates decision_mark_field",
+            "admission_policy reservation_by_side decision_dates decision_mark_field"
+            + (" research_calendar" if "research_calendar" in self.config.to_dict() else ""),
         )
+        calendar_policy(c)
         m = RunManifest.from_dict(c["manifest"]).to_dict()
         require(
             m["information_mode"] == "historical_research"
@@ -147,6 +150,7 @@ def run_historical_backtest(
         availability_assumption=c["availability_assumption"],
         analysis_store=analysis,
         model_id=request.model_id,
+        research_calendar=calendar_policy(c),
     )
     tape = frozen.tape
     validate_input(tape, frozen.document)

@@ -8,6 +8,7 @@ from donghak_stock_vision.backtest.clock import VirtualClock
 from donghak_stock_vision.backtest.data import FrozenJSON, FrozenTape
 from donghak_stock_vision.backtest.historical import ASSUMPTION, HistoricalBacktestInput
 from donghak_stock_vision.backtest.validation import require, utc
+from donghak_stock_vision.data.research_calendar import calendar_policy, excluded_dates
 from donghak_stock_vision.data.schema import SEOUL
 
 MODE = "historical_daily_next_open_full_fill"
@@ -108,6 +109,15 @@ def validate_input(tape: FrozenTape, document: FrozenJSON | None) -> HistoricalB
     # FrozenAnalysis validates all checksums and the unchanged same-training-snapshot rule.
     for artifact in frozen.analyses:
         bundle = artifact.bundle.to_dict()
+        require(
+            utc(bundle["signal"]["anchor_at"]).astimezone(SEOUL).date().isoformat()
+            not in excluded_dates(tape.quality.to_dict()),
+            "known_incomplete_trading_date",
+        )
+        require(
+            calendar_policy(bundle["snapshot"]) == calendar_policy(tape.quality.to_dict()),
+            "research_calendar_mismatch",
+        )
         for ticker in d["tickers"]:
             originals = sorted(
                 (s.to_dict()["original"] for s in tape.sources if s.to_dict()["ticker"] == ticker),

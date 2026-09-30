@@ -15,6 +15,7 @@ from donghak_stock_vision.backtest.historical_execution import MODE, market_cont
 from donghak_stock_vision.backtest.ledger import initialize
 from donghak_stock_vision.backtest.runner import BacktestRunner
 from donghak_stock_vision.data.learning import FEATURES, digest, event_contract
+from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy
 from donghak_stock_vision.data.schema import SEOUL, DailyBar
 from donghak_stock_vision.data.snapshot import capture
 from donghak_stock_vision.providers.base import RawPage
@@ -68,6 +69,7 @@ def historical_runner(
     reserve_notional: str = "950",
     session_days: tuple[int, ...] = (9, 12, 13, 14),
     session_prices: tuple[int, ...] | None = None,
+    research_calendar: ResearchCalendarPolicy | None = None,
     **policy_changes: Any,
 ) -> BacktestRunner:
     import donghak_stock_vision.backtest.historical as builder
@@ -119,7 +121,14 @@ def historical_runner(
         },
     }
     snap = capture(
-        market, ["005930"], days[0], days[-1], captured, "historical_research", quality=q
+        market,
+        ["005930"],
+        days[0],
+        days[-1],
+        captured,
+        "historical_research",
+        quality=q,
+        research_calendar=research_calendar,
     )
     sid = analysis.put("snapshot", snap)
     split: dict[str, Any] = {}
@@ -183,6 +192,7 @@ def historical_runner(
             availability_assumption=ASSUMPTION,
             analysis_store=analysis,
             model_id=mid,
+            research_calendar=research_calendar,
         )
     market.close()
     analysis.close()

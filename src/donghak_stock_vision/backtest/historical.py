@@ -10,6 +10,7 @@ from donghak_stock_vision.backtest.contracts import ExecutionPolicy, MarketEvent
 from donghak_stock_vision.backtest.data import PROVENANCE, FrozenJSON, FrozenTape, capture_market
 from donghak_stock_vision.backtest.validation import instant, require, utc
 from donghak_stock_vision.data.learning import AnalysisError
+from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy, calendar_policy
 from donghak_stock_vision.data.schema import SEOUL, DailyBar, validate_range, validate_ticker
 from donghak_stock_vision.models.service import load_model
 from donghak_stock_vision.signals.service import SignalService
@@ -76,6 +77,7 @@ def build_historical_input(
     availability_assumption: str,
     analysis_store: AnalysisStore | None = None,
     model_id: str | None = None,
+    research_calendar: ResearchCalendarPolicy | None = None,
 ) -> HistoricalBacktestInput:
     """Dates are inclusive Seoul trading dates, not UTC publication timestamps.
 
@@ -83,6 +85,17 @@ def build_historical_input(
     used on Phase 1; a caller needing cross-ticker atomicity must freeze its source.
     """
     validate_range(start, end)
+    if research_calendar is not None:
+        require(
+            not research_calendar.excludes(start) and not research_calendar.excludes(end),
+            "research_boundary_on_incomplete_date",
+        )
+        q = quality.to_dict()
+        require(calendar_policy(q) in (None, research_calendar), "research_calendar_mismatch")
+        q["research_calendar"] = research_calendar.to_dict()
+        quality = FrozenJSON.freeze(q)
+    else:
+        require(calendar_policy(quality.to_dict()) is None, "explicit_research_calendar_required")
     universe = sorted(set(tickers))
     require(bool(universe), "empty_universe")
     for ticker in universe:
@@ -101,6 +114,8 @@ def build_historical_input(
         require(
             bar.ticker in universe and start <= bar.trading_date <= end, "source_range_mismatch"
         )
+    if research_calendar is not None:
+        rows = tuple(b for b in rows if not research_calendar.excludes(b.trading_date))
     copy = cast(MarketDataStore, _ReadCopy(rows))  # capture_market consumes only read().
     present = [t for t in universe if any(b.ticker == t for b in rows)]
     sources = (
@@ -142,6 +157,7 @@ def build_historical_input(
             model = load_model(analysis_store, model_id, "historical_research")
             snapshot = analysis_store.get("snapshot", model["snapshot_id"])
             require(model["data_origin"] == "real", "analysis_origin_mismatch")
+            require(calendar_policy(snapshot) == research_calendar, "research_calendar_mismatch")
             # research() must use the training snapshot. Never silently substitute DB revisions.
             for t in universe:
                 expected = [b.to_dict() for b in rows if b.ticker == t]
@@ -293,7 +309,8 @@ def build_historical_input(
                     "availability_assumption": ASSUMPTION,
                     "quality": quality.to_dict(),
                 },
-                "limitations": LIMITATIONS,
+                "limitations": LIMITATIONS
+                + (["research_sessions_excluded_not_holidays"] if research_calendar else []),
                 "execution_status": "blocked",
                 "execution_reason": "real_runner_unsupported",
             }

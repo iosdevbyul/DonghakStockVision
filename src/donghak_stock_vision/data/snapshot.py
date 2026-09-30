@@ -4,6 +4,11 @@ from datetime import date, datetime
 from typing import Any
 
 from donghak_stock_vision.data.learning import AnalysisError, Mode, timestamp
+from donghak_stock_vision.data.research_calendar import (
+    ResearchCalendarPolicy,
+    calendar_policy,
+    excluded_dates,
+)
 from donghak_stock_vision.data.schema import SEOUL, DailyBar, validate_range, validate_ticker
 from donghak_stock_vision.storage.base import MarketDataStore
 
@@ -63,12 +68,17 @@ def capture(
     quality: dict[str, Any] | None = None,
     acknowledge: bool = False,
     synthetic: bool = False,
+    research_calendar: ResearchCalendarPolicy | None = None,
 ) -> dict[str, Any]:
     validate_range(start, end)
+    if research_calendar is not None and mode != "historical_research":
+        raise AnalysisError("research_calendar_requires_historical_research")
     cutoff = timestamp(cutoff)
     if end >= cutoff.astimezone(SEOUL).date() or not tickers:
         raise AnalysisError("invalid_snapshot_range")
     quality = validate_quality(quality)
+    if quality and calendar_policy(quality) not in (None, research_calendar):
+        raise AnalysisError("research_calendar_mismatch")
     if quality and timestamp(quality["verified_at"]) > cutoff:
         raise AnalysisError("quality_not_available_at_snapshot")
     complete = all(covered(quality, t, start, end) for t in tickers)
@@ -108,7 +118,8 @@ def capture(
             )
             series_profiles.add((bar.provider, bar.market, bar.adjustment))
             markets.add(bar.market)
-            rows[ticker].append(bar.to_dict())
+            if research_calendar is None or not research_calendar.excludes(bar.trading_date):
+                rows[ticker].append(bar.to_dict())
         if len(series_profiles) > 1:
             raise AnalysisError("mixed_series_metadata")
     if len(origins) > 1 or len(profiles) > 1:
@@ -123,10 +134,13 @@ def capture(
         flags.append("retrospective_revisions_possible")
     if not complete:
         flags += ["corporate_actions_unverified", "calendar_unverified"]
+    if research_calendar is not None:
+        flags.append("research_sessions_excluded_not_holidays")
     if quality:
         flags.append("quality_review_may_be_retrospective")
     return {
         "schema_version": 1,
+        **({"research_calendar": research_calendar.to_dict()} if research_calendar else {}),
         "mode": mode,
         "data_origin": origin,
         "usage_restriction": "synthetic_test_only"
@@ -147,4 +161,11 @@ def capture(
 
 
 def snapshot_bars(snapshot: dict[str, Any], ticker: str) -> list[DailyBar]:
-    return [DailyBar.from_dict(row) for row in snapshot["rows"].get(ticker, [])]
+    excluded = excluded_dates(snapshot)
+    if excluded and snapshot["mode"] != "historical_research":
+        raise AnalysisError("research_calendar_requires_historical_research")
+    return [
+        DailyBar.from_dict(row)
+        for row in snapshot["rows"].get(ticker, [])
+        if row["trading_date"] not in excluded
+    ]
