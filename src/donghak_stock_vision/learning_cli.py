@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from donghak_stock_vision.data.learning import AnalysisError, mode_value, timestamp
+from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy
 from donghak_stock_vision.data.snapshot import capture
 from donghak_stock_vision.models.service import EvaluationService, TrainingService
 from donghak_stock_vision.signals.service import SignalQueryService, SignalService
@@ -27,6 +28,7 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             command.add_argument("--tickers", nargs="+", required=True)
             command.add_argument("--quality-manifest", type=Path)
         if name == "train":
+            command.add_argument("--research-calendar", type=Path)
             command.add_argument("--start", type=date.fromisoformat, required=True)
             command.add_argument("--end", type=date.fromisoformat, required=True)
             command.add_argument("--snapshot-as-of", type=timestamp)
@@ -103,6 +105,11 @@ def run(args: argparse.Namespace, market_path: Path) -> int:
                 quality=quality,
                 acknowledge=args.acknowledge_research_limitations,
                 synthetic=args.synthetic_test,
+                research_calendar=(
+                    ResearchCalendarPolicy.from_dict(json.loads(args.research_calendar.read_text()))
+                    if args.research_calendar
+                    else None
+                ),
             )
             snapshot_id = analysis.put("snapshot", snapshot)
             result = TrainingService(analysis).train(snapshot_id)

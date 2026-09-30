@@ -10,6 +10,7 @@ from donghak_stock_vision.backtest.contracts import ExecutionPolicy, RunManifest
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.historical import build_historical_input
 from donghak_stock_vision.backtest.validation import require
+from donghak_stock_vision.data.research_calendar import calendar_policy
 from donghak_stock_vision.storage.analysis import AnalysisStore
 from donghak_stock_vision.storage.sqlite import SQLiteStore
 
@@ -57,6 +58,7 @@ def run(args: argparse.Namespace) -> int:
             availability_assumption=config["availability_assumption"],
             analysis_store=analysis,
             model_id=args.model_id,
+            research_calendar=calendar_policy(config),
         )
         with args.output.open("x", encoding="utf-8") as output:
             output.write(result.document.payload_json)

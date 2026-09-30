@@ -17,13 +17,18 @@ from donghak_stock_vision.backtest.historical_service import (
 )
 from donghak_stock_vision.backtest_cli import ReadOnlyMarketStore
 from donghak_stock_vision.cli import main
+from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy
 from donghak_stock_vision.storage.analysis import AnalysisStore
 from tests.backtest.test_historical_execution import ControlledResearch, historical_runner
 from tests.backtest.test_performance import valuation_policy
 
 
 def setup_request(
-    path: Path, patch: pytest.MonkeyPatch, *, cycle: bool = False
+    path: Path,
+    patch: pytest.MonkeyPatch,
+    *,
+    cycle: bool = False,
+    research_calendar: ResearchCalendarPolicy | None = None,
 ) -> HistoricalBacktestRequest:
     import donghak_stock_vision.backtest.historical as builder
 
@@ -32,6 +37,7 @@ def setup_request(
         path,
         patch,
         end_day=16 if cycle else 14,
+        research_calendar=research_calendar,
         session_days=(9, 12, 13, 14, 15, 16) if cycle else (9, 12, 13, 14),
         session_prices=(100, 90, 100, 110, 100, 90) if cycle else None,
     )
@@ -56,6 +62,8 @@ def setup_request(
         "decision_dates": [f"2026-01-{day:02d}" for day in ((9, 13, 15) if cycle else (9, 13))],
         "decision_mark_field": "close",
     }
+    if research_calendar is not None:
+        c["research_calendar"] = research_calendar.to_dict()
     patch.setattr(builder, "SignalService", ControlledResearch)
     return HistoricalBacktestRequest(
         date(2026, 1, 9),

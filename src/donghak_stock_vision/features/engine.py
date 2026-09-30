@@ -2,26 +2,34 @@
 
 import math
 import statistics
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from donghak_stock_vision.data.learning import AnalysisError
+from donghak_stock_vision.data.research_calendar import excluded_dates
 from donghak_stock_vision.data.schema import DailyBar
 
 
 def check_segment(bars: list[DailyBar], snapshot: dict[str, Any]) -> None:
     if not bars:
         raise AnalysisError("insufficient_history")
+    incomplete = excluded_dates(snapshot)
+    if any(b.trading_date.isoformat() in incomplete for b in bars):
+        raise AnalysisError("known_incomplete_trading_date")
     quality = snapshot["quality"]
     entry = quality["coverage"].get(bars[0].ticker) if quality else None
     excluded = set(entry["excluded_dates"]) if entry else set()
     first, last = bars[0].trading_date.isoformat(), bars[-1].trading_date.isoformat()
     if any(first <= d <= last for d in excluded):
         raise AnalysisError("excluded_corporate_action")
-    if any(first <= d <= last for d in snapshot["unavailable_dates"].get(bars[0].ticker, [])):
+    if any(
+        first <= d <= last
+        for d in snapshot["unavailable_dates"].get(bars[0].ticker, [])
+        if d not in incomplete
+    ):
         raise AnalysisError("insufficient_point_in_time_data")
     if snapshot["session_basis"] == "verified_sessions":
-        expected = [d for d in quality["sessions"] if first <= d <= last]
+        expected = [d for d in quality["sessions"] if first <= d <= last and d not in incomplete]
         if expected != [b.trading_date.isoformat() for b in bars]:
             raise AnalysisError("missing_verified_session")
     for i, bar in enumerate(bars):
@@ -33,7 +41,12 @@ def check_segment(bars: list[DailyBar], snapshot: dict[str, Any]) -> None:
                 raise AnalysisError("invalid_market_order_or_duplicates")
             if (
                 snapshot["session_basis"] != "verified_sessions"
-                and (bar.trading_date - previous.trading_date).days > 7
+                and (bar.trading_date - previous.trading_date).days
+                - sum(
+                    previous.trading_date < date.fromisoformat(d) < bar.trading_date
+                    for d in incomplete
+                )
+                > 7
             ):
                 raise AnalysisError("suspected_gap")
             if abs(math.log(bar.close / previous.close)) > 0.20:

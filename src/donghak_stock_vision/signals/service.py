@@ -12,6 +12,7 @@ from donghak_stock_vision.data.learning import (
     event_contract,
     timestamp,
 )
+from donghak_stock_vision.data.research_calendar import excluded_dates
 from donghak_stock_vision.data.schema import SEOUL
 from donghak_stock_vision.data.snapshot import capture, snapshot_bars
 from donghak_stock_vision.features.engine import feature_vector
@@ -33,6 +34,8 @@ class SignalService:
         snapshot = self.store.get("snapshot", snapshot_id)
         if model["snapshot_id"] != snapshot_id:
             raise AnalysisError("snapshot_mismatch")
+        if anchor_date.isoformat() in excluded_dates(snapshot):
+            raise AnalysisError("known_incomplete_trading_date")
         anchor = datetime.combine(anchor_date, time(16), SEOUL)
         return [
             self._infer(model, version, snapshot, snapshot_id, ticker, anchor) for ticker in tickers

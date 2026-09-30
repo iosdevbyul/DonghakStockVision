@@ -1,5 +1,6 @@
 """Decimal research accounting from verified execution history, never a strategy."""
 
+from datetime import timedelta
 from decimal import ROUND_DOWN, ROUND_HALF_UP, ROUND_UP, Context, Decimal, localcontext
 from typing import Any
 
@@ -18,6 +19,8 @@ from donghak_stock_vision.backtest.position_history import (
     validate_position_history,
 )
 from donghak_stock_vision.backtest.validation import fields, integer, money, require, text, utc
+from donghak_stock_vision.data.research_calendar import calendar_policy
+from donghak_stock_vision.data.schema import SEOUL
 
 ROUNDING = {"half_up": ROUND_HALF_UP, "down": ROUND_DOWN, "up": ROUND_UP}
 
@@ -55,6 +58,10 @@ def rounded(value: Decimal, p: dict[str, Any], kind: str) -> str:
 def valuation(
     state: LedgerState, tape: FrozenTape, clock: VirtualClock, p: dict[str, Any], stage: str
 ) -> dict[str, Any]:
+    calendar = calendar_policy(tape.quality.to_dict())
+    if calendar is not None and stage == "event":
+        session = utc(clock.cutoff).astimezone(SEOUL).date() - timedelta(days=1)
+        require(not calendar.excludes(session), "known_incomplete_trading_date")
     view = tape.view(clock).to_dict()
     positions = []
     known_value, known_unrealized = Decimal(0), Decimal(0)
