@@ -2,11 +2,12 @@
 
 import logging
 import sqlite3
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from uuid import uuid4
 
-from donghak_stock_vision.data.schema import SEOUL, DailyBar, validate_range
+from donghak_stock_vision.data.schema import SEOUL, DailyBar, validate_range, validate_ticker
 from donghak_stock_vision.ingestion.pipeline import CollectionResult
 from donghak_stock_vision.providers.base import ProviderError, krx_market_scope
 from donghak_stock_vision.providers.krx import KRXProvider
@@ -29,8 +30,21 @@ class KRXMarketPipeline:
             raise ValueError("whole-market collection requires KRXProvider")
         self.provider, self.store = provider, store
 
-    def collect(self, start: date, end: date) -> MarketCollectionResult:
+    def collect(
+        self, start: date, end: date, *, tickers: Sequence[str] | None = None
+    ) -> MarketCollectionResult:
+        """Optionally retain an explicit universe after validating the whole market page.
+
+        Raw audit pages still contain the complete market response. Empty counts refer
+        to retained bars, not evidence that the exchange was closed.
+        """
         validate_range(start, end)
+        if tickers is not None:
+            if isinstance(tickers, (str, bytes)) or not tickers:
+                raise ValueError("tickers must be a nonempty sequence of KRX codes")
+            for ticker in tickers:
+                validate_ticker(ticker)
+        universe = frozenset(tickers) if tickers is not None else None
         if end >= datetime.now(SEOUL).date():
             raise ValueError("end must be before today in Asia/Seoul; final daily bars only")
         scope = krx_market_scope(self.provider.market)
@@ -60,6 +74,8 @@ class KRXMarketPipeline:
                     for b in cleaned
                 ):
                     raise ValueError("provider metadata mismatch")
+                if universe is not None:
+                    cleaned = [bar for bar in cleaned if bar.ticker in universe]
                 # Existing SQLite transaction covers every ticker on this date.
                 changed = self.store.save(cleaned, [raw_id])
             except (ProviderError, ValueError, TypeError, KeyError, sqlite3.Error) as error:

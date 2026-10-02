@@ -393,3 +393,77 @@ def test_future_range_rejected_without_requests(store: SQLiteStore, tmp_path: Pa
         with pytest.raises(ValueError):
             KRXMarketPipeline(p, store).collect(DAY + timedelta(days=1), DAY)
     assert store.connection.execute("SELECT COUNT(*) FROM raw_pages").fetchone()[0] == 0
+
+
+def test_explicit_universe_keeps_one_request_per_date_and_old_rows(
+    store: SQLiteStore, tmp_path: Path
+) -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.params["basDd"])
+        day = datetime.strptime(calls[-1], "%Y%m%d").date()
+        return httpx.Response(200, json={"OutBlock_1": [row(t, day) for t in ("005930", "000660")]})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        pipeline = KRXMarketPipeline(provider(client, tmp_path), store)
+        pipeline.collect(DAY, DAY)
+        old = store.read("005930", DAY, DAY)
+        start, end = DAY + timedelta(days=1), DAY + timedelta(days=2)
+        result = pipeline.collect(start, end, tickers=["005930", "005930", "035420"])
+        repeated = pipeline.collect(start, end, tickers=["005930", "035420"])
+    assert result.rows == result.changed == 2
+    assert repeated.changed == 0
+    assert len(calls) == 3  # One per date; repeated fetches use the existing cache.
+    assert store.read("005930", DAY, DAY) == old
+    assert store.read("000660", start, end) == []
+    assert store.read("035420", start, end) == []
+    assert store.check_integrity() == []
+
+
+@pytest.mark.parametrize("conflict", [False, True])
+def test_universe_filter_does_not_hide_invalid_outside_rows(
+    store: SQLiteStore, tmp_path: Path, conflict: bool
+) -> None:
+    outside = (
+        [row("000660"), row("000660", TDD_CLSPRC="106")]
+        if conflict
+        else [row("000660", TDD_LWPRC="999")]
+    )
+    with httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json={"OutBlock_1": [row(), *outside]})
+        )
+    ) as client:
+        result = KRXMarketPipeline(provider(client, tmp_path), store).collect(
+            DAY, DAY, tickers=["005930"]
+        )
+    assert result.failed == 1 and result.changed == 0
+    assert store.read("005930", DAY, DAY) == []
+
+
+@pytest.mark.parametrize("tickers", [[], ["bad"], "005930"])
+def test_invalid_universe_rejected_before_request(
+    store: SQLiteStore, tmp_path: Path, tickers: Any
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("must not request")
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError):
+            KRXMarketPipeline(provider(client, tmp_path), store).collect(DAY, DAY, tickers=tickers)
+    assert store.connection.execute("SELECT COUNT(*) FROM raw_pages").fetchone()[0] == 0
+
+
+def test_absent_universe_is_not_a_holiday_claim(store: SQLiteStore, tmp_path: Path) -> None:
+    with httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json={"OutBlock_1": [row("000660")]})
+        )
+    ) as client:
+        result = KRXMarketPipeline(provider(client, tmp_path), store).collect(
+            DAY, DAY, tickers=["005930"]
+        )
+    assert result.empty == 1 and result.rows == 0
+    body = store.connection.execute("SELECT body FROM raw_pages").fetchone()[0]
+    assert len(json.loads(body)["OutBlock_1"]) == 1
