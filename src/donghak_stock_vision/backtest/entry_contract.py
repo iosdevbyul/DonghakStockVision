@@ -276,8 +276,9 @@ def assess_entry(
     except AnalysisError as error:
         return outcome(EntryStatus.UNFILLED, str(error))
     liquidity = p["liquidity"]
-    if candidate.volume < liquidity["minimum_volume"] or candidate.trading_value < Decimal(
-        liquidity["minimum_trading_value_krw"]
+    minimum_value = liquidity["minimum_trading_value_krw"]
+    if candidate.volume < liquidity["minimum_volume"] or (
+        minimum_value is not None and candidate.trading_value < Decimal(minimum_value)
     ):
         return outcome(EntryStatus.UNFILLED, "liquidity_minimum_not_met")
     return outcome(EntryStatus.ELIGIBLE, "preflight_only_no_liquidity_guarantee")
