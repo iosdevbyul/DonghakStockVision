@@ -110,7 +110,18 @@ def normalize_policy(value: dict[str, Any]) -> dict[str, Any]:
     choice(exit_policy["reference_price"], "open close explicit_rule_price")
     choice(exit_policy["collision"], "pessimistic reject_as_ambiguous")
     p["exit"] = exit_policy
-    costs = fields(p["costs"], "version basis schedule rounding")
+    cost_names = "version basis schedule rounding"
+    # Optional explicit semantics for new policies; legacy payloads keep their identity.
+    require(type(p["costs"]) is dict, "cost_policy_required")
+    if "date_basis" in p["costs"] or "tax_rounding" in p["costs"]:
+        cost_names += " date_basis tax_rounding"
+    costs = fields(p["costs"], cost_names)
+    if "date_basis" in costs:
+        choice(costs["date_basis"], "settlement_date")
+        costs["tax_rounding"] = rounding(costs["tax_rounding"])
+        require(
+            costs["tax_rounding"]["mode"] in {"half_up", "down", "up"}, "unsupported_tax_rounding"
+        )
     text(costs["version"])
     choice(costs["basis"], "executed_notional")
     costs["rounding"] = rounding(costs["rounding"])
@@ -180,9 +191,11 @@ def normalize_policy(value: dict[str, Any]) -> dict[str, Any]:
     )
     text(liquidity["version"])
     liquidity["minimum_volume"] = integer(liquidity["minimum_volume"], positive=True)
-    liquidity["minimum_trading_value_krw"] = money(
-        liquidity["minimum_trading_value_krw"], positive=True
-    )
+    # None explicitly disables an optional floor; no-trade rejection remains mandatory.
+    if liquidity["minimum_trading_value_krw"] is not None:
+        liquidity["minimum_trading_value_krw"] = money(
+            liquidity["minimum_trading_value_krw"], positive=True
+        )
     liquidity["maximum_participation_rate"] = money(
         liquidity["maximum_participation_rate"], positive=True
     )
