@@ -1,5 +1,10 @@
 # Locked baseline runner
 
+> Current quality approval is version 3. See [baseline research-quality policy](baseline-quality-policy.md)
+> for the current fingerprints, classifications and remaining blockers. Version-2
+> planning fingerprints below are historical references and are no longer current run pins.
+
+
 This change implements an in-memory historical research simulator. Only synthetic
 fixtures have been executed. There is no CLI dispatch, real dataset run, OOS
 prediction, fitting, tuning, performance ranking or broker integration.
@@ -153,10 +158,9 @@ network access and live DB reads are absent from runner execution.
 
 Implementation verification does **not** authorize a historical run.
 
-- The currently locked **empty quality allowlist** blocks research flags emitted by
-  normal HGB signal integration, including revision-history and universe limitations.
-  A real trading experiment needs a separately reviewed explicit research-quality
-  policy and corresponding new trusted pin. Hard failures must never be allowlisted.
+- Version 3 explicitly allows five informational research flags. Unverified
+  corporate actions/calendar and real unverified session ordering remain blocked.
+  See the quality-policy document for required evidence and the current trusted pin.
 - A real run still needs its approved dates/universe, immutable market inputs,
   model pins, quality evidence and settlement-date evidence. These were not prepared
   or scored in this task.

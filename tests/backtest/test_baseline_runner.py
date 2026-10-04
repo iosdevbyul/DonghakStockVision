@@ -470,7 +470,7 @@ def test_quality_blocked_signal_is_no_intent() -> None:
             self, prefix: tuple[BaselineSession, ...], as_of: datetime
         ) -> BaselineSignalFrame:
             frame = super().research(prefix, as_of)
-            context = replace(frame.signal.context, quality_flags=("unapproved",))
+            context = replace(frame.signal.context, quality_flags=("corporate_actions_unverified",))
             signal = build_signal(
                 context,
                 self.policy,

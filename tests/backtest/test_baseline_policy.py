@@ -129,7 +129,11 @@ def test_nontrade_signals(case: str) -> None:
             blocked=case == "blocked",
         )
     )
-    assert evaluate(candidate).candidate is None
+    if case == "blocked":
+        with pytest.raises(ContractError, match="unknown_quality_state:unapproved"):
+            evaluate(candidate)
+    else:
+        assert evaluate(candidate).candidate is None
 
 
 def test_no_pyramiding_pending_and_position_limit() -> None:

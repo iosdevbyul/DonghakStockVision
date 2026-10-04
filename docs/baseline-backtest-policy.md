@@ -1,5 +1,10 @@
 # Approved long-only Up reversal baseline
 
+> Current quality approval is version 3. See [baseline research-quality policy](baseline-quality-policy.md)
+> for the current fingerprints, classifications and remaining blockers. Version-2
+> planning fingerprints below are historical references and are no longer current run pins.
+
+
 This is a versioned policy implementation, not a backtest result or a new model.
 No historical run, OOS scoring, selection, tuning, fitting or portfolio simulation
 was performed to choose these rules. The raw signal domain and linear inference
