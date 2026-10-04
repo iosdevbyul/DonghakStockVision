@@ -191,3 +191,12 @@ slippage, separate costs, year-boundary settlement rates, missing policies,
 immutability and legacy contract identity. They are not investment-performance
 experiments. Run the repository offline pytest suite, Ruff, formatting, mypy and
 `git diff --check`; no live API or real model evaluation is necessary.
+
+## Approved runner-planning extension (version 2)
+
+The subsequent runner request explicitly approved T-close planning before T+1's
+open is known. Strategy version 2 includes the planning-reference price,
+slippage/rounding order, immutable intended quantity/reservation, and rejection of
+an intended-cost overrun **before** volume-cap reduction. No strategy parameter or
+cost rate changed. See [runner chronology and the updated locked fingerprint](baseline-backtest-runner.md).
+The former version-1 fingerprint must not be reused for this extended contract.
