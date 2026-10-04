@@ -27,7 +27,11 @@ from donghak_stock_vision.signals.domain import SignalCandidate
 def baseline_rules() -> dict[str, Any]:
     """Fixed approval, not tunable defaults or an OOS selection space."""
     return {
-        "strategy_version": "long_only_up_reversal_baseline_v1",
+        "strategy_version": "long_only_up_reversal_baseline_v2",
+        "planning_rule": "anchor_close_adverse_price_reservation_no_gap_topup_v1",
+        "planning_price": "completed_T_close_then_buy_slippage_then_ceiling_KRW",
+        "reservation": "T_intended_quantity_times_planning_price_plus_ceiling_commission",
+        "reservation_overrun": "reject_full_intended_cost_before_volume_cap_no_resize_or_topup",
         "scope": "historical_research",
         "executable_direction": "up",
         "model": "hist_gradient_boosting_leaves7",
