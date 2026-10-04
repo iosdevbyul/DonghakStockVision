@@ -1,11 +1,12 @@
 """One approved baseline: pure policy/preflight arithmetic, never a backtest runner."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import ROUND_FLOOR, Context, Decimal, localcontext
 from typing import Any
 
 from donghak_stock_vision.backtest.baseline_costs import BaselineCostPolicy, tax_schedule
+from donghak_stock_vision.backtest.baseline_quality import APPROVED_FLAGS, BaselineQualityPolicy
 from donghak_stock_vision.backtest.entry_contract import (
     EntryWindow,
     IntentPurpose,
@@ -27,7 +28,7 @@ from donghak_stock_vision.signals.domain import SignalCandidate
 def baseline_rules() -> dict[str, Any]:
     """Fixed approval, not tunable defaults or an OOS selection space."""
     return {
-        "strategy_version": "long_only_up_reversal_baseline_v2",
+        "strategy_version": "long_only_up_reversal_baseline_v3",
         "planning_rule": "anchor_close_adverse_price_reservation_no_gap_topup_v1",
         "planning_price": "completed_T_close_then_buy_slippage_then_ceiling_KRW",
         "reservation": "T_intended_quantity_times_planning_price_plus_ceiling_commission",
@@ -78,7 +79,8 @@ def baseline_rules() -> dict[str, Any]:
 @dataclass(frozen=True)
 class BaselineBacktestPolicy:
     costs: BaselineCostPolicy | None
-    allowed_research_flags: tuple[str, ...]
+    allowed_research_flags: tuple[str, ...] = APPROVED_FLAGS
+    quality_policy: BaselineQualityPolicy = field(default_factory=BaselineQualityPolicy)
 
     def __post_init__(self) -> None:
         require(self.costs is None or type(self.costs) is BaselineCostPolicy, "invalid_cost_policy")
@@ -89,21 +91,18 @@ class BaselineBacktestPolicy:
             "invalid_quality_allowlist",
         )
         require(
-            not set(self.allowed_research_flags)
-            & {
-                "suspected_discontinuity",
-                "no_trade_bar",
-                "suspected_gap",
-                "excluded_corporate_action",
-                "known_incomplete_trading_date",
-                "invalid_market_order_or_duplicates",
-            },
+            type(self.quality_policy) is BaselineQualityPolicy, "invalid_baseline_quality_policy"
+        )
+        self.quality_policy.__post_init__()
+        require(
+            set(self.allowed_research_flags) <= set(self.quality_policy.allowed_flags),
             "quality_failure_cannot_be_waived",
         )
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "rules": baseline_rules(),
+            "quality_policy": self.quality_policy.to_dict(),
             "cost_policy": self.costs.to_dict() if self.costs else None,
             "tax_schedule": tax_schedule(),
             "allowed_research_flags": list(self.allowed_research_flags),
@@ -201,7 +200,7 @@ class BaselineBacktestPolicy:
                     "assumption": "daily_bar_does_not_prove_fill",
                 },
                 "quality": {
-                    "version": "baseline_v1",
+                    "version": self.quality_policy.fingerprint,
                     "allowed_research_flags": list(self.allowed_research_flags),
                     "segment_validation": "existing_check_segment_required",
                     "corporate_actions": "reject_unusable_segment_no_adjustment",
@@ -302,9 +301,10 @@ def assess_candidate(
     )
     if signal is None:
         return CandidateAssessment("signal_unavailable", None)
-    if signal.rejected_quality_flags or not set(signal.context.quality_flags) <= set(
-        policy.allowed_research_flags
-    ):
+    quality_reason = policy.quality_policy.signal_reason(signal)
+    if quality_reason:
+        return CandidateAssessment(quality_reason, None)
+    if not set(signal.context.quality_flags) <= set(policy.allowed_research_flags):
         return CandidateAssessment("quality_blocked", None)
     if signal.context.population != "prior_decline" or signal.up.status != "scored":
         return CandidateAssessment("up_context_unavailable", None)

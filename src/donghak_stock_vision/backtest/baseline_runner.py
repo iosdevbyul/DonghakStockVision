@@ -157,6 +157,7 @@ class BaselineBacktestRunner:
             require(type(self.signals) is HGBBaselineSignals, "trusted_HGB_source_required")
         for r in self.records:
             r.__post_init__()
+            self.policy.quality_policy.rejected_flags(tuple(r.quality.to_dict()["quality_flags"]))
             require(r.session.trading_date.isoformat() <= p["end"], "after_end_input_forbidden")
             if r.bar:
                 require(
@@ -242,6 +243,12 @@ class _Simulation:
         if row.bar is None:
             return "missing_bar"
         q = row.quality.to_dict()
+        if self.r.policy.quality_policy.rejected_flags(tuple(q.get("quality_flags", []))):
+            return "quality_blocked"
+        if self.state.manifest.to_dict()["data_origin"] == "real" and (
+            self.r.policy.quality_policy.classify(q["session_basis"]) != "ALLOWED"
+        ):
+            return "quality_blocked"
         if not set(q.get("quality_flags", [])) <= set(self.r.policy.allowed_research_flags):
             return "quality_blocked"
         if q["session_basis"] == "verified_sessions" and not covered(
@@ -276,10 +283,15 @@ class _Simulation:
                 quality_snapshot=row.quality,
                 observed_at=known,
             )
-            reason = assessment.reason
+            approval_failure = self.quality(row, pending.previous)
+            reason = (
+                (approval_failure or assessment.reason)
+                if assessment.status == EntryStatus.ELIGIBLE
+                else assessment.reason
+            )
             quantity = 0
             price = Decimal(0)
-            if assessment.status == EntryStatus.ELIGIBLE:
+            if assessment.status == EntryStatus.ELIGIBLE and approval_failure is None:
                 assert row.bar is not None
                 quantity = participation_quantity(
                     pending.quantity,
@@ -500,11 +512,14 @@ class _Simulation:
                     "signal_policy_mismatch",
                 )
                 require(frame.signal.context.as_of == known, "signal_time_mismatch")
-                if frame.signal.rejected_quality_flags:
+                quality_reason = self.r.policy.quality_policy.signal_reason(frame.signal)
+                if quality_reason:
                     self.log(
                         "signal_unavailable",
                         ticker,
-                        reason="quality_blocked",
+                        reason=quality_reason,
+                        quality_policy=self.r.policy.quality_policy.fingerprint,
+                        quality_flags=list(frame.signal.context.quality_flags),
                         signal_id=frame.signal.fingerprint,
                     )
                     continue
