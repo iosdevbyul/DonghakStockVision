@@ -1,0 +1,69 @@
+{
+  "complete_calendar": false,
+  "complete_corporate_action_query": false,
+  "documents": [
+    {
+      "document_id": "krx-settlement",
+      "file": "krx-settlement.html.gz",
+      "raw_sha256": "beccdf071e36ca2d8cd2313fd0de3363760480f0e312c0f3dca80b3ea5153266",
+      "scope": "General T+2 and holiday rules; not a dated session inventory.",
+      "stored_sha256": "f1cc3a57e0c77fc8d3ec78e3a8821e8582ba79eb22557dd427ad529d9b668b1e",
+      "url": "https://global.krx.co.kr/contents/GLB/06/0602/0602010201/GLB0602010201T1.jsp"
+    },
+    {
+      "document_id": "krx-calendar",
+      "file": "krx-calendar.html.gz",
+      "raw_sha256": "6420496c9779f60f3dbb7d91660b979b7d443bcda2111d4d8ba47dc472738152",
+      "scope": "Official calendar landing page; annual attachment requests returned empty responses. Not complete calendar evidence.",
+      "stored_sha256": "14b692729e13af791b7ced62f17ec063b68d5a02c7df552e259718796694a690",
+      "url": "https://www.krx.co.kr/contents/MKD/01/0110/01100303/MKD01100303.jsp"
+    },
+    {
+      "document_id": "kind-calendar",
+      "file": "kind-calendar.html.gz",
+      "raw_sha256": "f1194986fab22f67d14c6f16e16a69352ed1507fb02d9463260c8171dc3c932b",
+      "scope": "Landing page only; not a historical query result.",
+      "stored_sha256": "d291e5581f83acc8e16bd77ae357b23887a897c2004d2cb64e5d491e1bc2526b",
+      "url": "https://kind.krx.co.kr/common/marketschedule.do?method=loadInitPage"
+    },
+    {
+      "document_id": "dart-disclosure-guide",
+      "file": "dart-disclosure-guide.html.gz",
+      "raw_sha256": "63bc4e286e14bdb0ece90cbd1f0ab474de6367cea8b4240804d32263e2492ec3",
+      "scope": "Official disclosure query specification; requires credential. No universe query performed.",
+      "stored_sha256": "7deee2dc73ab78b22f632d1a5fb6da97a44262bee33d23554f0b08a28247591e",
+      "url": "https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS001&apiId=2019001"
+    },
+    {
+      "document_id": "dart-security-guide",
+      "file": "dart-security-guide.html.gz",
+      "raw_sha256": "100b19b57d02dba1715d8b8394d613cd137104747bf7c35cb69c7e0c73b59d49",
+      "scope": "Official security mapping specification; not a mapping artifact.",
+      "stored_sha256": "e6f00e999398d09360f5b49bcfd78c4408b21de639dde18d5383bea02d119bd7",
+      "url": "https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS001&apiId=2019018"
+    }
+  ],
+  "retrieval_scope": {
+    "calendar_attachment_results": {
+      "2024": {
+        "http_status": 200,
+        "response_bytes": 0
+      },
+      "2025": {
+        "http_status": 200,
+        "response_bytes": 0
+      }
+    },
+    "calendar_years_requested": [
+      2024,
+      2025
+    ],
+    "corporate_action_coverage_gap": "All security mappings and event classes across required warmup, anchors, and execution tail remain unverified.",
+    "corporate_action_query_executed": false,
+    "corporate_action_required_tickers": 993,
+    "corporate_action_verified_tickers": 0,
+    "dart_credential_available": false,
+    "market_data_requests": 0
+  },
+  "version": "official_source_inventory_v1"
+}
