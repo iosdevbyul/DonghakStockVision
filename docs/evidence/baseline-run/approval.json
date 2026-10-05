@@ -1,0 +1,36 @@
+{
+  "end": "2025-06-30",
+  "excluded_dates": [
+    "2024-03-28",
+    "2025-03-21"
+  ],
+  "market_sha256": "2b9e82be943607f6ec99c8e8fc9c4015be4bd668af914f9fa2df1150244ffd42",
+  "model_and_policy_pins": {
+    "baseline_policy": "89a5c0f6de304b6a5b7033b97b925f752609f9245d2994b6cc1634aedb1e41a8",
+    "cost_policy": "c479c0a7c453549e8cf071862385f5d0bb89c1e9c86ebd1b587f39d4442cafef",
+    "down_fingerprint": "19f4f83a0640227b688e49c64519642498b7751f674ccaab54e8d9a3c0f5f44e",
+    "down_sha": "42e3ed40c33b513a9ee066157ceada00b2b44c337259f817875f018e943a6b2c",
+    "feature_version": "ohlcv_value_v1",
+    "features": [
+      "return_1",
+      "return_3",
+      "return_5",
+      "close_to_sma10",
+      "volatility_10",
+      "range_to_close",
+      "volume_change_10",
+      "trading_value_change_10"
+    ],
+    "label_version": "reversal_barrier_v1",
+    "lock_id": "5d1d04e9607926ed5b89c70b71a36d4852f43d73723fab70e895db4830bb821d",
+    "qualification_id": "164748197f6616057040d4f8ae2044ff35b5471d29b2d96512a2efa680ec17ed",
+    "quality_policy": "c091f3cd55eb0f2a93dafdede1a6e1ef8d59440cf23fc9ffaa25b495f03a489c",
+    "runner_version": "baseline_runner_v1",
+    "signal_policy": "7240e945da5cab800e6adb5a62debe71d7e09cce6b0882f02ecac32e26b754c1",
+    "up_fingerprint": "81c2e45091a9af58786d7d251f4a19e52b17921032cc19a9e4c01dd580db9a15",
+    "up_sha": "43ffe774ce67f70c692a087183153b1cf5da86528ac36f2e2e78305daac29f60"
+  },
+  "start": "2024-07-01",
+  "universe_sha256": "e3aab19033128c016862375dbe58591a5bd8c0b340a11e5acb4b96d073e96b5f",
+  "version": "baseline_run_approval_v1"
+}
