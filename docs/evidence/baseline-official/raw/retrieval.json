@@ -1,0 +1,2718 @@
+{
+  "requests": [
+    {
+      "bytes": 40490,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2024-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "06",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "d4db65c70ad36a1420e9650c325f8cccf46d46b8f1d3d2ebbd60ae06e82296fb",
+      "requested_period": {
+        "end": "2024-06-30",
+        "start": "2024-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 34962,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2024-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "07",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "6e804899be40425bfa06325bd665b4d714a0bc2386f4fa38b3db42f6ad6a7298",
+      "requested_period": {
+        "end": "2024-07-31",
+        "start": "2024-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 34978,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2024-08.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "08",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "36f7e9c5b11f897883a776d6ad22f9e383935f4f7bcefd3fe1f37e83e23ba3c7",
+      "requested_period": {
+        "end": "2024-08-31",
+        "start": "2024-08-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 34155,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2024-09.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "09",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "0bf92f87cd07c5a754074d34f32aa82fd6a434b2e5f73acbafac2bb988b011a7",
+      "requested_period": {
+        "end": "2024-09-30",
+        "start": "2024-09-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 35016,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2024-10.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "10",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "e91e02e88c5cf00aefb89b63f412081d18025ae7b141305070f3f55f6d70d30a",
+      "requested_period": {
+        "end": "2024-10-31",
+        "start": "2024-10-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 34104,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2024-11.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "11",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "cebb5f732b01da9efcb785f62a4f218032745f4abee335d310ff79d3a23a3c6c",
+      "requested_period": {
+        "end": "2024-11-30",
+        "start": "2024-11-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 35000,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2024-12.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "12",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "eab60c2421f82ce277e7eb80578c643eb9efd2d017c59a42101797b9c2895975",
+      "requested_period": {
+        "end": "2024-12-31",
+        "start": "2024-12-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 35048,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2025-01.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "01",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "41192d56daea8148b5280eb5fa7dd22dfcbaba3a734da1ce7e378ef530ae9dc7",
+      "requested_period": {
+        "end": "2025-01-31",
+        "start": "2025-01-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 32388,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2025-02.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "02",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "36a12ca9bb24b4eb4936fd02aac421781436372eacfa854267a77a5d84b7f68b",
+      "requested_period": {
+        "end": "2025-02-28",
+        "start": "2025-02-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 41515,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2025-03.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "03",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "9bc3ee5d742ff5ddebaa770f6f973cb71bcfa4836c91791b4c8e99179ac289cd",
+      "requested_period": {
+        "end": "2025-03-31",
+        "start": "2025-03-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 34104,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2025-04.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "04",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "3b82ec188602d3485623fdab15b1905b5dc5202b22728b147fd1845f192edfed",
+      "requested_period": {
+        "end": "2025-04-30",
+        "start": "2025-04-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 35025,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2025-05.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "05",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "3b0d13da03dd2225d4b9561869d3fb8a105157d8cf90c8fd20efb5f8593082aa",
+      "requested_period": {
+        "end": "2025-05-31",
+        "start": "2025-05-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 34145,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2025-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "06",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "98f6e90f9aeb1143ed1713b58f650b510d7e5362759b5fcfcf3237391f15fe56",
+      "requested_period": {
+        "end": "2025-06-30",
+        "start": "2025-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 34962,
+      "document_name": "searchTraidingCalendar monthly response",
+      "file": "calendar-2025-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtraidingcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTraidingCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "13",
+        "selMonth": "07",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "b805c443d0a0468182e2f0deaba5ca7959ee0dfa89f874cb53136fa0f96a8fcd",
+      "requested_period": {
+        "end": "2025-07-31",
+        "start": "2025-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 7586,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2024-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "06",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "2e33899cd9b2aec680f75e33b0b99ec6ca4949f692e1a3b70c4f835712395221",
+      "requested_period": {
+        "end": "2024-06-30",
+        "start": "2024-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 4066,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2024-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "07",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "f8c274f46a9e4d58a41f6faeebfcc1c7b40aca269909447ff6637e03fceb57f5",
+      "requested_period": {
+        "end": "2024-07-31",
+        "start": "2024-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 4766,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2024-08.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "08",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "00260c1e42b50bcb075f33c8ac0459f899a67ba4ecc625878f4aae8518e448fa",
+      "requested_period": {
+        "end": "2024-08-31",
+        "start": "2024-08-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 7477,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2024-09.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "09",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "db9c2a5bd3fc43de0570f37f5812f97bc5a15f091f9903313960f3dd46ea7073",
+      "requested_period": {
+        "end": "2024-09-30",
+        "start": "2024-09-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 8661,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2024-10.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "10",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "546712dcbd2299efd4560f018232ae300694502b0927cc1cc737b9125480b9af",
+      "requested_period": {
+        "end": "2024-10-31",
+        "start": "2024-10-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 7603,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2024-11.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "11",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "2d0f9b46642ff3d4ae8975bb0da28d73213e52c04ecacf9e052cec8c4e5a4440",
+      "requested_period": {
+        "end": "2024-11-30",
+        "start": "2024-11-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3897,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2024-12.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "12",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "35dff13aefcf22206bcb93ddfcdd33fc50cee01ded9d30325b061707b3eb61d4",
+      "requested_period": {
+        "end": "2024-12-31",
+        "start": "2024-12-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 4841,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2025-01.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "01",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "4bb288a7296706a58f64ad7514f61cb0d289b323d154c75e98eb30af9b84bc01",
+      "requested_period": {
+        "end": "2025-01-31",
+        "start": "2025-01-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 4265,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2025-02.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "02",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "2b4b8a4c58112d11ae6973578f8ca8b439e11c2d03c940787b3c1f37ee3e3616",
+      "requested_period": {
+        "end": "2025-02-28",
+        "start": "2025-02-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2122,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2025-03.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "03",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "102b99b38007613606d68ab6f888e673d658e40b40af7e31cadf34e60834a838",
+      "requested_period": {
+        "end": "2025-03-31",
+        "start": "2025-03-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 6119,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2025-04.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "04",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "5ff13058c78836f885cf5f6d086c6c320213b511d61a682aee77a3b29b877864",
+      "requested_period": {
+        "end": "2025-04-30",
+        "start": "2025-04-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 5909,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2025-05.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "05",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "3eb0d6fcbeff48aee62ea134030b75632f59fcfb99697b5e9c7806d307d7646b",
+      "requested_period": {
+        "end": "2025-05-31",
+        "start": "2025-05-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 9487,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2025-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "06",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "5dc0262da91ee78141f4d10c6c6dae3cac76dc784f753fce5f8dd080a20b7ec8",
+      "requested_period": {
+        "end": "2025-06-30",
+        "start": "2025-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 9756,
+      "document_name": "searchPaidinCapitalIncrease monthly response",
+      "file": "corporate-02-2025-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchpaidincapitalincrease",
+        "ldMktTpCd": "1",
+        "method": "searchPaidinCapitalIncrease",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "02",
+        "selMonth": "07",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "e82ecd3dab5dfe6cc978cfb3559fce3132fcfbe98a391b835ca5e18cc4b0b084",
+      "requested_period": {
+        "end": "2025-07-31",
+        "start": "2025-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1673,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2024-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "06",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "8450b2e7599d3c20f39e7d1b4d5b3b8d9c67b181466d17d4b9dbf90e9706e43c",
+      "requested_period": {
+        "end": "2024-06-30",
+        "start": "2024-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 5473,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2024-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "07",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "83b0761e504180871a6ac2c2efefb26fa923daf4dcc7f126e1a001fbc4d03007",
+      "requested_period": {
+        "end": "2024-07-31",
+        "start": "2024-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 4794,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2024-08.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "08",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "0bcf825e43a6ef24301fede0e3d03d425dd97729adb683edf6855d71ff9c23b7",
+      "requested_period": {
+        "end": "2024-08-31",
+        "start": "2024-08-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2454,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2024-09.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "09",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "c9dc0f608574756455172f3e0a1fecbaaf2be9efdb242e81b616ad8803825af8",
+      "requested_period": {
+        "end": "2024-09-30",
+        "start": "2024-09-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3152,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2024-10.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "10",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "8db00e21754c50c18998e955e5295ddf66712f60ec2f41ec2fb57d2fa6f7f8ae",
+      "requested_period": {
+        "end": "2024-10-31",
+        "start": "2024-10-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 6377,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2024-11.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "11",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "f34c6de8b8236f634ec1eeda8da4ec3dbeaf6b87fcc52bd6deccc75e6568641a",
+      "requested_period": {
+        "end": "2024-11-30",
+        "start": "2024-11-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2429,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2024-12.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "12",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "49f19d467abd4ebee02ee8f22df94964415a7768ced669d482b13e071572cb29",
+      "requested_period": {
+        "end": "2024-12-31",
+        "start": "2024-12-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 7901,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2025-01.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "01",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "ec2cf008540b9635abf71e686743fbdbf3e38aff305e23f0b1e03c32df033a4e",
+      "requested_period": {
+        "end": "2025-01-31",
+        "start": "2025-01-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3101,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2025-02.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "02",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "2741722aa652b6f62fb486e2f5248d3391f55e8c5b79d44817ce8b80efd8264a",
+      "requested_period": {
+        "end": "2025-02-28",
+        "start": "2025-02-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1123,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2025-03.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "03",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "00be0cfd8af274a8d6b4916aa039376f65abb01e29d178df16739d2c07f83477",
+      "requested_period": {
+        "end": "2025-03-31",
+        "start": "2025-03-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3872,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2025-04.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "04",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "e0b27db89e6feba1e2d1b3dc63e99d258546d48492c62a86d35a36a91fa45951",
+      "requested_period": {
+        "end": "2025-04-30",
+        "start": "2025-04-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3692,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2025-05.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "05",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "7a520fa3bf4aea513d967a33968f176462cca4d02e4b7b00f8b2c6abf66d976d",
+      "requested_period": {
+        "end": "2025-05-31",
+        "start": "2025-05-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3227,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2025-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "06",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "a96897246ef7c0b32d023e9ff167322536b2d734fa03255d4092aeedb792b555",
+      "requested_period": {
+        "end": "2025-06-30",
+        "start": "2025-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 4515,
+      "document_name": "searchFreeIssueNewShares monthly response",
+      "file": "corporate-03-2025-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfreeissuenewshares",
+        "ldMktTpCd": "1",
+        "method": "searchFreeIssueNewShares",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "03",
+        "selMonth": "07",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "b0186c718a1ba0d81ad444ba26039e9b13646ba6ba698402a3b620e620dc1fbd",
+      "requested_period": {
+        "end": "2025-07-31",
+        "start": "2025-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1501,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2024-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "06",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "8779d7a6ad303bc1f732583dc9251e21bf987149f3441caa2cd1756b2a743560",
+      "requested_period": {
+        "end": "2024-06-30",
+        "start": "2024-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2865,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2024-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "07",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "56530049aa1844a05af04d96e5bb93ede81e0e0062b46741eef2c84cd5eaf5bb",
+      "requested_period": {
+        "end": "2024-07-31",
+        "start": "2024-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3599,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2024-08.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "08",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "7ddf5dc2bc713d1a8b3c2653987d2d9c487fa804806cfad433f5adc5d937b4c0",
+      "requested_period": {
+        "end": "2024-08-31",
+        "start": "2024-08-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3025,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2024-09.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "09",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "dc682ca5dcda5348f594b6317aac009fe673a945af08144c50401861c4676df8",
+      "requested_period": {
+        "end": "2024-09-30",
+        "start": "2024-09-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 5373,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2024-10.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "10",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "2f912bdf13f93cda2a236b82cbb5946990b9856a2e3736605a075f86493d1954",
+      "requested_period": {
+        "end": "2024-10-31",
+        "start": "2024-10-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2251,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2024-11.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "11",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "e6774d0ad321ca43fc72f8df60cdb817c7cf1c83af75ca19ef7ec0da64863feb",
+      "requested_period": {
+        "end": "2024-11-30",
+        "start": "2024-11-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1501,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2024-12.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "12",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "d9bba7edab63e07ae4402b7538d612c127f48d25495964e3e33a2f65d77f9200",
+      "requested_period": {
+        "end": "2024-12-31",
+        "start": "2024-12-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3599,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2025-01.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "01",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "939500acf9df1029c07babc5b385e96a741ceb7e93003bf00af40a34c8d5472d",
+      "requested_period": {
+        "end": "2025-01-31",
+        "start": "2025-01-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3994,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2025-02.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "02",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "2f2894f27199d21b0a1a1248a13b0865ced5f82707c9613d0d426851ef18b012",
+      "requested_period": {
+        "end": "2025-02-28",
+        "start": "2025-02-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 7215,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2025-03.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "03",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "1a13eaa16001cd06a2ed8bf09509d3ee5b188d3e394ec132fb1d99e32fbe627e",
+      "requested_period": {
+        "end": "2025-03-31",
+        "start": "2025-03-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3019,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2025-04.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "04",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "c1695fee23f492c7117e835c89303d82d3360725ce5a7dac2c3ad2bb9ee55b67",
+      "requested_period": {
+        "end": "2025-04-30",
+        "start": "2025-04-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1501,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2025-05.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "05",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "4f3540039e0e3290ba3c53c09dea3afba9101e72610465f395b3d03d6c5bf5f5",
+      "requested_period": {
+        "end": "2025-05-31",
+        "start": "2025-05-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3843,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2025-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "06",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "f602f732ed2516fcf3a4f82c0ccbc089ca03e38ece5e244039ac7c3dee8c28a2",
+      "requested_period": {
+        "end": "2025-06-30",
+        "start": "2025-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2853,
+      "document_name": "searchFaceValueChange monthly response",
+      "file": "corporate-04-2025-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchfacevaluechange",
+        "ldMktTpCd": "1",
+        "method": "searchFaceValueChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "04",
+        "selMonth": "07",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "ab0b95f9a465e2f0031a60725c04692e22cacfe4b6aa4541d6c04dfc1c2f65ed",
+      "requested_period": {
+        "end": "2025-07-31",
+        "start": "2025-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1508,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2024-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "06",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "1a68a3890fc0d6a58442901f35fdd44e7797f21437ceffce6e19813c2949ada9",
+      "requested_period": {
+        "end": "2024-06-30",
+        "start": "2024-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1508,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2024-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "07",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "09a974c881f331b04a0e8448db568c5b1d00c283a185bb450fab30edc1c58dec",
+      "requested_period": {
+        "end": "2024-07-31",
+        "start": "2024-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1508,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2024-08.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "08",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "37a33863693c46c3ecbc9c3689387331555944b923ff30a4ea1a127bed2893bf",
+      "requested_period": {
+        "end": "2024-08-31",
+        "start": "2024-08-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1508,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2024-09.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "09",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "05c609641046c0c55995facf07bf2ed33b67d150a206f84c816c1e02ab9cde14",
+      "requested_period": {
+        "end": "2024-09-30",
+        "start": "2024-09-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2120,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2024-10.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "10",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "bef56835b231eb0dcf449be16f50d2f1096b7466943b5fb73a86ed89ff5eed13",
+      "requested_period": {
+        "end": "2024-10-31",
+        "start": "2024-10-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1508,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2024-11.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "11",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "e4f825186889423ddd8d9d97d84b64097916cccf45dc03cbb01943110513422f",
+      "requested_period": {
+        "end": "2024-11-30",
+        "start": "2024-11-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 16958,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2024-12.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "12",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "e240b51594db439bf3cf5971a6a7c6727f08672c0dabad038d38bafbe3577ff0",
+      "requested_period": {
+        "end": "2024-12-31",
+        "start": "2024-12-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1508,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2025-01.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "01",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "6fdf8fcb4cc0c083236a0a2876b38d262545d9df0376c4f5d0fae7858558b890",
+      "requested_period": {
+        "end": "2025-01-31",
+        "start": "2025-01-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3178,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2025-02.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "02",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "aafa248e2e696de0fcdc6ac7c8093ef4de473c92b7615c846b2ec1dab9df3be4",
+      "requested_period": {
+        "end": "2025-02-28",
+        "start": "2025-02-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 5101,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2025-03.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "03",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "a24d05c5e150ddab07f701fe22926c8c6556d4e12e32cccdabaf0853c9db0846",
+      "requested_period": {
+        "end": "2025-03-31",
+        "start": "2025-03-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1508,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2025-04.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "04",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "9bbdeb46b0c3a05909624adcf5f3b8f51818cd949e7f49283656f1dcbe63a29d",
+      "requested_period": {
+        "end": "2025-04-30",
+        "start": "2025-04-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1508,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2025-05.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "05",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "a11e5bba44a9a063a5358fde7945e720d5ee0128dc9d9265a347959216e4e21c",
+      "requested_period": {
+        "end": "2025-05-31",
+        "start": "2025-05-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1508,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2025-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "06",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "056749f7c0e0744048e649678ab19c6ad6f923d9cd8594c5ac620d36eb1e5e6f",
+      "requested_period": {
+        "end": "2025-06-30",
+        "start": "2025-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1508,
+      "document_name": "searchStockDividend monthly response",
+      "file": "corporate-05-2025-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchstockdividend",
+        "ldMktTpCd": "1",
+        "method": "searchStockDividend",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "05",
+        "selMonth": "07",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "024470c63812a5823fe63301614842fa1ce195e484e4ab3f6b81b4c00bb83f43",
+      "requested_period": {
+        "end": "2025-07-31",
+        "start": "2025-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3239,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2024-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "06",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "e1ea937beed7a3f633fdf6df583903fbff402415efd0f6ec98c00a47f4f3c8cb",
+      "requested_period": {
+        "end": "2024-06-30",
+        "start": "2024-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3474,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2024-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "07",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "73aec2742e0617e70bbd17fe5a67be9eac52e554066c7ec1c3e3ab424a6952f3",
+      "requested_period": {
+        "end": "2024-07-31",
+        "start": "2024-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3328,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2024-08.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "08",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "add6a75219f6ff6fbd825e698c442ea937323a1739a1943679f5edb05fc6dac4",
+      "requested_period": {
+        "end": "2024-08-31",
+        "start": "2024-08-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 6566,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2024-09.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "09",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "7187f26b5869e59587fe3c23afbd16ae6754b68e60f2d797854b012058899ffe",
+      "requested_period": {
+        "end": "2024-09-30",
+        "start": "2024-09-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3424,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2024-10.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "10",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "efc927fe23cf4f73aaba266d3a525ad14f3ce886ff87c4e3f0d910492604a5eb",
+      "requested_period": {
+        "end": "2024-10-31",
+        "start": "2024-10-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 8667,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2024-11.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "11",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "c480d9065665745b7453614425063e7acf3883d1f51c3e0966336f0f92651572",
+      "requested_period": {
+        "end": "2024-11-30",
+        "start": "2024-11-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 5935,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2024-12.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "12",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "3f202d670ab5e116b6f626e4e0c06f54904e90eb1f45e64f892ab856d453f143",
+      "requested_period": {
+        "end": "2024-12-31",
+        "start": "2024-12-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 1709,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2025-01.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "01",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "60b71e5c9a075b2fc7f025e62356cc7a0deef5dc5162b49347c0b30b89151f9d",
+      "requested_period": {
+        "end": "2025-01-31",
+        "start": "2025-01-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 6479,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2025-02.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "02",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "d781c0821d2df55aca815e93bcfc53026d3192e65d3300ad9497f84b3354edd9",
+      "requested_period": {
+        "end": "2025-02-28",
+        "start": "2025-02-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2418,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2025-03.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "03",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "7bfd72e6d1baf7da6fff11760357e308db7b4e65a7d247f56403c267d065aa80",
+      "requested_period": {
+        "end": "2025-03-31",
+        "start": "2025-03-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 15603,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2025-04.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "04",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "4208c8c290256c26fd28a028d38112686b4f6f3b92bdd72e7ef924744d7c1f2c",
+      "requested_period": {
+        "end": "2025-04-30",
+        "start": "2025-04-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 5832,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2025-05.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "05",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "cfe9bda8a29c8a7bfd69174fad60ff45156c15fba0e433697ff864e82edeb5fd",
+      "requested_period": {
+        "end": "2025-05-31",
+        "start": "2025-05-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 7608,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2025-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "06",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "066c674039d4cf7513109a7578da505b4f44a1f7a6d9b5a990c52d5c82ae589b",
+      "requested_period": {
+        "end": "2025-06-30",
+        "start": "2025-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 5066,
+      "document_name": "searchReductionCapital monthly response",
+      "file": "corporate-06-2025-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchreductioncapital",
+        "ldMktTpCd": "1",
+        "method": "searchReductionCapital",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "06",
+        "selMonth": "07",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "bc53ced73f9e21111d32b30b904ad8bdf629f7c8814e0deed941da95c6be6fc8",
+      "requested_period": {
+        "end": "2025-07-31",
+        "start": "2025-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 8776,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2024-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "06",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "c7efb132b444e38f46feae47a70fdef03690154d6b20a933a493c246bb818fd3",
+      "requested_period": {
+        "end": "2024-06-30",
+        "start": "2024-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 8802,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2024-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "07",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "4338105a7890aa08e55fb2f980a16701f06338cb9d2793aae9dc1eb2c6e21646",
+      "requested_period": {
+        "end": "2024-07-31",
+        "start": "2024-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 7548,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2024-08.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "08",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "09f3e83253ca1b6882625c2060a0ff371ecd4472e6b53d72f68ffca18197e138",
+      "requested_period": {
+        "end": "2024-08-31",
+        "start": "2024-08-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 13862,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2024-09.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "09",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "56f3b730a76fad0bdbf77553f9cd2e6e5263856c532ec71ebd15fcaf267a82da",
+      "requested_period": {
+        "end": "2024-09-30",
+        "start": "2024-09-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 5783,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2024-10.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "10",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "020b32d0bdcd677bb96ec931d99113db2097fb248f66e2fb346b8a53e53e31b5",
+      "requested_period": {
+        "end": "2024-10-31",
+        "start": "2024-10-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 10468,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2024-11.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "11",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "5ab03f97bb90b007d529efac0ef44d82ba98b4e4934d7aff12b221fadfc5f839",
+      "requested_period": {
+        "end": "2024-11-30",
+        "start": "2024-11-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 15961,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2024-12.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "12",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "9f1709a8b49cb012f481a2b7a09f6a7ec19efa1535f99cf0f1a8d2d97e5830fc",
+      "requested_period": {
+        "end": "2024-12-31",
+        "start": "2024-12-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 10917,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2025-01.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "01",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "59465283a48d13e051e9a6105595a6995629e38905b7e21bcca6de9b0dc80412",
+      "requested_period": {
+        "end": "2025-01-31",
+        "start": "2025-01-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 6371,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2025-02.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "02",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "aeaba151fa4acbaada1d2e6c01f2a1692a0de4f9fe2ed8d07afc660b1cc2f13a",
+      "requested_period": {
+        "end": "2025-02-28",
+        "start": "2025-02-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 5211,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2025-03.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "03",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "851d83b2575db46d046effef312083a645e7689fe7472fc05ea776c1d5aa7e1b",
+      "requested_period": {
+        "end": "2025-03-31",
+        "start": "2025-03-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 6733,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2025-04.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "04",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "02d1c97fb842faced1b21200553cd8dff946a23fd2267e6392aea5a22665cdbf",
+      "requested_period": {
+        "end": "2025-04-30",
+        "start": "2025-04-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 9245,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2025-05.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "05",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "59d095822c40410c1acf2cf55fd91a31a8624918e5e01075dcdac70095c2ad42",
+      "requested_period": {
+        "end": "2025-05-31",
+        "start": "2025-05-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 8112,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2025-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "06",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "ea3e093f9565d1f65ce8880010e44340cfd5542b6cfc4cfe8898e9e84cb9b15a",
+      "requested_period": {
+        "end": "2025-06-30",
+        "start": "2025-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 13115,
+      "document_name": "searchDivisionAffiliation monthly response",
+      "file": "corporate-07-2025-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchdivisionaffiliation",
+        "ldMktTpCd": "1",
+        "method": "searchDivisionAffiliation",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "07",
+        "selMonth": "07",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "76be23f9e965efd78d1ef54c4c6e15e2a624daa6dd057c5b633e32ea2f411427",
+      "requested_period": {
+        "end": "2025-07-31",
+        "start": "2025-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 6896,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2024-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "06",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "40df03bdf4f6e846fd0c7f406b10cbbb19c659d14b8d140b647df374061ea2b3",
+      "requested_period": {
+        "end": "2024-06-30",
+        "start": "2024-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2576,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2024-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "07",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "72279e65e4dbea4b7702598db0165c064478f7a36a6409d9350ce647f0662af7",
+      "requested_period": {
+        "end": "2024-07-31",
+        "start": "2024-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 4531,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2024-08.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "08",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "7eeeda05c16283701ba388b851b8d21c39f42a76444240cc771373bb36947e34",
+      "requested_period": {
+        "end": "2024-08-31",
+        "start": "2024-08-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3475,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2024-09.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "09",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "7f653e0f085af230c947bc49865be589916d444072b432eef60b957824ae9887",
+      "requested_period": {
+        "end": "2024-09-30",
+        "start": "2024-09-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2947,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2024-10.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "10",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "5587d34524f01aa6fc44602baebeea186d1d11bfa5bf2b7135c8cb22e5e60aa3",
+      "requested_period": {
+        "end": "2024-10-31",
+        "start": "2024-10-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3111,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2024-11.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "11",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "8799bf921c4e07d9a81c8668ef6c2279efb495fdc49d5eeb819fa886e0c171cf",
+      "requested_period": {
+        "end": "2024-11-30",
+        "start": "2024-11-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2615,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2024-12.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "12",
+        "selYear": "2024"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "0957841c1ded83980578c9848db0a26f0833c68c3a66417292a796c3b40e8d3e",
+      "requested_period": {
+        "end": "2024-12-31",
+        "start": "2024-12-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3892,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2025-01.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "01",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "2823a97be54868ed94c3a69937170bf82f62b7227dfbbb10c4ccb0d05686570f",
+      "requested_period": {
+        "end": "2025-01-31",
+        "start": "2025-01-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 4363,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2025-02.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "02",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "9555724eece67329eeab0cb068d66594a5a6e7fff82a14154fd618d0aa21347a",
+      "requested_period": {
+        "end": "2025-02-28",
+        "start": "2025-02-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 2247,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2025-03.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "03",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "d9b5cbadc63d62199fa512acef00bb832986675c07ab75f107c925264534b049",
+      "requested_period": {
+        "end": "2025-03-31",
+        "start": "2025-03-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 27312,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2025-04.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "04",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "5139d4316461cb9b4932a16d91cd7c2e0b0d9444dd3b6855820a487363c2cd9f",
+      "requested_period": {
+        "end": "2025-04-30",
+        "start": "2025-04-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 5856,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2025-05.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "05",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "ec7f73a6a6a7dbd247d6f0b531a77dd96cb0815f1d2d28ef0bf6965fb3a6a0f8",
+      "requested_period": {
+        "end": "2025-05-31",
+        "start": "2025-05-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3705,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2025-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "06",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "bd20fbf66e3f8a465eb760980037d95f979fb0b15fe77731e0dbf53d233755fc",
+      "requested_period": {
+        "end": "2025-06-30",
+        "start": "2025-06-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 3119,
+      "document_name": "searchNameChange monthly response",
+      "file": "corporate-08-2025-07.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchnamechange",
+        "ldMktTpCd": "1",
+        "method": "searchNameChange",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "08",
+        "selMonth": "07",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "b755aa8039476dc5146fb0ce6f254ae12ad2d79a24a33a77f409dd1d9917e14e",
+      "requested_period": {
+        "end": "2025-07-31",
+        "start": "2025-07-01"
+      },
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    },
+    {
+      "bytes": 5706,
+      "document_name": "searchTotalCalendar monthly response",
+      "file": "corporate-2025-06.html",
+      "method": "POST",
+      "params": {
+        "forward": "searchtotalcalendar",
+        "ldMktTpCd": "1",
+        "method": "searchTotalCalendar",
+        "periodType": "M",
+        "repIsuSrtCd": "",
+        "searchMenu": "01",
+        "selMonth": "06",
+        "selYear": "2025"
+      },
+      "publisher": "Korea Exchange (KIND)",
+      "raw_sha256": "b9c622101c8ebeae4ae57a742230cf34dbb81a00b159348b74a5fc4d0dc97a75",
+      "requested_period": {
+        "end": "2025-06-30",
+        "start": "2025-06-01"
+      },
+      "response_url": "https://upgrade-notice.krx.co.kr/failover/index.html",
+      "result": "maintenance_redirect_not_query_result",
+      "status": 200,
+      "url": "https://kind.krx.co.kr/common/stockschedule.do"
+    }
+  ]
+}

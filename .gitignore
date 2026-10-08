@@ -37,3 +37,7 @@ dist/
 build/
 .coverage
 htmlcov/
+
+# Preserve official baseline evidence source responses
+!docs/evidence/baseline-official/raw/
+!docs/evidence/baseline-official/raw/**

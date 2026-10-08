@@ -1,0 +1,24 @@
+{
+  "sources": [
+    {
+      "file": "stock-main.html.gz",
+      "method": "GET",
+      "publisher": "Korea Exchange",
+      "raw_sha256": "c2384e938824e433447493b0bfeb83d7c933d5757f8e0ac88f2af3cda790c6a0",
+      "role": "Public interface documentation; not independent calendar/event coverage",
+      "status": 200,
+      "stored_sha256": "de2001a9f3fa2057bb1ee234d55b07e597a8c095c8fb0bd8fa272492cc1b6072",
+      "url": "https://kind.krx.co.kr/common/stockschedule.do?method=StockScheduleMain&index=11&selYear=2025&selMonth=6&repIsuSrtCd="
+    },
+    {
+      "file": "krx-calendar-js.txt.gz",
+      "method": "GET",
+      "publisher": "Korea Exchange",
+      "raw_sha256": "3359c59ce50b328aa4da415e60ac3319d433239ef9c9718f7ac44f4652caafc0",
+      "role": "Public interface documentation; not independent calendar/event coverage",
+      "status": 200,
+      "stored_sha256": "88c34e9329ac2a952d6da3d6b6eb1dd6cdac84d5134e2744cdb2d13d756ea19b",
+      "url": "https://www.krx.co.kr/contents/MKD/01/0110/01100301/mkd01100301.js"
+    }
+  ]
+}
