@@ -1,0 +1,6078 @@
+{
+  "artifact": {
+    "candidate_issuer_ids": [
+      "00030",
+      "00064",
+      "00067",
+      "00068",
+      "00086",
+      "00088",
+      "00150",
+      "00153",
+      "00224",
+      "00239",
+      "00288",
+      "00300",
+      "00355",
+      "00362",
+      "00367",
+      "00369",
+      "00392",
+      "00406",
+      "00444",
+      "00480",
+      "00492",
+      "00518",
+      "00604",
+      "00640",
+      "00689",
+      "00707",
+      "00734",
+      "00761",
+      "00766",
+      "00769",
+      "00897",
+      "00916",
+      "00931",
+      "00941",
+      "00983",
+      "01013",
+      "01077",
+      "01078",
+      "01121",
+      "01130",
+      "01203",
+      "01217",
+      "01232",
+      "01245",
+      "01263",
+      "01389",
+      "01674",
+      "01755",
+      "01786",
+      "01968",
+      "02000",
+      "02056",
+      "02124",
+      "02353",
+      "02556",
+      "03020",
+      "03402",
+      "03551",
+      "03572",
+      "03657",
+      "04266",
+      "04705",
+      "05163",
+      "06496",
+      "06827",
+      "06946",
+      "06964",
+      "06996",
+      "07195",
+      "08531",
+      "08628",
+      "09677",
+      "10226",
+      "11965",
+      "12011",
+      "12656",
+      "12882",
+      "13948",
+      "13999",
+      "14521",
+      "17090",
+      "18575",
+      "19437",
+      "24156",
+      "26725",
+      "26727",
+      "27847",
+      "28036",
+      "29394",
+      "31740",
+      "33059",
+      "33977",
+      "35052",
+      "35282",
+      "35712",
+      "35743",
+      "36555",
+      "37719",
+      "40076",
+      "40355",
+      "44873",
+      "45180",
+      "45491",
+      "46287",
+      "47515",
+      "48979"
+    ],
+    "end": "2025-07-07",
+    "securities": {
+      "000020": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000040": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000050": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000060": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000075": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000080": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000087": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000100": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000105": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000120": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000140": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000145": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000150": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000155": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000157": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000180": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000215": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000220": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000225": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000227": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000230": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000240": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000270": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000300": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000320": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000325": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000370": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000390": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000400": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000430": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000480": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000500": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000520": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000540": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000545": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000547": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000590": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000640": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000650": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000660": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000670": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000680": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000700": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000725": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000760": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000810": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000815": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000850": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000860": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000880": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000885": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "00088K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000890": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000910": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000950": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000970": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000990": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "000995": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001020": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001040": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001045": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "00104K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001060": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001065": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001067": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001080": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001120": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001130": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001140": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001200": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001230": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001250": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001270": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001275": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001290": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001340": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001360": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001380": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001390": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001430": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001440": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001450": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001460": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001465": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001470": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001500": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001510": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001515": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001520": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001525": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001527": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001529": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001530": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001550": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001570": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001620": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001630": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001680": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001685": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001725": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001740": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001745": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001750": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001755": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001770": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001780": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001790": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001795": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001880": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "001940": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002020": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002025": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002030": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002100": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002140": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002150": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002170": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002200": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002220": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002240": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002270": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002310": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002320": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002350": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002355": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002360": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002380": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002390": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002410": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002450": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002460": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002600": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002620": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002630": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002700": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002710": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002760": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002780": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002785": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002787": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002790": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002795": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "00279K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002810": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002840": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002870": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002880": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002900": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002920": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002990": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "002995": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003010": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003030": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003060": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003075": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003080": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003090": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003120": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003160": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003200": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003220": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003230": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003240": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003280": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003300": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003350": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003410": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003460": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003465": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003470": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003475": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003480": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003495": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003520": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003530": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003535": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003540": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003545": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003547": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003550": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003555": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003570": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003580": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003610": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003620": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003650": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003670": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003680": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003780": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003830": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003850": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003920": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003925": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "003960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004020": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004060": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004080": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004090": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004100": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004105": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004140": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004150": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004170": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004250": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004255": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004270": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004310": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004360": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004365": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004370": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004380": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004410": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004415": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004430": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004440": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004450": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004540": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004545": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004565": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004700": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004710": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004770": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004830": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004835": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004840": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004870": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004890": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004910": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004920": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004970": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004980": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004985": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "004990": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "00499K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005010": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005030": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005090": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005110": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005180": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005250": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005257": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005300": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005305": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005320": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005360": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005380": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005385": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005387": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005389": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005390": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005430": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005440": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005500": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005610": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005680": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005725": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005740": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005745": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005750": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005810": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005830": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005850": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005870": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005880": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005930": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005935": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005940": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005945": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005950": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "005965": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006040": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006060": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006090": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006110": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006120": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006125": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006200": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006220": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006280": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006340": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006345": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006360": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006370": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006380": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006390": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006400": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006405": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006570": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006650": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006660": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006740": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006805": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "00680K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006840": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006880": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006890": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "006980": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007110": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007120": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007160": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007280": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007310": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007340": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007460": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007540": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007570": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007575": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007590": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007610": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007630": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007660": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007700": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007810": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007815": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "00781K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007860": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "007980": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008040": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008060": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "00806K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008110": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008250": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008350": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008355": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008500": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008600": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008700": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008730": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008770": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008775": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008870": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008930": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "008970": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009140": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009150": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009155": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009160": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009180": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009190": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009200": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009240": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009270": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009275": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009290": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009310": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009320": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009410": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009415": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009440": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009450": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009460": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009470": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009540": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009580": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009680": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009770": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009810": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009830": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009835": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009900": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "009970": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010040": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010050": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010060": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010100": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010120": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010130": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010140": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010145": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010400": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010580": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010600": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010620": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010640": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010660": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010770": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010780": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010950": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010955": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "010960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011090": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011150": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011155": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011170": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011200": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011230": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011280": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011300": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011330": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011390": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011500": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011700": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011760": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011780": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011785": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011790": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011810": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "011930": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012030": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012160": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012170": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012200": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012205": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012280": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012320": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012330": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012450": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012510": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012600": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012610": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012630": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012750": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "012800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "013000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "013360": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "013520": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "013570": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "013580": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "013700": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "013870": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "013890": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014130": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014160": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014280": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014285": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014440": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014530": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014580": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014680": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014710": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014790": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014825": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014830": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014910": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014915": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "014990": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "015020": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "015230": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "015260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "015350": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "015360": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "015540": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "015590": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "015760": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "015860": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "015890": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016090": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016360": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016380": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016385": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016450": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016580": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016590": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016610": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016710": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016740": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "016880": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017040": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017180": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017370": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017390": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017550": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017670": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017810": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017860": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017900": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017940": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "017960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "018250": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "018260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "018470": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "018500": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "018670": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "018880": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "019170": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "019175": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "019180": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "019440": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "019490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "019680": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "019685": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "020000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "020120": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "020150": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "020560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "020760": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "021050": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "021240": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "021820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "022100": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "023000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "023150": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "023350": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "023450": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "023530": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "023590": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "023800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "023810": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "023960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "024070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "024090": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "024110": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "024720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "024890": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "024900": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "025000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "025530": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "025540": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "025560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "025620": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "025750": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "025820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "025860": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "025890": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "026890": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "026940": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "026960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "027410": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "027740": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "027970": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "028050": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "028100": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "028260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "02826K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "028670": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "029460": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "029530": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "029780": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "030000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "030190": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "030200": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "030210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "030610": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "030720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "030790": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "031210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "031430": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "031440": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "031820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "032350": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "032560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "032640": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "032830": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "033180": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "033240": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "033250": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "033270": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "033530": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "033780": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "033920": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "034020": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "034120": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "034220": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "034230": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "034300": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "034310": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "034590": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "034730": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "03473K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "034830": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "035000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "035150": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "035250": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "035420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "035510": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "035720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "036420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "036460": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "036530": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "036570": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "036580": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "037270": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "037560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "037710": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "039130": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "039490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "039570": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "041650": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "042660": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "042670": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "042700": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "044380": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "044450": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "044820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "047040": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "047050": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "047400": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "047810": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "049770": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "049800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "051600": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "051630": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "051900": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "051905": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "051910": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "051915": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "052690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "053210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "053690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "055490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "055550": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "057050": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "058430": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "058650": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "058730": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "058850": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "058860": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "060980": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "062040": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "063160": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "064350": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "064400": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "064960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "066570": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "066575": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "066970": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "067830": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "068270": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "068290": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "068400": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "069260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "069460": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "069620": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "069640": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "069730": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "069960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "070960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "071050": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "071055": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "071090": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "071320": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "071840": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "071950": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "071970": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "072130": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "072710": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "073240": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "074610": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "075180": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "075580": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "077500": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "077970": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "078000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "078520": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "078930": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "078935": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "079160": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "079430": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "079550": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "079900": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "079980": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "081000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "081660": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "082640": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "082740": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "083420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "084010": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "084670": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "084680": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "084690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "084695": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "084870": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "085310": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "085620": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "086280": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "086790": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "088260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "088350": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "088790": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "088980": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "089470": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "089590": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "089860": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "090080": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "090350": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "090355": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "090370": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "090430": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "090435": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "090460": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "091090": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "091810": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "092200": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "092220": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "092230": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "092440": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "092780": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "092790": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "093050": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "093230": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "093240": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "093370": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "094280": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "094800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "095570": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "095720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "096300": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "096760": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "096770": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "096775": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "097230": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "097520": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "097950": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "097955": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "100090": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "100220": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "100250": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "100840": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "101060": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "101140": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "101530": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "102260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "102280": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "102460": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "103140": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "103590": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "104700": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "105560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "105630": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "105840": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "107590": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "108320": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "108670": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "108675": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "109070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "111110": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "111380": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "111770": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "112610": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "114090": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "115390": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "117580": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "118000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "119650": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "120030": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "120110": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "120115": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "122900": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "123690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "123700": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "123890": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "126560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "126720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "128820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "128940": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "129260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "130660": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "133820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "134380": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "134790": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "136490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "137310": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "138040": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "138250": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "138490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "138930": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "139130": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "139480": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "139990": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "140910": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "143210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "145210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "145270": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "145720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "145990": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "145995": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "152550": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "153360": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "155660": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "155900": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "161000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "161390": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "161890": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "163560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "168490": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "170900": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "175330": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "178920": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "180640": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "18064K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "181710": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "183190": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "185750": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "192080": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "192400": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "192650": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "192820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "194370": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "195870": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "200880": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "204210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "204320": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "207940": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "210540": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "210980": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "213500": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "214320": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "214330": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "214390": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "214420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "226320": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "227840": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "229640": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "234080": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "241560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "241590": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "244920": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "248070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "248170": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "249420": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "251270": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "259960": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "264900": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "26490K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "267250": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "267260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "267270": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "267290": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "267850": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "268280": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "271560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "271940": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "271980": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "272210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "272450": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "272550": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "278470": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "280360": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "281820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "282330": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "282690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "284740": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "285130": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "28513K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "286940": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "293480": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "293940": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "294870": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "298000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "298020": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "298040": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "298050": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "298690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "300720": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "302440": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "306200": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "307950": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "308170": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "316140": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "317400": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "322000": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "323410": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "326030": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "329180": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "330590": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "334890": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "336260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "33626K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "33626L": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "336370": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "33637K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "33637L": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "338100": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "339770": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "344820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "348950": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "350520": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "352820": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "353200": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "35320K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "357120": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "357250": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "357430": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "361610": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "363280": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "36328K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "365550": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "372910": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "373220": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "375500": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "37550K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "37550L": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "377190": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "377300": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "377740": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "378850": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "380440": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "381970": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "383220": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "383800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "38380K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "395400": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "396690": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "400760": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "402340": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "403550": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "404990": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "415640": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "417310": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "432320": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "443060": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "446070": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "448730": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "450080": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "450140": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "45014K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "451800": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "452260": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "45226K": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "453340": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "454910": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "456040": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "457190": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "460850": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "460860": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "462520": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "462870": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "465770": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "475150": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "475560": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "480370": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "481850": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "483650": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "484870": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "487570": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "489790": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "499790": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "900140": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      },
+      "950210": {
+        "ambiguous": null,
+        "effective_period": null,
+        "official_security_id": null,
+        "status": "BLOCKED_ON_IDENTITY_MAPPING"
+      }
+    },
+    "start": "2024-06-14",
+    "universe_count": 993,
+    "verified_count": 0,
+    "version": "official_security_mapping_review_v1"
+  },
+  "fingerprint": "6e764b3477458d12446d18a619ae438f688c0b9d8ccb70504f767b909e8daca2"
+}
