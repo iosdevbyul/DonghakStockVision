@@ -1,6 +1,5 @@
 """Offline DART document review indexing tests."""
 
-import gzip
 import hashlib
 import io
 import json
