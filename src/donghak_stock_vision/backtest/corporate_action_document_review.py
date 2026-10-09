@@ -60,7 +60,9 @@ def _plain_text(raw: bytes) -> str:
 
 
 def _tokens() -> dict[str, tuple[str, ...]]:
-    result = {event_class: (token,) for event_class, token in TITLE_TOKENS.items()}
+    result: dict[str, tuple[str, ...]] = {
+        event_class: (token,) for event_class, token in TITLE_TOKENS.items()
+    }
     for event_class in EVENT_CLASSES:
         result.setdefault(event_class, ())
     for event_class, extra in EXTRA_TOKENS.items():
@@ -69,7 +71,7 @@ def _tokens() -> dict[str, tuple[str, ...]]:
 
 
 def _dates(text: str) -> list[str]:
-    result = set()
+    result: set[str] = set()
     for pattern in DATE_PATTERNS:
         for match in pattern.finditer(text):
             year, month, day = (int(value) for value in match.groups())
@@ -125,8 +127,8 @@ def review_document(
             "effective_date_approved": False,
         }
 
-    entries = []
-    text_parts = []
+    entries: list[dict[str, Any]] = []
+    text_parts: list[str] = []
     for name in sorted(archive.namelist()):
         if name.endswith("/") or Path(name).suffix.lower() not in TEXT_EXTENSIONS:
             continue
@@ -150,7 +152,7 @@ def review_document(
         hits = [token for token in token_map[event_class] if token in text]
         if not hits:
             continue
-        snippets = []
+        snippets: list[str] = []
         for token in hits:
             snippets.extend(_snippets(text, token))
         evidence[event_class] = {"tokens": hits, "snippets": snippets[:6]}
@@ -191,13 +193,14 @@ def build_document_review_index(plan: FrozenJSON, source_dir: Path) -> FrozenJSO
         params = cast(dict[str, str], params_object)
         identity = request_identity("document.xml", params)
         require(digest(identity) == receipt_path.stem, "document_request_identity_mismatch")
-        rcept_no = params.get("rcept_no")
-        require(isinstance(rcept_no, str), "document_receipt_number_required")
+        rcept_no_object = params.get("rcept_no")
+        require(isinstance(rcept_no_object, str), "document_receipt_number_required")
+        rcept_no = cast(str, rcept_no_object)
         require(rcept_no in plan_by_receipt, "unexpected_document_receipt")
         require(rcept_no not in receipts, "duplicate_document_receipt")
         receipts[rcept_no] = (receipt_path.with_suffix(".gz"), meta)
 
-    reviews = []
+    reviews: list[dict[str, Any]] = []
     for rcept_no in sorted(plan_by_receipt):
         body_path, meta = receipts[rcept_no]
         reviews.append(
