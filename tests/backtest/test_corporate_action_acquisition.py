@@ -57,7 +57,7 @@ def zip_body(text: str = "fixture") -> bytes:
 
 
 def mapping_document() -> dict[str, object]:
-    securities = []
+    securities: list[dict[str, object]] = []
     for index in range(993):
         ticker = f"{index:06d}"
         if index == 660:
@@ -71,9 +71,9 @@ def mapping_document() -> dict[str, object]:
                 "matches": [{"corp_code": f"{index + 1:08d}"}],
             }
         )
-    unique = {}
+    unique: dict[str, dict[str, object]] = {}
     for row in securities:
-        unique[row["ticker"]] = row
+        unique[str(row["ticker"])] = row
     while len(unique) < 993:
         index = len(unique) + 1000
         ticker = f"{index:06d}"
@@ -116,8 +116,8 @@ def test_document_plan_deduplicates_receipts_and_merges_review_scope() -> None:
 def test_document_source_replay_matches_transport_cache(tmp_path: Path) -> None:
     plan = build_document_plan(candidate_document())
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, content=zip_body(str(request.url)))
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=zip_body())
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http:
         client = DartEvidenceClient("test-only-secret", tmp_path, http)
