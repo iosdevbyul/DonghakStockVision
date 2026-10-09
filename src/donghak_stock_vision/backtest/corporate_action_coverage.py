@@ -235,9 +235,7 @@ def summarize_corporate_action_coverage(
     )
     event_count = sum(len(record.events) for record in by_ticker.values())
     missing = [ticker for ticker in universe if ticker not in by_ticker]
-    blocked = [
-        ticker for ticker, status in statuses.items() if status not in VERIFIED_STATUSES
-    ]
+    blocked = [ticker for ticker, status in statuses.items() if status not in VERIFIED_STATUSES]
     blockers = []
     if historical_identity_verified != len(universe):
         blockers.append("BLOCKED_ON_HISTORICAL_IDENTITY")

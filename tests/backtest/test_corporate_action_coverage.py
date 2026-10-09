@@ -53,15 +53,9 @@ def coverage(
 def test_no_event_security_requires_complete_semantics() -> None:
     assert coverage().status == "VERIFIED_NO_RELEVANT_EVENT"
     assert coverage(query_complete=False).status == "BLOCKED_ON_SOURCE_COVERAGE"
-    assert (
-        coverage(authoritative_complete_semantics=False).status
-        == "BLOCKED_ON_SOURCE_COVERAGE"
-    )
+    assert coverage(authoritative_complete_semantics=False).status == "BLOCKED_ON_SOURCE_COVERAGE"
     assert coverage(covered_classes=()).status == "BLOCKED_ON_SOURCE_COVERAGE"
-    assert (
-        coverage(historical_identity_verified=False).status
-        == "BLOCKED_ON_IDENTITY_MAPPING"
-    )
+    assert coverage(historical_identity_verified=False).status == "BLOCKED_ON_IDENTITY_MAPPING"
 
 
 def test_event_security_requires_reviewed_effective_event() -> None:
