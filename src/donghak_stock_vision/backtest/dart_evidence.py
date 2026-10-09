@@ -46,12 +46,19 @@ TITLE_TOKENS = {
     "name_change": "\uc0c1\ud638\ubcc0\uacbd",
     "listing_restructuring": "\uc7ac\uc0c1\uc7a5",
 }
+SECURITY_CODE_PATTERN = re.compile(r"[0-9]{5}[0-9A-Z]")
 LIFECYCLE_TOKENS = (
     "\uc0c1\uc7a5",
     "\ub9e4\ub9e4\uac70\ub798\uc815\uc9c0",
     "\uac70\ub798\uc815\uc9c0",
     "\uc815\ub9ac\ub9e4\ub9e4",
 )
+
+
+def security_code_valid(value: object) -> bool:
+    """Validate the repository's six-character KRX security-code domain."""
+
+    return isinstance(value, str) and SECURITY_CODE_PATTERN.fullmatch(value) is not None
 
 
 def source_valid(source: dict[str, Any]) -> bool:
