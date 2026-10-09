@@ -13,7 +13,7 @@ For each exact six-digit security, a complete record requires:
 
 - exact historical security identity covering the full required period
 - official identity evidence
-- complete official query coverage for every approved corporate-action class
+- complete official query execution for every approved corporate-action class
 - authoritative semantics that can support both event and no-event conclusions
 - official effective-date evidence for every confirmed event
 - no inference from price gaps, issuer names, current mappings, or disclosure titles

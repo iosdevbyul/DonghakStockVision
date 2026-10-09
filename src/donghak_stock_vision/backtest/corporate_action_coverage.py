@@ -6,9 +6,9 @@ whether the locked 993-security baseline universe has complete corporate-action
 coverage.
 """
 
+import re
 from dataclasses import dataclass
 from datetime import date
-import re
 from typing import Any
 
 from donghak_stock_vision.backtest.dart_evidence import (
@@ -76,6 +76,7 @@ class CorporateActionSecurityCoverage:
     query_start: date
     query_end: date
     covered_classes: tuple[str, ...]
+    query_complete: bool
     authoritative_complete_semantics: bool
     query_sources: tuple[FrozenJSON, ...]
     events: tuple[CorporateActionEventEvidence, ...]
@@ -92,7 +93,10 @@ class CorporateActionSecurityCoverage:
             and self.identity_effective_start <= self.identity_effective_end,
             "invalid_identity_period",
         )
-        require(type(self.historical_identity_verified) is bool, "identity_verification_flag_required")
+        require(
+            type(self.historical_identity_verified) is bool,
+            "identity_verification_flag_required",
+        )
         require(
             type(self.query_start) is date
             and type(self.query_end) is date
@@ -106,6 +110,7 @@ class CorporateActionSecurityCoverage:
             "invalid_corporate_action_classes",
         )
         object.__setattr__(self, "covered_classes", classes)
+        require(type(self.query_complete) is bool, "query_complete_flag_required")
         require(
             type(self.authoritative_complete_semantics) is bool,
             "complete_semantics_flag_required",
@@ -161,7 +166,7 @@ class CorporateActionSecurityCoverage:
     def status(self) -> str:
         return corporate_status(
             historical_identity=self.historical_identity_verified,
-            query_complete=bool(self.query_sources),
+            query_complete=self.query_complete,
             covered_classes=self.covered_classes,
             start=self.query_start.isoformat(),
             end=self.query_end.isoformat(),
@@ -187,6 +192,7 @@ class CorporateActionSecurityCoverage:
             "query_start": self.query_start.isoformat(),
             "query_end": self.query_end.isoformat(),
             "covered_classes": list(self.covered_classes),
+            "query_complete": self.query_complete,
             "authoritative_complete_semantics": self.authoritative_complete_semantics,
             "query_sources": [source.to_dict() for source in self.query_sources],
             "events": [event.to_dict() for event in self.events],
@@ -258,7 +264,7 @@ def summarize_corporate_action_coverage(
                 ticker: by_ticker[ticker].fingerprint for ticker in sorted(by_ticker)
             },
             "blockers": blockers,
-            "ready_for_runner_tail_integration": verified == len(universe),
+            "corporate_action_gate_verified": verified == len(universe),
             "prices_adjusted": False,
             "prediction_or_backtest_invoked": False,
         }

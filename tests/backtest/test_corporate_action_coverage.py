@@ -17,7 +17,7 @@ def source(name: str) -> FrozenJSON:
     return FrozenJSON.freeze(
         {
             "url": "https://kind.krx.co.kr/example",
-            "raw_sha256": (name[0] if name else "a") * 64,
+            "raw_sha256": "a" * 64,
             "document_reference": name,
         }
     )
@@ -28,6 +28,7 @@ def coverage(
     *,
     historical_identity_verified: bool = True,
     covered_classes: tuple[str, ...] = tuple(sorted(EVENT_CLASSES)),
+    query_complete: bool = True,
     authoritative_complete_semantics: bool = True,
     events: tuple[CorporateActionEventEvidence, ...] = (),
 ) -> CorporateActionSecurityCoverage:
@@ -41,6 +42,7 @@ def coverage(
         query_start=date(2024, 6, 14),
         query_end=date(2025, 7, 7),
         covered_classes=covered_classes,
+        query_complete=query_complete,
         authoritative_complete_semantics=authoritative_complete_semantics,
         query_sources=(source("query"),),
         events=events,
@@ -50,6 +52,7 @@ def coverage(
 
 def test_no_event_security_requires_complete_semantics() -> None:
     assert coverage().status == "VERIFIED_NO_RELEVANT_EVENT"
+    assert coverage(query_complete=False).status == "BLOCKED_ON_SOURCE_COVERAGE"
     assert (
         coverage(authoritative_complete_semantics=False).status
         == "BLOCKED_ON_SOURCE_COVERAGE"
@@ -87,6 +90,7 @@ def test_identity_claim_must_cover_full_required_period() -> None:
             query_start=date(2024, 6, 14),
             query_end=date(2025, 7, 7),
             covered_classes=tuple(sorted(EVENT_CLASSES)),
+            query_complete=True,
             authoritative_complete_semantics=True,
             query_sources=(source("query"),),
             events=(),
@@ -131,7 +135,7 @@ def test_manifest_remains_blocked_until_every_security_is_verified() -> None:
         "BLOCKED_ON_HISTORICAL_IDENTITY",
         "BLOCKED_ON_CORPORATE_ACTION_EVIDENCE",
     ]
-    assert manifest["ready_for_runner_tail_integration"] is False
+    assert manifest["corporate_action_gate_verified"] is False
 
 
 def test_manifest_closes_only_when_full_universe_is_verified() -> None:
@@ -147,7 +151,7 @@ def test_manifest_closes_only_when_full_universe_is_verified() -> None:
     assert manifest["missing_security_count"] == 0
     assert manifest["blocked_security_count"] == 0
     assert manifest["blockers"] == []
-    assert manifest["ready_for_runner_tail_integration"] is True
+    assert manifest["corporate_action_gate_verified"] is True
     assert manifest["prices_adjusted"] is False
     assert manifest["prediction_or_backtest_invoked"] is False
 
