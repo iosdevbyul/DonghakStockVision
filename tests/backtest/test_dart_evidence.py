@@ -22,6 +22,7 @@ from donghak_stock_vision.backtest.dart_transport import (
     DartEvidenceClient,
     request_identity,
     safe_body,
+    zip_response_valid,
 )
 
 SOURCE = dict(
@@ -208,6 +209,35 @@ def test_secret_and_path_cannot_enter_request_identity() -> None:
         request_identity("list.json", {"local_path": "/tmp/example"})
     assert not safe_body(b"echo-sensitive", "sensitive")
     assert not safe_body(archive("sensitive"), "sensitive")
+
+
+def test_zip_response_validation_rejects_http_200_xml_error() -> None:
+    assert zip_response_valid("document.xml", archive("<list/>"))
+    assert not zip_response_valid(
+        "document.xml",
+        b'<?xml version="1.0" encoding="UTF-8"?><result><status>800</status></result>',
+    )
+    assert zip_response_valid("list.json", b'{"status":"000"}')
+
+
+def test_document_transport_rejects_http_200_xml_error_without_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("donghak_stock_vision.backtest.dart_transport.time.sleep", lambda _: None)
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=b'<?xml version="1.0" encoding="UTF-8"?><result><status>800</status></result>',
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+        client = DartEvidenceClient("test-only-sensitive-sentinel", tmp_path, http)
+        with pytest.raises(ValueError, match="DART_OFFICIAL_ERROR"):
+            client.fetch("document.xml", {"rcept_no": "20240701000001"})
+
+    assert not tuple(tmp_path.glob("*.json"))
+    assert not tuple(tmp_path.glob("*.gz"))
 
 
 def test_missing_credential(tmp_path: Path) -> None:
