@@ -1,0 +1,1 @@
+{"credential_used": false, "endpoint": "https://kind.krx.co.kr/investwarn/delcompany.do", "length": 83439, "method": "GET", "parameters": {"method": "searchDelCompanyMain"}, "publisher": "KRX KIND", "raw_sha256": "1fe81355db2152c373aa4cf1880d51dca722e59b02c173234239738375b49f95", "status": 200}
