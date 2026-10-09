@@ -61,6 +61,8 @@ def mapping_document() -> dict[str, Any]:
     securities: list[dict[str, Any]] = []
     for index in range(993):
         ticker = f"{index:06d}"
+        if index == 88:
+            ticker = "00088K"
         if index == 660:
             ticker = "000660"
         if index == 992:
@@ -167,6 +169,9 @@ def test_security_review_queue_never_promotes_boundary_identity() -> None:
     assert queue["whole_period_historical_identity_verified_count"] == 0
     assert queue["coverage_records_approved"] == 0
     assert queue["corporate_action_gate_verified"] is False
+    alpha = next(row for row in queue["securities"] if row["ticker"] == "00088K")
+    assert alpha["current_identity_status"] == "CURRENT_IDENTITY_VERIFIED"
+
     samsung = next(row for row in queue["securities"] if row["ticker"] == "005930")
     assert "verify_full_period_historical_security_identity" in samsung["required_actions"]
     assert "review_candidate_documents_and_effective_dates" in samsung["required_actions"]

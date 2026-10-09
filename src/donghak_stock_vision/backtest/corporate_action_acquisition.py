@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from typing import Any, cast
 
-from donghak_stock_vision.backtest.dart_evidence import EVENT_CLASSES
+from donghak_stock_vision.backtest.dart_evidence import EVENT_CLASSES, security_code_valid
 from donghak_stock_vision.backtest.dart_transport import request_identity
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
@@ -59,8 +59,7 @@ def build_document_plan(corporate_actions: dict[str, Any]) -> FrozenJSON:
         )
         ticker = candidate.get("repository_ticker")
         require(
-            ticker is None
-            or (isinstance(ticker, str) and re.fullmatch(r"[0-9]{6}", ticker) is not None),
+            ticker is None or security_code_valid(ticker),
             "invalid_candidate_repository_ticker",
         )
         require(
@@ -185,7 +184,7 @@ def build_security_review_queue(
         require(type(row) is dict, "mapping_security_object_required")
         ticker = row.get("ticker")
         require(
-            isinstance(ticker, str) and re.fullmatch(r"[0-9]{6}", ticker) is not None,
+            security_code_valid(ticker),
             "invalid_mapping_ticker",
         )
         require(ticker not in by_ticker, "duplicate_mapping_ticker")

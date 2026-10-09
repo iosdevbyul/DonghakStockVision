@@ -6,7 +6,6 @@ whether the locked 993-security baseline universe has complete corporate-action
 coverage.
 """
 
-import re
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
@@ -32,7 +31,7 @@ class CorporateActionEventEvidence:
     version: str = "corporate_action_event_v1"
 
     def __post_init__(self) -> None:
-        require(re.fullmatch(r"[0-9]{6}", self.ticker) is not None, "exact_ticker_required")
+        require(dart_evidence.security_code_valid(self.ticker), "exact_security_code_required")
         require(
             self.event_class in dart_evidence.EVENT_CLASSES,
             "unsupported_corporate_action_class",
@@ -61,7 +60,7 @@ class CorporateActionEventEvidence:
 
 @dataclass(frozen=True)
 class CorporateActionSecurityCoverage:
-    """Complete reviewed coverage claim for one exact six-digit security."""
+    """Complete reviewed coverage claim for one exact KRX security code."""
 
     ticker: str
     security_identity: str
@@ -80,7 +79,7 @@ class CorporateActionSecurityCoverage:
     version: str = "corporate_action_security_coverage_v1"
 
     def __post_init__(self) -> None:
-        require(re.fullmatch(r"[0-9]{6}", self.ticker) is not None, "exact_ticker_required")
+        require(dart_evidence.security_code_valid(self.ticker), "exact_security_code_required")
         require(bool(self.security_identity), "security_identity_required")
         require(
             dart_evidence.source_valid(self.identity_source.to_dict()),
@@ -216,7 +215,7 @@ def summarize_corporate_action_coverage(
         "corporate_action_universe_must_be_sorted_unique",
     )
     for ticker in universe:
-        require(re.fullmatch(r"[0-9]{6}", ticker) is not None, "exact_ticker_required")
+        require(dart_evidence.security_code_valid(ticker), "exact_security_code_required")
 
     by_ticker: dict[str, CorporateActionSecurityCoverage] = {}
     for record in records:

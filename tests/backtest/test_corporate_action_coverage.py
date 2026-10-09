@@ -50,6 +50,17 @@ def coverage(
     )
 
 
+def test_alphanumeric_krx_security_code_is_supported() -> None:
+    record = coverage("00088K")
+    assert record.ticker == "00088K"
+    assert record.status == "VERIFIED_NO_RELEVANT_EVENT"
+
+
+def test_malformed_security_code_is_rejected() -> None:
+    with pytest.raises(ValueError, match="exact_security_code_required"):
+        coverage("00088-")
+
+
 def test_no_event_security_requires_complete_semantics() -> None:
     assert coverage().status == "VERIFIED_NO_RELEVANT_EVENT"
     assert coverage(query_complete=False).status == "BLOCKED_ON_SOURCE_COVERAGE"

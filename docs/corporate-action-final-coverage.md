@@ -9,9 +9,10 @@ The final coverage layer may clear `BLOCKED_ON_CORPORATE_ACTION_EVIDENCE` only
 when every security in the locked 993-security universe has a reviewed record
 covering the required period from 2024-06-14 through 2025-07-07.
 
-For each exact six-digit security, a complete record requires:
+For each exact six-character KRX security code, a complete record requires:
 
 - exact historical security identity covering the full required period
+- repository security codes may include KRX class suffixes such as `K` or `L`; they are not limited to six decimal digits
 - official identity evidence
 - complete official query execution for every approved corporate-action class
 - authoritative semantics that can support both event and no-event conclusions
