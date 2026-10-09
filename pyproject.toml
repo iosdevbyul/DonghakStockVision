@@ -16,10 +16,12 @@ dependencies = [
 
 [project.optional-dependencies]
 learning = ["scikit-learn>=1.9.1,<1.10", "numpy>=2.3,<3", "threadpoolctl>=3.6,<4"]
+api = ["fastapi>=0.115,<1", "pydantic>=2.10,<3", "uvicorn>=0.34,<1"]
 dev = ["pytest>=8.3,<10", "ruff>=0.11,<1", "mypy>=1.15,<2", "build>=1.2,<2"]
 
 [project.scripts]
 dsv = "donghak_stock_vision.cli:main"
+dsv-api = "donghak_stock_vision.api_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/donghak_stock_vision"]

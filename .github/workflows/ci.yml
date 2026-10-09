@@ -20,7 +20,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install
-        run: python -m pip install -e '.[dev,learning]'
+        run: python -m pip install -e '.[dev,learning,api]'
       - name: Ruff
         run: |
           ruff check src tests
@@ -46,6 +46,19 @@ jobs:
           done
           cd /tmp
           PYTHONPATH="$GITHUB_WORKSPACE" /tmp/dsv-wheel/bin/python "$GITHUB_WORKSPACE/tests/learning/wheel_smoke.py"
+      - name: Installed API wheel smoke test
+        run: |
+          for wheel in "$GITHUB_WORKSPACE"/dist/*.whl; do
+            /tmp/dsv-wheel/bin/pip install "$wheel[api]"
+          done
+          /tmp/dsv-wheel/bin/python - <<'PY'
+          from fastapi.testclient import TestClient
+          from donghak_stock_vision.api import create_app
+
+          response = TestClient(create_app()).get("/api/v1/health")
+          assert response.status_code == 200
+          assert response.json()["mode"] == "read_only"
+          PY
       - name: Installed decision wheel integration smoke test
         run: |
           cd /tmp

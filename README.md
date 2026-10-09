@@ -243,3 +243,18 @@ dsv backtest --input synthetic-request.json \
 독립적인 Docker Compose 스택으로 Prometheus와 Grafana OSS를 실행할 수 있습니다.
 현재는 Prometheus 자체 지표만 수집하며 애플리케이션·학습·DB와 연결하지 않습니다.
 [실행, 인증 정보 설정, 검증 및 데이터 삭제 안내](docs/observability.md)를 확인하세요.
+
+## Read-only web API
+
+An optional FastAPI transport is available behind the `api` extra. It serves a
+validated immutable research snapshot and does not run inference, signals,
+evidence collection, or backtests.
+
+```bash
+python -m pip install -e '.[api]'
+dsv-api --snapshot .data/research-api-snapshot.json
+```
+
+See [docs/research-api.md](docs/research-api.md) for the endpoint contract and
+research-integrity boundary.
+
