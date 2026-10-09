@@ -85,7 +85,7 @@ def _dates(text: str) -> list[str]:
 
 
 def _snippets(text: str, token: str) -> list[str]:
-    result = []
+    result: list[str] = []
     start = 0
     while len(result) < 3:
         index = text.find(token, start)
