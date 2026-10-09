@@ -7,7 +7,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from donghak_stock_vision.backtest.dart_evidence import EVENT_CLASSES
 from donghak_stock_vision.backtest.dart_transport import request_identity
@@ -24,8 +24,9 @@ def artifact(
     """Validate one checked-in wrapped artifact before deriving new evidence."""
 
     require(type(wrapped) is dict, "wrapped_artifact_required")
-    value = wrapped.get("artifact")
-    require(type(value) is dict, "artifact_object_required")
+    value_object = wrapped.get("artifact")
+    require(type(value_object) is dict, "artifact_object_required")
+    value = cast(dict[str, Any], value_object)
     require(wrapped.get("fingerprint") == digest(value), "artifact_fingerprint_mismatch")
     require(value.get("version") == version, "artifact_version_mismatch")
     return dict(value)
@@ -35,8 +36,9 @@ def build_document_plan(corporate_actions: dict[str, Any]) -> FrozenJSON:
     """Create a stable list of candidate DART documents without approving events."""
 
     parent = artifact(corporate_actions, version="dart_document_review_queue_v1")
-    candidates = parent.get("candidates")
-    require(type(candidates) is list, "corporate_action_candidates_required")
+    candidates_object = parent.get("candidates")
+    require(type(candidates_object) is list, "corporate_action_candidates_required")
+    candidates = cast(list[Any], candidates_object)
 
     documents: dict[str, dict[str, Any]] = {}
     for candidate in candidates:
@@ -175,8 +177,9 @@ def build_security_review_queue(
         "historical_identity_parent_mapping_mismatch",
     )
 
-    securities = mapping_value.get("securities")
-    require(type(securities) is list, "mapping_securities_required")
+    securities_object = mapping_value.get("securities")
+    require(type(securities_object) is list, "mapping_securities_required")
+    securities = cast(list[Any], securities_object)
     by_ticker: dict[str, dict[str, Any]] = {}
     for row in securities:
         require(type(row) is dict, "mapping_security_object_required")
@@ -189,8 +192,9 @@ def build_security_review_queue(
         by_ticker[ticker] = row
     require(len(by_ticker) == 993, "locked_universe_count_mismatch")
 
-    boundary_rows = historical.get("boundary_identities")
-    require(type(boundary_rows) is list, "boundary_identity_rows_required")
+    boundary_rows_object = historical.get("boundary_identities")
+    require(type(boundary_rows_object) is list, "boundary_identity_rows_required")
+    boundary_rows = cast(list[Any], boundary_rows_object)
     boundaries: dict[str, list[dict[str, Any]]] = {}
     for row in boundary_rows:
         require(type(row) is dict, "boundary_identity_object_required")
@@ -210,8 +214,9 @@ def build_security_review_queue(
     whole_period_verified = 0
     for ticker in sorted(by_ticker):
         mapping_row = by_ticker[ticker]
-        matches = mapping_row.get("matches")
-        require(type(matches) is list, "mapping_matches_required")
+        matches_object = mapping_row.get("matches")
+        require(type(matches_object) is list, "mapping_matches_required")
+        matches = cast(list[dict[str, Any]], matches_object)
         current_status = mapping_row.get("current_status")
         corp_code = None
         if current_status == "CURRENT_IDENTITY_VERIFIED":

@@ -5,6 +5,7 @@ import io
 import json
 import zipfile
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -18,11 +19,11 @@ from donghak_stock_vision.backtest.dart_transport import DartEvidenceClient
 from donghak_stock_vision.data.learning import digest
 
 
-def wrapped(value: dict[str, object]) -> dict[str, object]:
+def wrapped(value: dict[str, Any]) -> dict[str, Any]:
     return {"artifact": value, "fingerprint": digest(value)}
 
 
-def candidate_document() -> dict[str, object]:
+def candidate_document() -> dict[str, Any]:
     artifact = {
         "version": "dart_document_review_queue_v1",
         "candidates": [
@@ -56,8 +57,8 @@ def zip_body(text: str = "fixture") -> bytes:
     return output.getvalue()
 
 
-def mapping_document() -> dict[str, object]:
-    securities: list[dict[str, object]] = []
+def mapping_document() -> dict[str, Any]:
+    securities: list[dict[str, Any]] = []
     for index in range(993):
         ticker = f"{index:06d}"
         if index == 660:
@@ -71,7 +72,7 @@ def mapping_document() -> dict[str, object]:
                 "matches": [{"corp_code": f"{index + 1:08d}"}],
             }
         )
-    unique: dict[str, dict[str, object]] = {}
+    unique: dict[str, dict[str, Any]] = {}
     for row in securities:
         unique[str(row["ticker"])] = row
     while len(unique) < 993:
@@ -89,7 +90,7 @@ def mapping_document() -> dict[str, object]:
     return wrapped(artifact)
 
 
-def historical_document(mapping_fingerprint: str) -> dict[str, object]:
+def historical_document(mapping_fingerprint: str) -> dict[str, Any]:
     artifact = {
         "version": "baseline_security_lifecycle_v1",
         "current_corporation_mapping_fingerprint": mapping_fingerprint,
