@@ -16,7 +16,6 @@ from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
 from donghak_stock_vision.data.learning import digest
 
-
 VERIFIED_STATUSES = {"VERIFIED_EVENT_PRESENT", "VERIFIED_NO_RELEVANT_EVENT"}
 
 
@@ -34,7 +33,10 @@ class CorporateActionEventEvidence:
 
     def __post_init__(self) -> None:
         require(re.fullmatch(r"[0-9]{6}", self.ticker) is not None, "exact_ticker_required")
-        require(self.event_class in dart_evidence.EVENT_CLASSES, "unsupported_corporate_action_class")
+        require(
+            self.event_class in dart_evidence.EVENT_CLASSES,
+            "unsupported_corporate_action_class",
+        )
         require(type(self.effective_date) is date, "effective_date_required")
         require(dart_evidence.source_valid(self.source.to_dict()), "official_event_source_required")
         require(bool(self.review_reference), "event_review_reference_required")
@@ -80,7 +82,10 @@ class CorporateActionSecurityCoverage:
     def __post_init__(self) -> None:
         require(re.fullmatch(r"[0-9]{6}", self.ticker) is not None, "exact_ticker_required")
         require(bool(self.security_identity), "security_identity_required")
-        require(dart_evidence.source_valid(self.identity_source.to_dict()), "official_identity_source_required")
+        require(
+            dart_evidence.source_valid(self.identity_source.to_dict()),
+            "official_identity_source_required",
+        )
         require(
             type(self.identity_effective_start) is date
             and type(self.identity_effective_end) is date
