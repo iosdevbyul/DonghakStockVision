@@ -510,6 +510,7 @@ def _baseline(
     lifecycle_blocked = by_id["security-lifecycle"].state != "verified"
     corporate_blocked = by_id["corporate-actions"].state != "verified"
     runner_blocked = not publication.runnerTailIntegrated
+    allocation_percent = Decimal(rules["target_notional_fraction"]) * 100
 
     readiness = (
         BacktestReadinessStep(
@@ -585,7 +586,7 @@ def _baseline(
                 value=f"{execution_tail[0]} → {execution_tail[-1]}",
                 detail=(
                     "No new signals; only pending entries, open positions, "
-                    "and exits may resolve."
+                    + "and exits may resolve."
                 ),
             ),
             BacktestTimelineItem(
@@ -635,10 +636,7 @@ def _baseline(
                     ),
                     BacktestRule(
                         label="Target allocation",
-                        value=(
-                            f"{Decimal(rules['target_notional_fraction']) * 100:g}% "
-                            "current equity"
-                        ),
+                        value=f"{allocation_percent:g}% current equity",
                         detail="Quantity is planned at signal time.",
                     ),
                     BacktestRule(
@@ -745,10 +743,12 @@ def build_snapshot(
         raise SnapshotExportError("market database universe differs from DART mapping universe")
 
     manifest = sources.dart_manifest.artifact
-    if int(manifest["current_identity_count"]) != sum(
-        record.get("current_status") == "CURRENT_IDENTITY_VERIFIED"
+    verified_current_count = sum(
+        1
         for record in mapping.values()
-    ):
+        if record.get("current_status") == "CURRENT_IDENTITY_VERIFIED"
+    )
+    if int(manifest["current_identity_count"]) != verified_current_count:
         raise SnapshotExportError("current identity count mismatch")
 
     unexplained = _unexplained_by_ticker(sources.missing_sessions.artifact)
@@ -778,11 +778,16 @@ def build_snapshot(
                 f"{unexplained.get(security.ticker, 0):,} required sessions."
                 if unexplained.get(security.ticker, 0)
                 else (
-                    "Current corporation mapping is verified; full-period historical "
-                    "identity continuity remains unverified."
+                    (
+                        "Current corporation mapping is verified; full-period historical "
+                        "identity continuity remains unverified."
+                    )
                     if mapping[security.ticker].get("current_status")
                     == "CURRENT_IDENTITY_VERIFIED"
-                    else "Current corporation mapping and historical identity remain unresolved."
+                    else (
+                        "Current corporation mapping and historical identity "
+                        "remain unresolved."
+                    )
                 )
             ),
             chartNote=(

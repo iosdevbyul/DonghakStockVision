@@ -147,10 +147,11 @@ def test_market_universe_must_match_reviewed_mapping(tmp_path: Path) -> None:
     root = repository_root()
     market_db = make_market_db(tmp_path)
     with sqlite3.connect(market_db) as db:
-        db.execute(
+        delete_one = (
             "DELETE FROM bars WHERE ticker=("
-            "SELECT ticker FROM bars ORDER BY ticker LIMIT 1)"
+            + "SELECT ticker FROM bars ORDER BY ticker LIMIT 1)"
         )
+        db.execute(delete_one)
         db.commit()
 
     with pytest.raises(SnapshotExportError, match="universe differs"):
