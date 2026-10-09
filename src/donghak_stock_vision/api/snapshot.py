@@ -83,9 +83,7 @@ class SnapshotReader:
     def evidence_layers(self) -> tuple[EvidenceLayerSummary, ...]:
         return tuple(
             EvidenceLayerSummary.model_validate(
-                layer.model_dump(
-                    include={"id", "title", "state", "summary", "sourceLabel"}
-                )
+                layer.model_dump(include={"id", "title", "state", "summary", "sourceLabel"})
             )
             for layer in self._snapshot.evidence
         )
