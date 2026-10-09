@@ -31,25 +31,18 @@ def verify(root: Path, sources: Path) -> dict[str, dict[str, Any]]:
     corporate_actions = read(
         root / "docs/evidence/baseline-dart/artifacts/corporate-action-events.json"
     )
-    mapping = read(
-        root / "docs/evidence/baseline-dart/artifacts/dart-corporation-mapping.json"
-    )
+    mapping = read(root / "docs/evidence/baseline-dart/artifacts/dart-corporation-mapping.json")
     historical_identities = read(
-        root
-        / "docs/evidence/baseline-security-lifecycle/artifacts/"
+        root / "docs/evidence/baseline-security-lifecycle/artifacts/"
         "historical-security-identities.json"
     )
-    dart_manifest = read(
-        root / "docs/evidence/baseline-dart/artifacts/dart-evidence-manifest.json"
-    )
+    dart_manifest = read(root / "docs/evidence/baseline-dart/artifacts/dart-evidence-manifest.json")
     lifecycle_manifest = read(
-        root
-        / "docs/evidence/baseline-security-lifecycle/artifacts/"
+        root / "docs/evidence/baseline-security-lifecycle/artifacts/"
         "security-lifecycle-manifest.json"
     )
     integrated_lifecycle = read(
-        root
-        / "docs/evidence/baseline-security-lifecycle/artifacts/"
+        root / "docs/evidence/baseline-security-lifecycle/artifacts/"
         "integrated-security-evidence.json"
     )
 

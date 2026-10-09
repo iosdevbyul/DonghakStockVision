@@ -58,10 +58,7 @@ def build_document_plan(corporate_actions: dict[str, Any]) -> FrozenJSON:
         ticker = candidate.get("repository_ticker")
         require(
             ticker is None
-            or (
-                isinstance(ticker, str)
-                and re.fullmatch(r"[0-9]{6}", ticker) is not None
-            ),
+            or (isinstance(ticker, str) and re.fullmatch(r"[0-9]{6}", ticker) is not None),
             "invalid_candidate_repository_ticker",
         )
         require(
@@ -81,9 +78,7 @@ def build_document_plan(corporate_actions: dict[str, Any]) -> FrozenJSON:
         if ticker is not None:
             current["repository_tickers"].add(ticker)
         current["review_categories"].update(categories)
-        current["lifecycle_review"] = (
-            current["lifecycle_review"] or candidate["lifecycle_review"]
-        )
+        current["lifecycle_review"] = current["lifecycle_review"] or candidate["lifecycle_review"]
 
     rows = []
     for receipt in sorted(documents):
@@ -134,8 +129,7 @@ def inspect_document_sources(plan: FrozenJSON, source_dir: Path) -> FrozenJSON:
 
         rcept_no = params.get("rcept_no")
         require(
-            isinstance(rcept_no, str)
-            and re.fullmatch(r"[0-9]{14}", rcept_no) is not None,
+            isinstance(rcept_no, str) and re.fullmatch(r"[0-9]{14}", rcept_no) is not None,
             "invalid_document_receipt_number",
         )
         body_path = receipt_path.with_suffix(".gz")
@@ -224,16 +218,13 @@ def build_security_review_queue(
             require(len(matches) == 1, "verified_current_mapping_shape")
             corp_code = matches[0].get("corp_code")
             require(
-                isinstance(corp_code, str)
-                and re.fullmatch(r"[0-9]{8}", corp_code) is not None,
+                isinstance(corp_code, str) and re.fullmatch(r"[0-9]{8}", corp_code) is not None,
                 "invalid_current_corp_code",
             )
             current_verified += 1
 
         boundary = boundaries.get(ticker, [])
-        whole_period = any(
-            row.get("whole_period_continuity_verified") is True for row in boundary
-        )
+        whole_period = any(row.get("whole_period_continuity_verified") is True for row in boundary)
         if whole_period:
             whole_period_verified += 1
 
@@ -267,8 +258,7 @@ def build_security_review_queue(
         "current_identity_count_mismatch",
     )
     require(
-        whole_period_verified
-        == historical.get("whole_period_historical_identities_verified"),
+        whole_period_verified == historical.get("whole_period_historical_identities_verified"),
         "historical_identity_count_mismatch",
     )
     return FrozenJSON.freeze(

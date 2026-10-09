@@ -230,10 +230,7 @@ def test_document_receipt_body_hash_is_checked(tmp_path: Path) -> None:
         "http_status": 200,
         "raw_sha256": "0" * 64,
     }
-    identity = {
-        key: meta[key]
-        for key in ("publisher", "endpoint", "params", "credential_used")
-    }
+    identity = {key: meta[key] for key in ("publisher", "endpoint", "params", "credential_used")}
     stem = digest(identity)
     (tmp_path / f"{stem}.json").write_text(json.dumps(meta))
     (tmp_path / f"{stem}.gz").write_bytes(gzip.compress(zip_body(), mtime=0))
