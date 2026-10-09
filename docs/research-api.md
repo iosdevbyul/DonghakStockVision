@@ -12,9 +12,45 @@ Install the optional API dependencies:
 python -m pip install -e '.[api]'
 ```
 
+## Deterministic snapshot export
+
+The API snapshot is generated explicitly. It is not assembled on HTTP request.
+
+```bash
+dsv-api-export \
+  --root . \
+  --market-db .data/market.sqlite3 \
+  --output .data/research-api-snapshot.json
+```
+
+The exporter reads the market database with SQLite `mode=ro&immutable=1` and
+`query_only=ON`, rejects active WAL/journal sidecars, verifies database integrity,
+and compares the file SHA-256 before and after the export.
+
+It also validates the committed official evidence artifact fingerprints and the
+reviewed model publication record at
+`docs/research-api/model-publication.json`. The market ticker universe must match
+the exact DART mapping universe. Mismatches fail closed rather than being filled,
+mapped, or dropped.
+
+The exporter derives:
+
+- market row count and date coverage from persisted KRX bars
+- per-ticker first and latest stored dates
+- current English company names only from exact verified DART stock-code mappings
+- evidence readiness and blocker counts from preserved official artifacts
+- locked baseline policy and chronology from existing code/evidence contracts
+- qualified model metrics from the reviewed publication record
+
+Sector metadata remains null because no approved sector source is currently part
+of this export contract. Unresolved company names also remain null.
+
+Output is deterministic canonical JSON with no export timestamp. Existing output
+files are never overwritten.
+
 ## Snapshot boundary
 
-The API reads one validated JSON snapshot from:
+The API reads the validated JSON snapshot from:
 
 ```text
 DSV_API_SNAPSHOT_PATH=.data/research-api-snapshot.json
@@ -23,10 +59,6 @@ DSV_API_SNAPSHOT_PATH=.data/research-api-snapshot.json
 The snapshot is validated at process startup and then treated as immutable input.
 The API never writes back to that file or to the market, analysis, decision, or
 backtest stores.
-
-This first transport step intentionally separates HTTP serving from snapshot
-production. A later exporter can assemble the reviewed snapshot from existing
-DonghakStockVision artifacts without moving research logic into FastAPI.
 
 ## Run
 
@@ -73,17 +105,21 @@ Malformed stock codes are rejected before reader lookup. Data endpoints return
 
 ## Research integrity
 
-The API is presentation transport only.
+The publication/export/API path is read-only presentation transport.
 
-- no model loading
+- no model loading or refitting
 - no inference
 - no signal generation
 - no evidence recollection
 - no missing-bar interpretation
 - no backtest execution
 - no performance fabrication
+- no market-row repair, ticker remapping, or survivor filtering
 - no write access to production research stores
 
-Stock names and sectors are nullable in the backend contract because the current
-market database does not prove company-name or sector metadata. A later metadata
-adapter must use an approved source rather than filling those fields by guess.
+The committed model publication record is presentation metadata for already
+completed research. Updating it is a reviewable source change; the exporter does
+not calculate new model performance.
+
+Stock names are nullable and use only exact current English DART corporation names.
+Current identity does not prove full-period historical identity.

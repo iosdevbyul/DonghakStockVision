@@ -252,9 +252,15 @@ evidence collection, or backtests.
 
 ```bash
 python -m pip install -e '.[api]'
+dsv-api-export --root . --market-db .data/market.sqlite3 \
+  --output .data/research-api-snapshot.json
 dsv-api --snapshot .data/research-api-snapshot.json
 ```
 
-See [docs/research-api.md](docs/research-api.md) for the endpoint contract and
-research-integrity boundary.
+The exporter is deterministic and read-only: it validates the market DB, official
+evidence fingerprints, reviewed model publication metadata, and universe identity
+before writing a new snapshot. It never overwrites an existing snapshot.
+
+See [docs/research-api.md](docs/research-api.md) for the endpoint, export, and
+research-integrity contracts.
 
