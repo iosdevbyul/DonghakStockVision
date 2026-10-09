@@ -218,6 +218,20 @@ def _english_name(record: dict[str, Any]) -> str | None:
     return name.strip() if isinstance(name, str) and name.strip() else None
 
 
+def _stock_evidence_note(record: dict[str, Any], unexplained_count: int) -> str:
+    if unexplained_count:
+        return (
+            f"Security lifecycle evidence remains unresolved for "
+            f"{unexplained_count:,} required sessions."
+        )
+    if record.get("current_status") == "CURRENT_IDENTITY_VERIFIED":
+        return (
+            "Current corporation mapping is verified; full-period historical "
+            "identity continuity remains unverified."
+        )
+    return "Current corporation mapping and historical identity remain unresolved."
+
+
 def _unexplained_by_ticker(missing: dict[str, Any]) -> dict[str, int]:
     securities = missing.get("securities")
     if not isinstance(securities, list):
@@ -773,22 +787,9 @@ def build_snapshot(
             dataStatus="api",
             availableFrom=security.start,
             latestDataDate=security.end,
-            evidenceNote=(
-                f"Security lifecycle evidence remains unresolved for "
-                f"{unexplained.get(security.ticker, 0):,} required sessions."
-                if unexplained.get(security.ticker, 0)
-                else (
-                    (
-                        "Current corporation mapping is verified; full-period historical "
-                        "identity continuity remains unverified."
-                    )
-                    if mapping[security.ticker].get("current_status")
-                    == "CURRENT_IDENTITY_VERIFIED"
-                    else (
-                        "Current corporation mapping and historical identity "
-                        "remain unresolved."
-                    )
-                )
+            evidenceNote=_stock_evidence_note(
+                mapping[security.ticker],
+                unexplained.get(security.ticker, 0),
             ),
             chartNote=(
                 "Coverage dates come from persisted KRX daily bars. "
