@@ -77,8 +77,7 @@ def test_committed_evidence_artifacts_and_publication_validate() -> None:
     )
     assert lifecycle_integrated.artifact["security_calendar"] == "VERIFIED"
     assert (
-        lifecycle_integrated.artifact["corporate_action"]
-        == "BLOCKED_ON_CORPORATE_ACTION_EVIDENCE"
+        lifecycle_integrated.artifact["corporate_action"] == "BLOCKED_ON_CORPORATE_ACTION_EVIDENCE"
     )
     assert tuple(model.id for model in publication.models) == ("up", "down")
     assert publication.models[0].oos.averagePrecision == 0.369409
@@ -143,8 +142,7 @@ def test_snapshot_export_uses_latest_reviewed_lifecycle_evidence(tmp_path: Path)
     assert snapshot.baselineBacktest.performanceAvailable is False
     assert any(
         item.label == "Security lifecycle"
-        and item.value
-        == "db56575dc3f1abef3f1266e3e9ee5bcfdb555cd4ff9f22c958a476272e2ed90c"
+        and item.value == "db56575dc3f1abef3f1266e3e9ee5bcfdb555cd4ff9f22c958a476272e2ed90c"
         for item in snapshot.baselineBacktest.fingerprints
     )
 

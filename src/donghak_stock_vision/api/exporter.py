@@ -190,15 +190,11 @@ def load_sources(root: Path) -> ExportSources:
         settlement_calendar=load_artifact(official / "settlement-calendar.json"),
         exact_boundaries=load_artifact(official / "exact-boundaries.json"),
         corporate_actions=load_artifact(official / "corporate-actions.json"),
-        security_lifecycle_manifest=load_artifact(
-            lifecycle / "security-lifecycle-manifest.json"
-        ),
+        security_lifecycle_manifest=load_artifact(lifecycle / "security-lifecycle-manifest.json"),
         security_lifecycle_reconciliation=load_artifact(
             lifecycle / "missing-session-reconciliation.json"
         ),
-        security_lifecycle_unresolved=load_artifact(
-            lifecycle / "unresolved-security-gaps.json"
-        ),
+        security_lifecycle_unresolved=load_artifact(lifecycle / "unresolved-security-gaps.json"),
         security_lifecycle_integrated=load_artifact(
             lifecycle / "integrated-security-evidence.json"
         ),
