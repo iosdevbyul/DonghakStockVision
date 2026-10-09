@@ -227,9 +227,7 @@ def build_document_review_index(plan: FrozenJSON, source_dir: Path) -> FrozenJSO
             "documents_with_event_terms": sum(
                 bool(row["candidate_event_classes"]) for row in reviews
             ),
-            "documents_with_date_candidates": sum(
-                bool(row["date_candidates"]) for row in reviews
-            ),
+            "documents_with_date_candidates": sum(bool(row["date_candidates"]) for row in reviews),
             "documents": reviews,
             "event_approval_performed": False,
             "effective_date_approval_performed": False,

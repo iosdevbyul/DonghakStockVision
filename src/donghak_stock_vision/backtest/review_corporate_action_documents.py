@@ -30,8 +30,7 @@ def main() -> None:
 
     require(not args.output.exists(), "output_must_be_new_file")
     parent = _read(
-        args.root.resolve()
-        / "docs/evidence/baseline-dart/artifacts/corporate-action-events.json"
+        args.root.resolve() / "docs/evidence/baseline-dart/artifacts/corporate-action-events.json"
     )
     plan = build_document_plan(parent)
     review = build_document_review_index(plan, args.sources.resolve())
@@ -40,8 +39,7 @@ def main() -> None:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
-        json.dumps(wrapped, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
-        + "\n"
+        json.dumps(wrapped, sort_keys=True, ensure_ascii=True, separators=(",", ":")) + "\n"
     )
 
     print(
