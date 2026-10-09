@@ -17,6 +17,7 @@ from donghak_stock_vision.data.learning import digest
 
 ENDPOINT = "https://opendart.fss.or.kr/api/"
 ALLOWED = {"list.json", "corpCode.xml", "document.xml"}
+ZIP_BINARY_ENDPOINTS = {"corpCode.xml", "document.xml"}
 PARAMETERS = {
     "corp_code",
     "bgn_de",
@@ -46,6 +47,20 @@ def request_identity(api: str, params: dict[str, str]) -> dict[str, Any]:
         params=dict(sorted(params.items())),
         credential_used=True,
     )
+
+
+def zip_response_valid(api: str, raw: bytes) -> bool:
+    """Require documented ZIP payloads for binary DART endpoints."""
+
+    if api not in ZIP_BINARY_ENDPOINTS:
+        return True
+    if not raw.startswith(b"PK"):
+        return False
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            return bool(archive.namelist())
+    except (ValueError, zipfile.BadZipFile):
+        return False
 
 
 def safe_body(raw: bytes, secret: str) -> bool:
@@ -85,6 +100,7 @@ class DartEvidenceClient:
             raw = gzip.decompress(body.read_bytes())
             require(hashlib.sha256(raw).hexdigest() == saved["raw_sha256"], "cache_hash_mismatch")
             require(saved["http_status"] == 200, "DART_TRANSPORT_BLOCKED")
+            require(zip_response_valid(api, raw), "DART_CACHED_RESPONSE_BLOCKED")
             return raw, saved
         require(not body.exists(), "incomplete_cache_receipt")
         attempts: list[dict[str, Any]] = []
@@ -118,9 +134,10 @@ class DartEvidenceClient:
             bytes=len(raw),
             raw_sha256=hashlib.sha256(raw).hexdigest(),
         )
+        require(status == 200, "DART_TRANSPORT_BLOCKED")
+        require(zip_response_valid(api, raw), "DART_OFFICIAL_ERROR")
         body.write_bytes(gzip.compress(raw, mtime=0))
         receipt.write_text(json.dumps(meta, sort_keys=True, ensure_ascii=True) + "\n")
-        require(status == 200, "DART_TRANSPORT_BLOCKED")
         return raw, meta
 
     def filings(self, params: dict[str, str]) -> list[dict[str, Any]]:

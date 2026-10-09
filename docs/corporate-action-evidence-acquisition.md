@@ -49,8 +49,9 @@ python -m donghak_stock_vision.backtest.verify_corporate_action_acquisition \
 ```
 
 The replay requires a new output directory and validates request identity, HTTP
-status, gzip payload integrity, and raw SHA-256 before counting a document as
-preserved.
+status, gzip payload integrity, raw SHA-256, and the documented ZIP response shape
+before counting a document as preserved. An HTTP 200 XML application-error body
+must never be accepted as a preserved document source.
 
 The resulting security review queue remains `PENDING_REVIEW` for all securities.
 Existing lifecycle boundary identities remain supporting evidence only; they do
@@ -65,3 +66,13 @@ records may be converted into `CorporateActionSecurityCoverage` objects.
 
 The corporate-action blocker must not be cleared until all 993 securities satisfy
 the locked final coverage contract.
+
+## Maintenance and application-level errors
+
+Open DART binary endpoints can return an XML application-error body with HTTP 200.
+The transport therefore validates the documented ZIP payload shape before creating
+a cache receipt or body. Cached non-ZIP responses also fail closed during replay.
+
+A failed or maintenance response is not evidence and must not be promoted into the
+acquisition manifest. Existing diagnostic copies may be quarantined outside the
+active acquisition directory before a later clean recollection.

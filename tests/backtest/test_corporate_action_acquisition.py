@@ -1,6 +1,7 @@
 """Corporate-action acquisition planning and replay tests; no live network."""
 
 import gzip
+import hashlib
 import io
 import json
 import zipfile
@@ -8,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import pytest
 
 from donghak_stock_vision.backtest.corporate_action_acquisition import (
     build_acquisition_manifest,
@@ -247,3 +249,25 @@ def test_document_receipt_body_hash_is_checked(tmp_path: Path) -> None:
         assert str(error) == "document_body_hash_mismatch"
     else:
         raise AssertionError("tampered document source must fail")
+
+
+def test_document_source_replay_rejects_http_200_xml_error(tmp_path: Path) -> None:
+    plan = build_document_plan(candidate_document())
+    raw = b'<?xml version="1.0" encoding="UTF-8"?><result><status>800</status></result>'
+    identity = {
+        "publisher": "Financial Supervisory Service / Open DART",
+        "endpoint": "https://opendart.fss.or.kr/api/document.xml",
+        "params": {"rcept_no": "20240701000001"},
+        "credential_used": True,
+    }
+    stem = digest(identity)
+    meta = {
+        **identity,
+        "http_status": 200,
+        "raw_sha256": hashlib.sha256(raw).hexdigest(),
+    }
+    (tmp_path / f"{stem}.json").write_text(json.dumps(meta))
+    (tmp_path / f"{stem}.gz").write_bytes(gzip.compress(raw, mtime=0))
+
+    with pytest.raises(ValueError, match="document_archive_required"):
+        inspect_document_sources(plan, tmp_path)
