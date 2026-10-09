@@ -234,8 +234,9 @@ def _unexplained_by_ticker(missing: dict[str, Any]) -> dict[str, int]:
     return result
 
 
-def _project_status(coverage: CoverageSummary, evidence: tuple[EvidenceDetail, ...]) -> ProjectStatus:
-    by_id = {item.id: item for item in evidence}
+def _project_status(
+    coverage: CoverageSummary, evidence: tuple[EvidenceDetail, ...]
+) -> ProjectStatus:
     return ProjectStatus(
         productName="Tris Market Lens",
         sourceLabel="Reviewed DonghakStockVision snapshot",
@@ -582,7 +583,10 @@ def _baseline(
             BacktestTimelineItem(
                 label="Execution-only tail",
                 value=f"{execution_tail[0]} → {execution_tail[-1]}",
-                detail="No new signals; only pending entries, open positions, and exits may resolve.",
+                detail=(
+                    "No new signals; only pending entries, open positions, "
+                    "and exits may resolve."
+                ),
             ),
             BacktestTimelineItem(
                 label="Settlement tail",
@@ -631,7 +635,10 @@ def _baseline(
                     ),
                     BacktestRule(
                         label="Target allocation",
-                        value=f"{Decimal(rules['target_notional_fraction']) * 100:g}% current equity",
+                        value=(
+                            f"{Decimal(rules['target_notional_fraction']) * 100:g}% "
+                            "current equity"
+                        ),
                         detail="Quantity is planned at signal time.",
                     ),
                     BacktestRule(
