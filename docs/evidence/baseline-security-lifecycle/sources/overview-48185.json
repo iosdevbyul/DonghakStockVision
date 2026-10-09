@@ -1,0 +1,1 @@
+{"credential_used": false, "endpoint": "https://kind.krx.co.kr/common/companysummary.do", "length": 6102, "method": "POST", "parameters": {"menuIndex": "0", "method": "searchCompanySummaryOvrvwDetail", "methodType": "0", "strIsurCd": "48185"}, "publisher": "KRX KIND", "raw_sha256": "38ab69e2f4fa5dd63643b35e1f703289a892b07e1e1ee91f84f6c9324dd13e16", "status": 200}

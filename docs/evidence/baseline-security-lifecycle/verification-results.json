@@ -1,0 +1,32 @@
+{
+  "all_protected_sha_identical": true,
+  "base_main_commit": "099dac4",
+  "branch": "feat/baseline-security-lifecycle-evidence",
+  "byte_identical": true,
+  "clean_checkout_tests": "16 passed; no .data; no prior untracked DART raw files",
+  "credential_scan": "no credential values in new outputs",
+  "credential_used": false,
+  "documentation_links": "12 local links verified; repository has no separate link validation command",
+  "evidence_tests": "138 passed",
+  "existing_tracked_files_changed": false,
+  "format_check": "148 files already formatted",
+  "full_offline_tests": "1142 passed; 1 live test deselected; 1 joblib physical-core detection warning",
+  "git_commit_performed": false,
+  "git_diff_check": "passed, including no-index whitespace checks for all new text files",
+  "intended_new_files": 257,
+  "mypy": "148 source files passed",
+  "network": {
+    "application_error_pages": 2,
+    "http_200": 121,
+    "http_failures": 0,
+    "official_requests": 121,
+    "rate_limit_events": 0,
+    "retries": 0,
+    "source": "KRX KIND",
+    "usable_responses": 119
+  },
+  "protected_files": 2981,
+  "replayed_artifacts": 9,
+  "ruff_check": "passed",
+  "targeted_tests": "16 passed"
+}

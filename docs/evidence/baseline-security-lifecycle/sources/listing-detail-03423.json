@@ -1,0 +1,1 @@
+{"credential_used": false, "endpoint": "https://kind.krx.co.kr/listinvstg/listcomdetail.do?method=searchListComDetailMain", "length": 8400, "method": "POST", "parameters": {"bzProcsNo": "20240220000093", "isurCd": "03423", "scrnGb": "new"}, "publisher": "KRX KIND", "raw_sha256": "edf2ed2e09d932755d417079b11a222983a4dc03fb692df88c6f05e9f6321bd3", "status": 200}

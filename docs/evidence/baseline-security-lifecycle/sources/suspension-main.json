@@ -1,0 +1,1 @@
+{"credential_used": false, "endpoint": "https://kind.krx.co.kr/investwarn/tradinghaltissue.do", "length": 80310, "method": "GET", "parameters": {"method": "searchTradingHaltIssueMain"}, "publisher": "KRX KIND", "raw_sha256": "1272d98d08f5d1042ac7d02886db1aecdb7cf0105672b7a5b0e1d0afafa9ad82", "status": 200}

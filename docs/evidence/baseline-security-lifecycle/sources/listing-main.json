@@ -1,0 +1,1 @@
+{"credential_used": false, "endpoint": "https://kind.krx.co.kr/listinvstg/listingcompany.do", "length": 114496, "method": "GET", "parameters": {"method": "searchListingTypeMain"}, "publisher": "KRX KIND", "raw_sha256": "9cd0c0faaf8aae6300360868dfc95e76c1df45eec31b002bd4f4328f42bd9fb6", "status": 200}

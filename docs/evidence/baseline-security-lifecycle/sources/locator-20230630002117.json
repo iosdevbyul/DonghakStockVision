@@ -1,0 +1,1 @@
+{"credential_used": false, "endpoint": "https://kind.krx.co.kr/common/disclsviewer.do", "length": 968, "method": "GET", "parameters": {"docNo": "20230630002117", "method": "searchContents"}, "publisher": "KRX KIND", "raw_sha256": "77a008e2b31a2491716fd577105f92fc1566fdac6947616fd043761f80fc28aa", "status": 200}

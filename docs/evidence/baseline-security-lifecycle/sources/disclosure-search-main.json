@@ -1,0 +1,1 @@
+{"credential_used": false, "endpoint": "https://kind.krx.co.kr/disclosure/details.do", "length": 273757, "method": "GET", "parameters": {"method": "searchDetailsMain"}, "publisher": "KRX KIND", "raw_sha256": "e5ea856bf3bcd898972d74381c4ea810309cc92e59f6bfd91691d4ad2edda232", "status": 200}
