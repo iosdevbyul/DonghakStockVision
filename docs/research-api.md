@@ -33,12 +33,25 @@ reviewed model publication record at
 the exact DART mapping universe. Mismatches fail closed rather than being filled,
 mapped, or dropped.
 
+Security-lifecycle publication is layered rather than destructive. The original
+DART missing-session inventory remains the parent record, while
+`docs/evidence/baseline-security-lifecycle/artifacts/` supplies the reviewed
+reconciliation, unresolved-security inventory, manifest, and integrated lifecycle
+status. The exporter verifies parent fingerprints and cross-artifact counts before
+publishing the newer lifecycle state. The reviewed lifecycle layer currently
+reconciles all 8,118 inherited unexplained ticker-sessions, so the published
+lifecycle gap counts are zero. This does not promote current corporation mapping
+or boundary identity evidence to full-period historical identity, and it does not
+close the separate corporate-action blocker.
+
 The exporter derives:
 
 - market row count and date coverage from persisted KRX bars
 - per-ticker first and latest stored dates
 - current English company names only from exact verified DART stock-code mappings
-- evidence readiness and blocker counts from preserved official artifacts
+- current security-lifecycle readiness from the reviewed lifecycle reconciliation
+- current/historical identity counts from the preserved DART evidence layer
+- corporate-action readiness from the separate official corporate-action artifact
 - locked baseline policy and chronology from existing code/evidence contracts
 - qualified model metrics from the reviewed publication record
 

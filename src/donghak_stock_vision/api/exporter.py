@@ -76,12 +76,17 @@ class MarketSnapshot:
 class ExportSources:
     dart_manifest: LoadedArtifact
     dart_mapping: LoadedArtifact
+    dart_integrated: LoadedArtifact
     historical_mapping: LoadedArtifact
     missing_sessions: LoadedArtifact
     official_calendar: LoadedArtifact
     settlement_calendar: LoadedArtifact
     exact_boundaries: LoadedArtifact
     corporate_actions: LoadedArtifact
+    security_lifecycle_manifest: LoadedArtifact
+    security_lifecycle_reconciliation: LoadedArtifact
+    security_lifecycle_unresolved: LoadedArtifact
+    security_lifecycle_integrated: LoadedArtifact
 
 
 def _file_sha256(path: Path) -> str:
@@ -174,15 +179,25 @@ def read_market_snapshot(path: Path) -> MarketSnapshot:
 def load_sources(root: Path) -> ExportSources:
     dart = root / "docs/evidence/baseline-dart/artifacts"
     official = root / "docs/evidence/baseline-official/artifacts"
+    lifecycle = root / "docs/evidence/baseline-security-lifecycle/artifacts"
     return ExportSources(
         dart_manifest=load_artifact(dart / "dart-evidence-manifest.json"),
         dart_mapping=load_artifact(dart / "dart-corporation-mapping.json"),
+        dart_integrated=load_artifact(dart / "integrated-official-evidence.json"),
         historical_mapping=load_artifact(dart / "historical-security-mapping.json"),
         missing_sessions=load_artifact(dart / "missing-session-explanations.json"),
         official_calendar=load_artifact(official / "official-calendar.json"),
         settlement_calendar=load_artifact(official / "settlement-calendar.json"),
         exact_boundaries=load_artifact(official / "exact-boundaries.json"),
         corporate_actions=load_artifact(official / "corporate-actions.json"),
+        security_lifecycle_manifest=load_artifact(lifecycle / "security-lifecycle-manifest.json"),
+        security_lifecycle_reconciliation=load_artifact(
+            lifecycle / "missing-session-reconciliation.json"
+        ),
+        security_lifecycle_unresolved=load_artifact(lifecycle / "unresolved-security-gaps.json"),
+        security_lifecycle_integrated=load_artifact(
+            lifecycle / "integrated-security-evidence.json"
+        ),
     )
 
 
@@ -226,25 +241,32 @@ def _stock_evidence_note(record: dict[str, Any], unexplained_count: int) -> str:
         )
     if record.get("current_status") == "CURRENT_IDENTITY_VERIFIED":
         return (
-            "Current corporation mapping is verified; full-period historical "
-            "identity continuity remains unverified."
+            "No unresolved required-session lifecycle gap remains in the reviewed "
+            "baseline window; current corporation mapping is verified, while "
+            "full-period historical identity continuity remains unverified."
         )
-    return "Current corporation mapping and historical identity remain unresolved."
+    return (
+        "No unresolved required-session lifecycle gap remains in the reviewed "
+        "baseline window; current corporation mapping and full-period historical "
+        "identity continuity remain unresolved."
+    )
 
 
-def _unexplained_by_ticker(missing: dict[str, Any]) -> dict[str, int]:
-    securities = missing.get("securities")
+def _unexplained_by_ticker(unresolved: dict[str, Any]) -> dict[str, int]:
+    securities = unresolved.get("securities")
     if not isinstance(securities, list):
-        raise SnapshotExportError("missing-session security inventory missing")
+        raise SnapshotExportError("lifecycle unresolved-security inventory missing")
     result: dict[str, int] = {}
     for value in securities:
         if not isinstance(value, dict):
-            raise SnapshotExportError("invalid missing-session record")
+            raise SnapshotExportError("invalid lifecycle unresolved-security record")
         ticker = value.get("ticker")
-        unexplained = value.get("unexplained")
-        if not isinstance(ticker, str) or not isinstance(unexplained, list):
-            raise SnapshotExportError("invalid missing-session ticker record")
-        result[ticker] = len(unexplained)
+        dates = value.get("dates")
+        if not isinstance(ticker, str) or not isinstance(dates, list):
+            raise SnapshotExportError("invalid lifecycle unresolved-security ticker record")
+        if ticker in result:
+            raise SnapshotExportError("duplicate lifecycle unresolved-security ticker")
+        result[ticker] = len(dates)
     return result
 
 
@@ -305,16 +327,21 @@ def _evidence(
     settlement = sources.settlement_calendar.artifact
     historical = sources.historical_mapping.artifact
     corporate = sources.corporate_actions.artifact
+    lifecycle_manifest = sources.security_lifecycle_manifest.artifact
+    lifecycle_reconciliation = sources.security_lifecycle_reconciliation.artifact
+    lifecycle_unresolved = sources.security_lifecycle_unresolved.artifact
+    lifecycle_integrated = sources.security_lifecycle_integrated.artifact
 
     current = int(manifest["current_identity_count"])
     historical_count = int(manifest["historical_identity_count"])
     complete_corporate = int(manifest["complete_corporate_coverage_count"])
-    unexplained = int(manifest["unresolved_missing_sessions"])
-    explained = int(manifest["explained_missing_sessions"])
-    unresolved_security_count = sum(
-        bool(value.get("unexplained"))
-        for value in cast(list[dict[str, Any]], missing["securities"])
-    )
+    parent_unexplained = int(manifest["unresolved_missing_sessions"])
+    parent_explained = int(manifest["explained_missing_sessions"])
+    newly_explained = int(lifecycle_reconciliation["explained"])
+    unexplained = int(lifecycle_reconciliation["unexplained"])
+    unresolved_securities = cast(list[str], lifecycle_reconciliation["unresolved_securities"])
+    unresolved_records = cast(list[dict[str, Any]], lifecycle_unresolved["securities"])
+    unresolved_security_count = len(unresolved_records)
     days = cast(dict[str, str], calendar["days"])
     sessions = sum(state == "session" for state in days.values())
     settlement_mapping = cast(
@@ -322,8 +349,72 @@ def _evidence(
         settlement["verification"]["details"]["mapping"],
     )
 
-    if int(missing["unresolved"]) != unexplained or int(missing["explained"]) != explained:
+    parent_unresolved_security_count = sum(
+        bool(value.get("unexplained"))
+        for value in cast(list[dict[str, Any]], missing["securities"])
+    )
+    if (
+        int(missing["unresolved"]) != parent_unexplained
+        or int(missing["explained"]) != parent_explained
+    ):
         raise SnapshotExportError("DART evidence manifest disagrees with missing-session artifact")
+    if lifecycle_manifest.get("parent_gap_fingerprint") != sources.missing_sessions.fingerprint:
+        raise SnapshotExportError("security lifecycle parent gap fingerprint mismatch")
+    if (
+        lifecycle_manifest.get("parent_integrated_fingerprint")
+        != sources.dart_integrated.fingerprint
+    ):
+        raise SnapshotExportError("security lifecycle parent integrated fingerprint mismatch")
+    if lifecycle_manifest.get("parent_mapping_fingerprint") != sources.dart_mapping.fingerprint:
+        raise SnapshotExportError("security lifecycle parent mapping fingerprint mismatch")
+    if int(lifecycle_manifest["starting_unexplained_sessions"]) != parent_unexplained:
+        raise SnapshotExportError("security lifecycle starting session count mismatch")
+    if (
+        int(lifecycle_manifest["starting_unresolved_securities"])
+        != parent_unresolved_security_count
+    ):
+        raise SnapshotExportError("security lifecycle starting security count mismatch")
+    if int(lifecycle_manifest["newly_explained"]) != newly_explained:
+        raise SnapshotExportError("security lifecycle explained count mismatch")
+    if int(lifecycle_manifest["unexplained"]) != unexplained:
+        raise SnapshotExportError("security lifecycle unexplained count mismatch")
+    if int(lifecycle_reconciliation["total"]) != parent_unexplained:
+        raise SnapshotExportError("security lifecycle reconciliation total mismatch")
+    if newly_explained + unexplained != parent_unexplained:
+        raise SnapshotExportError("security lifecycle reconciliation accounting mismatch")
+    artifact_fingerprints = cast(dict[str, str], lifecycle_manifest["artifact_fingerprints"])
+    if (
+        artifact_fingerprints.get("missing-session-reconciliation")
+        != sources.security_lifecycle_reconciliation.fingerprint
+    ):
+        raise SnapshotExportError("security lifecycle reconciliation fingerprint mismatch")
+    if (
+        artifact_fingerprints.get("unresolved-security-gaps")
+        != sources.security_lifecycle_unresolved.fingerprint
+    ):
+        raise SnapshotExportError("security lifecycle unresolved-gap fingerprint mismatch")
+    if (
+        lifecycle_integrated.get("manifest_fingerprint")
+        != sources.security_lifecycle_manifest.fingerprint
+    ):
+        raise SnapshotExportError("integrated security lifecycle manifest fingerprint mismatch")
+    if (
+        lifecycle_integrated.get("parent_integrated_fingerprint")
+        != sources.dart_integrated.fingerprint
+    ):
+        raise SnapshotExportError("integrated security lifecycle parent fingerprint mismatch")
+    if unresolved_securities != sorted(
+        record["ticker"] for record in unresolved_records if isinstance(record.get("ticker"), str)
+    ):
+        raise SnapshotExportError("security lifecycle unresolved inventory mismatch")
+    if lifecycle_integrated.get("security_calendar") == "VERIFIED":
+        if unexplained or unresolved_security_count:
+            raise SnapshotExportError("verified security lifecycle still has unresolved gaps")
+    else:
+        if not unexplained:
+            raise SnapshotExportError("blocked security lifecycle has no unresolved gaps")
+    if lifecycle_integrated.get("corporate_action") != "BLOCKED_ON_CORPORATE_ACTION_EVIDENCE":
+        raise SnapshotExportError("unexpected corporate-action lifecycle status")
     if int(historical["full_period_verified"]) != historical_count:
         raise SnapshotExportError("historical identity count mismatch")
     if current > market.universe or complete_corporate > market.universe:
@@ -431,8 +522,9 @@ def _evidence(
             title="Security lifecycle",
             state="in_progress" if unexplained else "verified",
             summary=(
-                "Official listing, delisting, suspension, and identity-transition evidence "
-                "is reconciled separately from exchange-wide calendar evidence."
+                "The inherited security-level missing-session inventory is reconciled "
+                "against preserved official lifecycle evidence without promoting boundary "
+                "identity to full-period historical continuity."
             ),
             sourceLabel="KIND / KRX / DART",
             sourceScope="Official security lifecycle evidence and effective-date intervals",
@@ -448,14 +540,17 @@ def _evidence(
                     detail="Ticker-sessions still requiring authoritative lifecycle evidence",
                 ),
                 EvidenceMetric(
-                    label="Explained sessions",
-                    value=f"{explained:,}",
-                    detail="Missing sessions explained by reviewed lifecycle boundaries",
+                    label="Newly explained sessions",
+                    value=f"{newly_explained:,}",
+                    detail="Previously unexplained sessions reconciled by this lifecycle layer",
                 ),
             ),
             findings=(
+                f"{newly_explained:,} inherited unexplained ticker-sessions are reconciled "
+                "to preserved official lifecycle evidence.",
                 "Missing bars are never treated as proof of suspension or delisting.",
-                "Verified listing boundaries explain only their exact reviewed intervals.",
+                "Full-period historical identity continuity and complete corporate-action "
+                "coverage remain separate unresolved claims.",
             ),
             blocker=(
                 f"{unexplained:,} ticker-sessions across {unresolved_security_count} securities "
@@ -463,7 +558,7 @@ def _evidence(
                 if unexplained
                 else None
             ),
-            fingerprint=sources.missing_sessions.fingerprint,
+            fingerprint=sources.security_lifecycle_integrated.fingerprint,
         ),
         EvidenceDetail(
             id="corporate-actions",
@@ -737,6 +832,10 @@ def _baseline(
                 value=sources.settlement_calendar.fingerprint,
             ),
             BacktestFingerprint(label="DART evidence", value=sources.dart_manifest.fingerprint),
+            BacktestFingerprint(
+                label="Security lifecycle",
+                value=sources.security_lifecycle_integrated.fingerprint,
+            ),
         ),
         performanceAvailable=False,
     )
@@ -765,8 +864,9 @@ def build_snapshot(
     if int(manifest["current_identity_count"]) != verified_current_count:
         raise SnapshotExportError("current identity count mismatch")
 
-    unexplained = _unexplained_by_ticker(sources.missing_sessions.artifact)
+    unexplained = _unexplained_by_ticker(sources.security_lifecycle_unresolved.artifact)
     evidence = _evidence(market, sources)
+    lifecycle_reconciliation = sources.security_lifecycle_reconciliation.artifact
     coverage = CoverageSummary(
         universe=market.universe,
         totalBars=market.total_rows,
@@ -774,8 +874,8 @@ def build_snapshot(
         endDate=market.last_date,
         currentIdentityVerified=int(manifest["current_identity_count"]),
         historicalIdentityVerified=int(manifest["historical_identity_count"]),
-        unresolvedSecurities=sum(count > 0 for count in unexplained.values()),
-        unexplainedTickerSessions=int(manifest["unresolved_missing_sessions"]),
+        unresolvedSecurities=len(unexplained),
+        unexplainedTickerSessions=int(lifecycle_reconciliation["unexplained"]),
     )
 
     stocks = tuple(
