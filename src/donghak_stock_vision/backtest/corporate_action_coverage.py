@@ -11,13 +11,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-from donghak_stock_vision.backtest.dart_evidence import (
-    EVENT_CLASSES,
-    REQUIRED_END,
-    REQUIRED_START,
-    corporate_status,
-    source_valid,
-)
+from donghak_stock_vision.backtest import dart_evidence
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
 from donghak_stock_vision.data.learning import digest
@@ -40,9 +34,9 @@ class CorporateActionEventEvidence:
 
     def __post_init__(self) -> None:
         require(re.fullmatch(r"[0-9]{6}", self.ticker) is not None, "exact_ticker_required")
-        require(self.event_class in EVENT_CLASSES, "unsupported_corporate_action_class")
+        require(self.event_class in dart_evidence.EVENT_CLASSES, "unsupported_corporate_action_class")
         require(type(self.effective_date) is date, "effective_date_required")
-        require(source_valid(self.source.to_dict()), "official_event_source_required")
+        require(dart_evidence.source_valid(self.source.to_dict()), "official_event_source_required")
         require(bool(self.review_reference), "event_review_reference_required")
         require(bool(self.document_reference), "event_document_reference_required")
         require(self.version == "corporate_action_event_v1", "unsupported_event_version")
@@ -86,7 +80,7 @@ class CorporateActionSecurityCoverage:
     def __post_init__(self) -> None:
         require(re.fullmatch(r"[0-9]{6}", self.ticker) is not None, "exact_ticker_required")
         require(bool(self.security_identity), "security_identity_required")
-        require(source_valid(self.identity_source.to_dict()), "official_identity_source_required")
+        require(dart_evidence.source_valid(self.identity_source.to_dict()), "official_identity_source_required")
         require(
             type(self.identity_effective_start) is date
             and type(self.identity_effective_end) is date
@@ -106,7 +100,7 @@ class CorporateActionSecurityCoverage:
         classes = tuple(sorted(set(self.covered_classes)))
         require(
             len(classes) == len(self.covered_classes)
-            and set(classes) <= set(EVENT_CLASSES),
+            and set(classes) <= set(dart_evidence.EVENT_CLASSES),
             "invalid_corporate_action_classes",
         )
         object.__setattr__(self, "covered_classes", classes)
@@ -117,7 +111,7 @@ class CorporateActionSecurityCoverage:
         )
         require(bool(self.query_sources), "official_query_source_required")
         for source in self.query_sources:
-            require(source_valid(source.to_dict()), "official_query_source_required")
+            require(dart_evidence.source_valid(source.to_dict()), "official_query_source_required")
         ordered_sources = tuple(sorted(self.query_sources, key=lambda value: value.identifier))
         require(
             len({source.identifier for source in ordered_sources}) == len(ordered_sources),
@@ -157,14 +151,14 @@ class CorporateActionSecurityCoverage:
 
         if self.historical_identity_verified:
             require(
-                self.identity_effective_start <= date.fromisoformat(REQUIRED_START)
-                and self.identity_effective_end >= date.fromisoformat(REQUIRED_END),
+                self.identity_effective_start <= date.fromisoformat(dart_evidence.REQUIRED_START)
+                and self.identity_effective_end >= date.fromisoformat(dart_evidence.REQUIRED_END),
                 "historical_identity_period_incomplete",
             )
 
     @property
     def status(self) -> str:
-        return corporate_status(
+        return dart_evidence.corporate_status(
             historical_identity=self.historical_identity_verified,
             query_complete=self.query_complete,
             covered_classes=self.covered_classes,
@@ -248,8 +242,8 @@ def summarize_corporate_action_coverage(
     return FrozenJSON.freeze(
         {
             "version": "corporate_action_final_coverage_v1",
-            "required_start": REQUIRED_START,
-            "required_end": REQUIRED_END,
+            "required_start": dart_evidence.REQUIRED_START,
+            "required_end": dart_evidence.REQUIRED_END,
             "universe_count": len(universe),
             "reviewed_security_count": len(by_ticker),
             "historical_identity_verified_count": historical_identity_verified,
