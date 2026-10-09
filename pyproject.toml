@@ -22,6 +22,7 @@ dev = ["pytest>=8.3,<10", "ruff>=0.11,<1", "mypy>=1.15,<2", "build>=1.2,<2"]
 [project.scripts]
 dsv = "donghak_stock_vision.cli:main"
 dsv-api = "donghak_stock_vision.api_cli:main"
+dsv-api-export = "donghak_stock_vision.api_export_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/donghak_stock_vision"]
