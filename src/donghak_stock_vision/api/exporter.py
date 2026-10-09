@@ -364,18 +364,28 @@ def _evidence(
         raise SnapshotExportError("DART evidence manifest disagrees with missing-session artifact")
     if lifecycle_manifest.get("parent_gap_fingerprint") != sources.missing_sessions.fingerprint:
         raise SnapshotExportError("security lifecycle parent gap fingerprint mismatch")
-    if lifecycle_manifest.get("parent_integrated_fingerprint") != sources.dart_integrated.fingerprint:
+    if (
+        lifecycle_manifest.get("parent_integrated_fingerprint")
+        != sources.dart_integrated.fingerprint
+    ):
         raise SnapshotExportError("security lifecycle parent integrated fingerprint mismatch")
     if lifecycle_manifest.get("parent_mapping_fingerprint") != sources.dart_mapping.fingerprint:
         raise SnapshotExportError("security lifecycle parent mapping fingerprint mismatch")
     if int(lifecycle_manifest["starting_unexplained_sessions"]) != parent_unexplained:
         raise SnapshotExportError("security lifecycle starting session count mismatch")
-    if int(lifecycle_manifest["starting_unresolved_securities"]) != parent_unresolved_security_count:
+    if (
+        int(lifecycle_manifest["starting_unresolved_securities"])
+        != parent_unresolved_security_count
+    ):
         raise SnapshotExportError("security lifecycle starting security count mismatch")
     if int(lifecycle_manifest["newly_explained"]) != newly_explained:
         raise SnapshotExportError("security lifecycle explained count mismatch")
     if int(lifecycle_manifest["unexplained"]) != unexplained:
         raise SnapshotExportError("security lifecycle unexplained count mismatch")
+    if int(lifecycle_reconciliation["total"]) != parent_unexplained:
+        raise SnapshotExportError("security lifecycle reconciliation total mismatch")
+    if newly_explained + unexplained != parent_unexplained:
+        raise SnapshotExportError("security lifecycle reconciliation accounting mismatch")
     artifact_fingerprints = cast(dict[str, str], lifecycle_manifest["artifact_fingerprints"])
     if (
         artifact_fingerprints.get("missing-session-reconciliation")
