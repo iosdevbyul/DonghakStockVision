@@ -56,10 +56,29 @@ def test_committed_evidence_artifacts_and_publication_validate() -> None:
     calendar = load_artifact(
         root / "docs/evidence/baseline-official/artifacts/official-calendar.json"
     )
+    lifecycle_manifest = load_artifact(
+        root
+        / "docs/evidence/baseline-security-lifecycle/artifacts/security-lifecycle-manifest.json"
+    )
+    lifecycle_integrated = load_artifact(
+        root
+        / "docs/evidence/baseline-security-lifecycle/artifacts/integrated-security-evidence.json"
+    )
     publication = load_publication(root / "docs/research-api/model-publication.json")
 
     assert calendar.fingerprint == (
         "6501a189c73e8e69063276142fd592ed995fc35e35e05b0d87c048a51240dc7b"
+    )
+    assert lifecycle_manifest.fingerprint == (
+        "7b9d43b9817c5e5c9f29af76f9b44c1a99ab9159e71e77b9ed15e972a50c2f22"
+    )
+    assert lifecycle_integrated.fingerprint == (
+        "db56575dc3f1abef3f1266e3e9ee5bcfdb555cd4ff9f22c958a476272e2ed90c"
+    )
+    assert lifecycle_integrated.artifact["security_calendar"] == "VERIFIED"
+    assert (
+        lifecycle_integrated.artifact["corporate_action"]
+        == "BLOCKED_ON_CORPORATE_ACTION_EVIDENCE"
     )
     assert tuple(model.id for model in publication.models) == ("up", "down")
     assert publication.models[0].oos.averagePrecision == 0.369409
@@ -79,7 +98,7 @@ def test_market_snapshot_is_read_only_and_scoped_to_expected_metadata(tmp_path: 
     assert market_db.read_bytes() == before
 
 
-def test_snapshot_export_uses_reviewed_evidence_without_closing_blockers(tmp_path: Path) -> None:
+def test_snapshot_export_uses_latest_reviewed_lifecycle_evidence(tmp_path: Path) -> None:
     root = repository_root()
     market_db = make_market_db(tmp_path)
 
@@ -92,22 +111,42 @@ def test_snapshot_export_uses_reviewed_evidence_without_closing_blockers(tmp_pat
     assert snapshot.coverage.universe == 993
     assert snapshot.coverage.currentIdentityVerified == 871
     assert snapshot.coverage.historicalIdentityVerified == 0
-    assert snapshot.coverage.unresolvedSecurities == 43
-    assert snapshot.coverage.unexplainedTickerSessions == 8_118
+    assert snapshot.coverage.unresolvedSecurities == 0
+    assert snapshot.coverage.unexplainedTickerSessions == 0
     assert snapshot.models[0].role == "baseline_executable"
     assert snapshot.models[1].role == "research_only"
 
     evidence = {item.id: item for item in snapshot.evidence}
     assert evidence["calendar"].state == "verified"
     assert evidence["settlement"].state == "verified"
-    assert evidence["security-lifecycle"].state == "in_progress"
+    assert evidence["security-lifecycle"].state == "verified"
+    assert evidence["security-lifecycle"].blocker is None
+    assert evidence["security-lifecycle"].fingerprint == (
+        "db56575dc3f1abef3f1266e3e9ee5bcfdb555cd4ff9f22c958a476272e2ed90c"
+    )
+    lifecycle_metrics = {
+        metric.label: metric.value for metric in evidence["security-lifecycle"].metrics
+    }
+    assert lifecycle_metrics == {
+        "Unresolved securities": "0",
+        "Unexplained sessions": "0",
+        "Newly explained sessions": "8,118",
+    }
     assert evidence["corporate-actions"].state == "blocked"
 
     readiness = {item.label: item.state for item in snapshot.baselineBacktest.readiness}
+    assert readiness["Security lifecycle"] == "verified"
+    assert readiness["Corporate actions"] == "blocked"
     assert readiness["Runner tail integration"] == "blocked"
     assert readiness["Run input freeze"] == "blocked"
     assert readiness["Historical execution"] == "not_started"
     assert snapshot.baselineBacktest.performanceAvailable is False
+    assert any(
+        item.label == "Security lifecycle"
+        and item.value
+        == "db56575dc3f1abef3f1266e3e9ee5bcfdb555cd4ff9f22c958a476272e2ed90c"
+        for item in snapshot.baselineBacktest.fingerprints
+    )
 
 
 def test_snapshot_bytes_are_deterministic(tmp_path: Path) -> None:
