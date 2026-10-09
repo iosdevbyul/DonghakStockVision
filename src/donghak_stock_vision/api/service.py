@@ -1,0 +1,29 @@
+"""Read-only service boundary consumed by the FastAPI transport."""
+
+from typing import Protocol
+
+from donghak_stock_vision.api.models import (
+    BaselineBacktestSnapshot,
+    CoverageSummary,
+    EvidenceDetail,
+    EvidenceLayerId,
+    EvidenceLayerSummary,
+    ModelDetail,
+    ModelDirection,
+    ModelSummary,
+    ProjectStatus,
+    StockDetail,
+    StockSummary,
+)
+
+
+class ResearchAPIReader(Protocol):
+    def project_status(self) -> ProjectStatus: ...
+    def coverage_summary(self) -> CoverageSummary: ...
+    def model_summaries(self) -> tuple[ModelSummary, ...]: ...
+    def model_detail(self, direction: ModelDirection) -> ModelDetail | None: ...
+    def evidence_layers(self) -> tuple[EvidenceLayerSummary, ...]: ...
+    def evidence_detail(self, layer: EvidenceLayerId) -> EvidenceDetail | None: ...
+    def baseline_backtest(self) -> BaselineBacktestSnapshot: ...
+    def stocks(self) -> tuple[StockSummary, ...]: ...
+    def stock_detail(self, ticker: str) -> StockDetail | None: ...

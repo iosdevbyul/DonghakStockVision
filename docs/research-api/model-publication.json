@@ -1,0 +1,97 @@
+{
+  "version": "research_api_publication_v1",
+  "runnerTailIntegrated": false,
+  "sourceNotes": [
+    "Validation metrics and selection statistics are the locked Phase 2 improvement results.",
+    "Frozen OOS metrics are the completed one-shot OOS evaluation results; they are classification metrics, not trading performance.",
+    "Down remains research-only and non-executable in the locked long-only baseline."
+  ],
+  "models": [
+    {
+      "id": "up",
+      "direction": "Up",
+      "modelName": "HGB-7",
+      "role": "baseline_executable",
+      "validationAveragePrecision": 0.374859667,
+      "oosAveragePrecision": 0.369409,
+      "note": "Executable direction in the locked long-only baseline.",
+      "selectionMeanAveragePrecision": 0.411851,
+      "selectionStdAveragePrecision": 0.036128,
+      "validation": {
+        "sampleCount": 55081,
+        "precision": 0.348164,
+        "recall": 0.828423,
+        "f1": 0.490277,
+        "averagePrecision": 0.374859667,
+        "brier": 0.264718
+      },
+      "oos": {
+        "sampleCount": 129196,
+        "precision": 0.351497,
+        "recall": 0.76391,
+        "f1": 0.48146,
+        "averagePrecision": 0.369409,
+        "brier": 0.258437
+      },
+      "provenance": {
+        "artifactSha256": "43ffe774ce67f70c692a087183153b1cf5da86528ac36f2e2e78305daac29f60",
+        "featureSet": "ohlcv_value_v1",
+        "label": "reversal_barrier_v1",
+        "horizonSessions": 5,
+        "threshold": 0.5,
+        "maxLeafNodes": 7,
+        "learningRate": 0.05,
+        "maxIterations": 150,
+        "minSamplesLeaf": 100,
+        "l2Regularization": 1,
+        "maxBins": 255,
+        "classWeight": "balanced",
+        "earlyStopping": false,
+        "randomSeed": 42
+      }
+    },
+    {
+      "id": "down",
+      "direction": "Down",
+      "modelName": "HGB-15",
+      "role": "research_only",
+      "validationAveragePrecision": 0.398381565,
+      "oosAveragePrecision": 0.442473,
+      "note": "Qualified research model; the locked baseline does not execute short trades.",
+      "selectionMeanAveragePrecision": 0.431781,
+      "selectionStdAveragePrecision": 0.050672,
+      "validation": {
+        "sampleCount": 46006,
+        "precision": 0.355472,
+        "recall": 0.863953,
+        "f1": 0.503699,
+        "averagePrecision": 0.398381565,
+        "brier": 0.269693
+      },
+      "oos": {
+        "sampleCount": 114582,
+        "precision": 0.403392,
+        "recall": 0.763866,
+        "f1": 0.527968,
+        "averagePrecision": 0.442473,
+        "brier": 0.253538
+      },
+      "provenance": {
+        "artifactSha256": "42e3ed40c33b513a9ee066157ceada00b2b44c337259f817875f018e943a6b2c",
+        "featureSet": "ohlcv_value_v1",
+        "label": "reversal_barrier_v1",
+        "horizonSessions": 5,
+        "threshold": 0.5,
+        "maxLeafNodes": 15,
+        "learningRate": 0.05,
+        "maxIterations": 150,
+        "minSamplesLeaf": 100,
+        "l2Regularization": 1,
+        "maxBins": 255,
+        "classWeight": "balanced",
+        "earlyStopping": false,
+        "randomSeed": 42
+      }
+    }
+  ]
+}
