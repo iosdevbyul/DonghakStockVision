@@ -12,9 +12,7 @@ class ReadOnlyStore:
 
     def read(self, ticker: str, start: date, end: date) -> list[DailyBar]:
         return [
-            bar
-            for bar in self.bars
-            if bar.ticker == ticker and start <= bar.trading_date <= end
+            bar for bar in self.bars if bar.ticker == ticker and start <= bar.trading_date <= end
         ]
 
 
