@@ -32,7 +32,7 @@ def test_missing_independent_quality_manifest_fails_closed() -> None:
 
 def test_real_bars_produce_features_but_keep_quality_limitations() -> None:
     end = date(2026, 10, 8)
-    dates = []
+    dates: list[date] = []
     day = end
     while len(dates) < 12:
         if day.weekday() < 5:
