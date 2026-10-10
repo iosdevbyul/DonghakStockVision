@@ -45,9 +45,10 @@ def test_modified_bytes_are_rejected() -> None:
 
 def test_untrusted_and_revoked_keys_are_rejected() -> None:
     registry, envelope, issuer = _signed()
-    assert "qualification_issuer_untrusted_or_revoked" in verify_qualification_issuer(
-        registry, envelope, ()
-    ).blockers
+    assert (
+        "qualification_issuer_untrusted_or_revoked"
+        in verify_qualification_issuer(registry, envelope, ()).blockers
+    )
     revoked = TrustedQualificationIssuer(issuer.key_id, issuer.public_key, False)
     assert not verify_qualification_issuer(registry, envelope, (revoked,)).issuer_authenticated
 
