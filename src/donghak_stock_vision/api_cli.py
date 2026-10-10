@@ -48,6 +48,7 @@ def main(argv: list[str] | None = None) -> None:
     ohlcv_reader = None
     if args.market_db:
         from donghak_stock_vision.api.ohlcv import OhlcvMarketReader
+
         ohlcv_reader = OhlcvMarketReader(args.market_db, expected_sha256=args.market_db_sha256)
     reader = SnapshotReader.from_path(snapshot_path)
     uvicorn.run(create_app(reader, ohlcv_reader=ohlcv_reader), host=args.host, port=args.port)
