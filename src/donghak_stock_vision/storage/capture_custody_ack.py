@@ -54,11 +54,17 @@ def inspect_custody_acknowledgement(
     blockers: list[str] = []
     if (
         len(independently_pinned_ack_sha256) != 64
-        or any(\n            character not in "0123456789abcdef"\n            for character in independently_pinned_ack_sha256\n        )
+        or any(
+            character not in "0123456789abcdef"
+            for character in independently_pinned_ack_sha256
+        )
         or hashlib.sha256(acknowledgement_bytes).hexdigest() != independently_pinned_ack_sha256
     ):
         blockers.append("custody_ack_independent_pin_mismatch")
-    if (\n        acknowledgement.rawId != expected_raw_id\n        or acknowledgement.custodianId != expected_custodian_id\n    ):
+    if (
+        acknowledgement.rawId != expected_raw_id
+        or acknowledgement.custodianId != expected_custodian_id
+    ):
         blockers.append("custody_ack_identity_mismatch")
     if hashlib.sha256(exported_receipt_bytes).hexdigest() != acknowledgement.receiptSha256:
         blockers.append("custody_ack_receipt_digest_mismatch")
