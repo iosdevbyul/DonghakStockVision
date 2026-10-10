@@ -81,3 +81,7 @@ class AnalysisPublicationReader:
 
     def series(self, ticker: str) -> PublishedStockAnalysis:
         return self._by_ticker.get(ticker, PublishedStockAnalysis(ticker=ticker, records=()))
+
+    def published_series(self) -> tuple[PublishedStockAnalysis, ...]:
+        """Only entries loaded from an explicitly provided reviewed publication."""
+        return tuple(self._by_ticker[ticker] for ticker in sorted(self._by_ticker))
