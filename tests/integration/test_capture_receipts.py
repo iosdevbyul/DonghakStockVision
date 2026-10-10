@@ -99,9 +99,10 @@ def test_existing_archive_without_receipt_is_not_backfilled(tmp_path: Path) -> N
         store.close()
     reopened = SQLiteStore(path)
     try:
-        assert reopened.connection.execute(
-            "SELECT COUNT(*) FROM raw_capture_receipts"
-        ).fetchone()[0] == 0
+        assert (
+            reopened.connection.execute("SELECT COUNT(*) FROM raw_capture_receipts").fetchone()[0]
+            == 0
+        )
         assert reopened.check_integrity() == []
     finally:
         reopened.close()
