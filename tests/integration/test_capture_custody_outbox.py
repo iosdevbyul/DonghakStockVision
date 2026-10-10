@@ -1,6 +1,5 @@
 """Offline durability and bounded-retry tests for custody outbox."""
 
-import sqlite3
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -39,7 +38,12 @@ def _prepare(tmp_path: Path) -> tuple[SQLiteStore, Path, int]:
     return store, destination, raw_id
 
 
-def _run(store: SQLiteStore, destination: Path, transport: BrokenTransport | UnverifiedTransport, max_attempts: int = 3) -> tuple:
+def _run(
+    store: SQLiteStore,
+    destination: Path,
+    transport: BrokenTransport | UnverifiedTransport,
+    max_attempts: int = 3,
+) -> tuple:
     return process_outbox(
         store.connection,
         destination,
