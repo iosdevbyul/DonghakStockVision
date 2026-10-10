@@ -8,7 +8,11 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from donghak_stock_vision.api.stock_analysis import AnalysisPublication, PublishedAnalysisRecord, PublishedStockAnalysis
+from donghak_stock_vision.api.stock_analysis import (
+    AnalysisPublication,
+    PublishedAnalysisRecord,
+    PublishedStockAnalysis,
+)
 
 
 class PublicationRejected(ValueError):
