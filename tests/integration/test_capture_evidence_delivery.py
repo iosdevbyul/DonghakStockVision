@@ -106,9 +106,12 @@ def test_cursor_pagination_reaches_every_receipt(tmp_path: Path) -> None:
         )
         assert [r.raw_id for r in (*first, *second, *third)] == ids
         assert all(r.status == "recovered" for r in (*first, *second, *third))
-        assert reconcile_capture_receipts(
-            store.connection, dest, limit=2, after_raw_id=third[-1].raw_id
-        ) == ()
+        assert (
+            reconcile_capture_receipts(
+                store.connection, dest, limit=2, after_raw_id=third[-1].raw_id
+            )
+            == ()
+        )
     finally:
         store.close()
 
