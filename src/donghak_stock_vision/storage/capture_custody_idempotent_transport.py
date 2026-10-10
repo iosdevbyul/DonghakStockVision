@@ -1,12 +1,13 @@
 """Opt-in idempotent remote submission and status lookup boundary."""
 
+import hashlib
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol
 
 from donghak_stock_vision.storage.capture_custody_idempotency import (
-    prepare_custody_submission_identity,
+    prepare_custody_submission_identity as prepare_custody_submission_identity,
 )
 
 
@@ -51,6 +52,14 @@ def observe_idempotent_custody(
         response: bytes | None
         if operation == "submit":
             receipt_bytes = (destination / f"raw-{raw_id}.json").read_bytes()
+            if hashlib.sha256(receipt_bytes).hexdigest() != identity.receipt_sha256:
+                return CustodyTransportObservation(
+                    raw_id,
+                    identity.idempotency_key,
+                    operation,
+                    "blocked",
+                    ("export_changed_during_submission",),
+                )
             response = transport.submit(
                 receipt_bytes, raw_id=raw_id, idempotency_key=identity.idempotency_key
             )
