@@ -7,7 +7,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict
 
 from donghak_stock_vision.data.schema import DailyBar
 
@@ -50,7 +50,11 @@ class OhlcvMarketReader:
         with self._connect() as conn:
             if [row[0] for row in conn.execute("PRAGMA integrity_check")] != ["ok"]:
                 raise OhlcvReaderError("market database integrity check failed")
-            scopes = set(conn.execute("SELECT DISTINCT json_extract(payload,'$.provider'),json_extract(payload,'$.market'),json_extract(payload,'$.adjustment') FROM bars"))
+            scopes = set(conn.execute(
+                "SELECT DISTINCT json_extract(payload,'$.provider'), "
+                "json_extract(payload,'$.market'), "
+                "json_extract(payload,'$.adjustment') FROM bars"
+            ))
             if scopes != {("krx", "KOSPI", "unadjusted")}:
                 raise OhlcvReaderError("market database metadata scope mismatch")
 
@@ -70,7 +74,8 @@ class OhlcvMarketReader:
         self._verify_file()
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT trading_date,payload FROM bars WHERE ticker=? ORDER BY trading_date DESC LIMIT 2500",
+                "SELECT trading_date,payload FROM bars WHERE ticker=? "
+                "ORDER BY trading_date DESC LIMIT 2500",
                 (ticker,),
             ).fetchall()
         if not rows:
