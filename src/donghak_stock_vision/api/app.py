@@ -22,12 +22,17 @@ from donghak_stock_vision.api.models import (
 )
 from donghak_stock_vision.api.ohlcv import OhlcvMarketReader, OhlcvSeries
 from donghak_stock_vision.api.service import ResearchAPIReader
+from donghak_stock_vision.api.stock_analysis import (
+    AnalysisPublicationReader,
+    PublishedStockAnalysis,
+)
 
 
 def create_app(
     reader: ResearchAPIReader | None = None,
     ohlcv_reader: OhlcvMarketReader | None = None,
     *,
+    analysis_reader: AnalysisPublicationReader | None = None,
     allowed_origins: Sequence[str] = (
         "http://localhost:3000",
         "http://127.0.0.1:3000",
@@ -125,6 +130,17 @@ def create_app(
         if series is None:
             raise HTTPException(status_code=404, detail="stock bars not found")
         return series
+
+    @app.get("/api/v1/stocks/{ticker}/analysis", response_model=PublishedStockAnalysis)
+    def stock_analysis(
+        ticker: Annotated[str, Path(pattern=r"^[0-9A-Z]{6}$")],
+    ) -> PublishedStockAnalysis:
+        if analysis_reader is None:
+            raise HTTPException(
+                status_code=503,
+                detail="reviewed analysis publication not configured",
+            )
+        return analysis_reader.series(ticker)
 
     @app.get("/api/v1/stocks/{ticker}", response_model=StockDetail)
     def stock_detail(
