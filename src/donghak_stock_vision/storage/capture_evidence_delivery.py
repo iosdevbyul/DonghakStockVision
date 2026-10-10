@@ -23,22 +23,28 @@ def reconcile_capture_receipts(
     destination: Path,
     *,
     limit: int = 100,
+    after_raw_id: int = 0,
 ) -> tuple[ReceiptDelivery, ...]:
     """Retry missing exports, verify existing ones, and refuse conflicts.
 
+    Use the last returned raw_id as after_raw_id for the next page. A blocked
+    receipt is still included in the result and must not be treated as delivered.
     Delivery state is reconstructed from saved receipts and exported files.
     Missing legacy receipts are never generated retroactively. This function
     does not authenticate provenance or issue operational authority.
     """
     if not 1 <= limit <= 10000:
         raise ValueError("limit out of range")
+    if after_raw_id < 0:
+        raise ValueError("after_raw_id must be nonnegative")
     if not destination.is_dir() or destination.is_symlink():
         raise ValueError("capture evidence destination must be an existing real directory")
 
     raw_ids = [
         row[0]
         for row in connection.execute(
-            "SELECT raw_id FROM raw_capture_receipts ORDER BY raw_id LIMIT ?", (limit,)
+            "SELECT raw_id FROM raw_capture_receipts WHERE raw_id > ? ORDER BY raw_id LIMIT ?",
+            (after_raw_id, limit),
         )
     ]
     results: list[ReceiptDelivery] = []
