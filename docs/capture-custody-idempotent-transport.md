@@ -16,3 +16,9 @@ No remote service, credentials, cryptographic status validation, retry
 scheduler, or independently administered custody is added. A-2 is still
 in progress until a real independently controlled service and its verified
 acknowledgement and recovery contract are implemented.
+
+Before submission, the exact bytes to be sent are checked against the
+previously verified receipt digest. If the file changes between the
+identity check and transmission read, no submit call is made. A remote
+transport remains responsible for idempotency and secure acceptance;
+this local check does not eliminate all filesystem replacement races.
