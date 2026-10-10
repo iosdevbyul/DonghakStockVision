@@ -55,9 +55,7 @@ def inspect_pit_provenance(
         candidate = PITInferenceInput.model_validate_json(candidate_bytes)
         evidence = PITSourceEvidence.model_validate_json(evidence_bytes)
     except (ValueError, UnicodeError):
-        return PITProvenanceReview(
-            False, False, False, ("invalid_pit_candidate_or_evidence",)
-        )
+        return PITProvenanceReview(False, False, False, ("invalid_pit_candidate_or_evidence",))
 
     if (
         len(trusted_evidence_sha256) != 64
