@@ -16,6 +16,22 @@ CREATE TABLE IF NOT EXISTS raw_pages (
     ticker TEXT NOT NULL, collected_at TEXT NOT NULL, source_date TEXT,
     sha256 TEXT NOT NULL, body BLOB NOT NULL
 );
+CREATE TABLE IF NOT EXISTS raw_capture_receipts (
+    raw_id INTEGER PRIMARY KEY REFERENCES raw_pages(id),
+    schema_version TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    collected_at TEXT NOT NULL,
+    source_date TEXT,
+    raw_sha256 TEXT NOT NULL
+);
+CREATE TRIGGER IF NOT EXISTS raw_capture_receipts_no_update
+BEFORE UPDATE ON raw_capture_receipts
+BEGIN SELECT RAISE(ABORT, 'capture receipt immutable'); END;
+CREATE TRIGGER IF NOT EXISTS raw_capture_receipts_no_delete
+BEFORE DELETE ON raw_capture_receipts
+BEGIN SELECT RAISE(ABORT, 'capture receipt immutable'); END;
 CREATE TABLE IF NOT EXISTS bars (
     ticker TEXT NOT NULL, trading_date TEXT NOT NULL, payload TEXT NOT NULL,
     PRIMARY KEY(ticker, trading_date)
@@ -60,23 +76,36 @@ class SQLiteStore:
         return date.fromisoformat(row[0]) if row[0] else None
 
     def archive(self, run_id: str, provider: str, ticker: str, page: RawPage) -> int:
+        if page.collected_at.utcoffset() is None:
+            raise ValueError("collection timestamp must be timezone-aware")
+        observed = page.collected_at.astimezone(UTC).isoformat()
+        source_date = page.source_date.isoformat() if page.source_date else None
+        digest = hashlib.sha256(page.body).hexdigest()
         with self.connection:
             cursor = self.connection.execute(
                 "INSERT INTO raw_pages "
                 "(run_id,provider,ticker,collected_at,source_date,sha256,body) "
                 "VALUES(?,?,?,?,?,?,?)",
+                (run_id, provider, ticker, observed, source_date, digest, page.body),
+            )
+            assert cursor.lastrowid is not None
+            raw_id = cursor.lastrowid
+            self.connection.execute(
+                "INSERT INTO raw_capture_receipts "
+                "(raw_id,schema_version,run_id,provider,scope,collected_at,source_date,raw_sha256) "
+                "VALUES(?,?,?,?,?,?,?,?)",
                 (
+                    raw_id,
+                    "raw_capture_receipt_v1",
                     run_id,
                     provider,
                     ticker,
-                    page.collected_at.astimezone(UTC).isoformat(),
-                    page.source_date.isoformat() if page.source_date else None,
-                    hashlib.sha256(page.body).hexdigest(),
-                    page.body,
+                    observed,
+                    source_date,
+                    digest,
                 ),
             )
-        assert cursor.lastrowid is not None
-        return cursor.lastrowid
+        return raw_id
 
     def save(self, bars: Sequence[DailyBar], raw_ids: Sequence[int]) -> int:
         changed = 0
@@ -208,6 +237,52 @@ class SQLiteStore:
         for raw_id, body, digest in self.connection.execute("SELECT id,body,sha256 FROM raw_pages"):
             if hashlib.sha256(body).hexdigest() != digest:
                 issues.append(f"raw checksum mismatch: {raw_id}")
+        for row in self.connection.execute(
+            "SELECT r.id,r.run_id,r.provider,r.ticker,r.collected_at,r.source_date,"
+            "r.sha256,r.body,c.schema_version,c.run_id,c.provider,c.scope,"
+            "c.collected_at,c.source_date,c.raw_sha256 "
+            "FROM raw_pages r LEFT JOIN raw_capture_receipts c ON c.raw_id=r.id"
+        ):
+            (
+                raw_id,
+                run_id,
+                provider,
+                scope,
+                observed,
+                source_date,
+                digest,
+                body,
+                version,
+                receipt_run,
+                receipt_provider,
+                receipt_scope,
+                receipt_time,
+                receipt_date,
+                receipt_digest,
+            ) = row
+            # Legacy rows have no receipt; do not fabricate retrospective evidence.
+            if version is None:
+                continue
+            expected = (
+                "raw_capture_receipt_v1",
+                run_id,
+                provider,
+                scope,
+                observed,
+                source_date,
+                digest,
+            )
+            recorded = (
+                version,
+                receipt_run,
+                receipt_provider,
+                receipt_scope,
+                receipt_time,
+                receipt_date,
+                receipt_digest,
+            )
+            if recorded != expected or hashlib.sha256(body).hexdigest() != digest:
+                issues.append(f"raw capture receipt mismatch: {raw_id}")
         missing = self.connection.execute(
             "SELECT b.ticker,b.trading_date FROM bars b LEFT JOIN bar_sources s "
             "ON b.ticker=s.ticker AND b.trading_date=s.trading_date WHERE s.raw_id IS NULL"
