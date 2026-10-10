@@ -1,20 +1,22 @@
 # DonghakStockVision 2.0
 
-한국 주식의 가격·거래량·거래대금을 축적하고, 향후 시장 전환 신호 학습과 매매 판단으로 확장하는 Python 프로젝트입니다. **현재 Phase 1 시장 데이터, Phase 2 조건부 신호 분석, Phase 3 연구용 가상 판단을 구현했습니다.** iOS·웹·외부 프로그램에서 사용할 독립 Python 엔진이며, 운영 판단·HTTP 서버·실제 주문·백테스트·상시 스케줄러는 구현하지 않습니다.
+**Language:** English | [한국어](README.ko.md)
 
-| Phase | 목표 | 2.0 상태 |
+A Python engine for collecting, validating, and storing Korean equity prices, volumes, and trading values, with research-oriented market signals and decision simulations. It is designed for independent use by iOS, web, and other applications. The Phase 1 market-data system, Phase 2 conditional-signal research, and Phase 3 virtual research decisions are implemented. **Research results are not approved trading advice or authorized operational inference.**
+
+| Phase | Objective | Status |
 | --- | --- | --- |
-| 1 | 프로젝트 초기 설정·시장 데이터 수집·검증·저장 | 구현, KRX 실호출 검증은 인증 승인 후 |
-| 2 | 상승·하락 신호 학습 | 구현, 실제 시장 성능·PIT 운영 검증은 미완료 |
-| 3 | 매수·보유·매도·관망 판단 | 연구용 가상 판단 구현, 운영은 항상 차단 |
-| 4 | 백테스트·모의거래 | 미구현 |
-| 5 | 상시 실행 | 미구현 |
+| 1 | Bootstrap, collect, validate, and store market data | Implemented; live KRX verification requires approved API access |
+| 2 | Research upward/downward signals | Implemented; live-market performance and operational PIT verification incomplete |
+| 3 | Buy/hold/sell/wait decisions | Research-only virtual decisions; operational execution blocked |
+| 4 | Backtesting and paper trading | Research backtesting components exist; no fully validated operational system |
+| 5 | Continuous operation | Not an authorized always-on trading service |
 
-원격 저장소에는 이전 실험 스크립트와 모델이 이미 있습니다. 루트의 기존 Python/JSON 파일은 보존한 **레거시 자료**이며, 2.0 패키지에서 import하거나 실행하지 않습니다. 2.0의 설치·검사·빌드 대상은 `src/`, `tests/`입니다. 기존 Target 생성 코드와 전략·모델을 재사용하지 않았습니다.
+The repository retains legacy root-level Python/JSON experiments and models. They are **legacy artifacts** and are not imported or executed by the 2.0 package. Installation, linting, and build targets use `src/` and `tests/`; legacy targets, strategies, and models were not reused. Additional PIT, provenance, governance, and backtesting contracts can exist without implying production readiness.
 
-## 설치
+## Installation
 
-Python **3.12 이상**이 필요합니다. 저장소 루트에서 실행합니다.
+Python **3.12+** is required. Run from the repository root:
 
 ```bash
 python3.12 -m venv .venv
@@ -23,11 +25,11 @@ python -m pip install -e '.[dev,learning]'
 cp .env.example .env
 ```
 
-Windows에서는 `.venv\Scripts\activate`로 활성화합니다. `python -m donghak_stock_vision`도 `dsv`와 같은 진입점입니다. 배포 시 `python -m build`로 wheel/sdist를 생성할 수 있습니다. Phase 1의 기본 런타임 의존성은 HTTP 통신용 httpx와 `.env` 로딩용 python-dotenv입니다. Windows에서는 시간대 데이터베이스 tzdata도 설치합니다. SQLite는 표준 라이브러리를 사용합니다. 학습은 선택적 `learning` extra(scikit-learn 1.9.1 이상 1.10 미만, NumPy 2.3 이상 3 미만)를 설치합니다. 모델은 안전한 JSON 수치로 저장하므로 조회·추론에는 과학 계산 라이브러리가 필요하지 않습니다. 학습 실행마다 실제 라이브러리 버전·시드·코드 hash를 기록합니다.
+On Windows, activate with `.venv\Scripts\activate`. `python -m donghak_stock_vision` has the same entry point as `dsv`; `python -m build` produces wheel and sdist packages. The core runtime uses httpx for HTTP and python-dotenv for environment configuration; Windows also installs tzdata. SQLite is in the Python standard library. Optional `learning` dependencies include scikit-learn >=1.9.1,<1.10 and NumPy >=2.3,<3. Model files store numeric JSON instead of loading pickle. Training records installed library versions, random seed, and code hash.
 
-## 인증 없이 실행
+## Run without credentials
 
-Fake Provider는 **실제 시세가 아닌 고정 합성 데이터**만 제공합니다. 종목은 `005930`, `000660`, 날짜는 2024-01-02/03/04/05/08입니다. 요청한 다른 날짜나 종목에는 데이터를 생성하지 않습니다. 실제 데이터와 혼합되지 않도록 별도 DB를 사용합니다.
+The Fake Provider supplies **fixed synthetic data, not real market prices**, for tickers `005930`, `000660` and dates 2024-01-02/03/04/05/08. It does not invent other tickers or dates. Always use a separate database from real market data.
 
 ```bash
 dsv --db .data/demo.sqlite3 collect --provider fake --tickers 005930 000660 --start 2024-01-02 --end 2024-01-04
@@ -36,18 +38,18 @@ dsv --db .data/demo.sqlite3 query --tickers 005930 --start 2024-01-02 --end 2024
 dsv --db .data/demo.sqlite3 validate
 ```
 
-최초 collect는 6행, 다음 update는 4행을 추가합니다. 같은 명령을 반복하면 `changed: 0`입니다. stdout은 JSON, stderr는 UTC 시각(`Z`)을 포함한 표준 logging 로그입니다. 수집 요약의 `succeeded`/`failed`/`empty`는 종목 수, `changed`는 삽입·정정된 행 수입니다. `empty`는 `succeeded`에 포함되지만 데이터 확보나 완전성을 뜻하지 않습니다.
+The first collect inserts six rows; the following update inserts four more. Repeating the same command yields `changed: 0`. Standard output is JSON, and standard error contains structured logs with UTC timestamps (`Z`). For ticker collection, `succeeded`, `failed`, and `empty` count tickers; `changed` counts inserted or corrected rows. `empty` is included in `succeeded`, but does not establish dataset coverage.
 
-종료 코드는 정상 0, 수집 일부 실패 또는 무결성 오류 1, 설정·입력·저장소 오류 2입니다. 일부 종목이 실패해도 다른 종목을 수집하며 전체 명령은 1을 반환합니다.
+Exit codes: 0 for success, 1 for partial collection failures or integrity failures, and 2 for configuration, input, or storage failures. One ticker failing does not prevent the others from being processed.
 
-## KRX 설정 및 수집
+## KRX configuration and collection
 
-기본 Provider는 공식 **KRX Open API**입니다. **현재 인증키·API 승인이 없어 실제 호출을 검증하지 않았습니다.** 자동으로 비공식 사이트나 Fake Provider로 전환하지 않습니다.
+The default source is the official **KRX Open API**. The original Phase 1 live test was not verified without an approved API key and API permissions. No automatic fallback to unofficial sites or synthetic data occurs.
 
-1. [KRX 이용방법](https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp)에 따라 회원가입 후 인증키 승인을 받습니다.
-2. 사용할 시장의 주식 일별매매정보 API에 각각 이용 신청·승인을 받습니다.
-3. `.env`의 `KRX_API_KEY`에 키를 설정합니다. 키는 `AUTH_KEY` 헤더로만 전송합니다.
-4. 아래 명령을 실행합니다. `.env`는 현재 작업 디렉터리에서 읽으며 이미 설정된 환경 변수가 우선합니다.
+1. Obtain an approved API key via the [KRX API guide](https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp).
+2. Apply for the relevant daily stock-market API for each market.
+3. Set `KRX_API_KEY` in `.env`. It is sent only in the `AUTH_KEY` header.
+4. Execute the commands below. The current directory supplies `.env`; existing environment variables take precedence.
 
 ```bash
 dsv collect --tickers 005930 000660 --start 2024-01-02 --end 2024-01-31
@@ -57,58 +59,51 @@ dsv query --tickers 005930 --start 2024-01-02 --end 2024-02-15
 dsv validate
 ```
 
-기간은 양끝 포함이며 종료일은 **Asia/Seoul 기준 어제까지**입니다. KOSPI/KOSDAQ은 2010-01-04부터, KONEX는 2013-07-01부터 지원합니다. 주말은 요청하지 않고, 평일 휴장 여부는 응답에 맡깁니다. 거래일 캘린더를 추정하거나 빈 날짜를 채우지 않습니다.
+Date bounds are inclusive. The final date must be **before today in Asia/Seoul**. KOSPI and KOSDAQ are supported from 2010-01-04; KONEX from 2013-07-01. Weekend requests are skipped, but weekday holidays are determined by responses rather than an invented calendar. No missing-day prices are generated.
 
-### KRX 전체시장 수집
+### Whole-market KRX collection
 
-기존 종목 지정 수집과 별도로 `collect --all`을 지원합니다. `--all`과 `--tickers`는
-상호 배타적이며, `--all`은 `--provider krx`에서만 사용할 수 있습니다.
+In addition to specific ticker collection, `collect --all` is supported only with `--provider krx`. `--all` and `--tickers` are mutually exclusive.
 
 ```bash
 .venv/bin/dsv --db .data/market.sqlite3 collect --all \
   --start 2022-01-01 --end 2025-06-30 --provider krx --market KOSPI
 ```
 
-정상 응답에서는 평일 날짜당 시장 전체 요청 한 번으로 모든 종목을 읽습니다. 종목 수만큼
-요청하거나 원본 응답을 복제하지 않습니다. 장애 시 기존 제한 재시도·요청 예산은 유지합니다.
-날짜의 모든 행을 검증한 뒤 한 트랜잭션으로 저장하며, 실패한 날짜는 기록하고 다음 날짜로
-진행합니다. 동일 데이터는 `changed`에 포함하지 않으며 기존 DB를 초기화하지 않습니다.
+For normal responses, the collector performs one full-market request per weekday rather than a separate request for every ticker. It archives each original response once, validates all rows, and saves each day's valid bars in one transaction. Existing retry, rate-limit, and request-budget protections remain in place. Failed dates are recorded and processing continues to the next date; the existing database is not reset.
 
-전체시장 결과의 `succeeded`/`failed`/`empty`는 **날짜 수**, `rows`는 정상 처리된 봉 수,
-`changed`는 삽입·정정된 봉 수입니다. 기존 `--tickers` 결과의 의미는 변하지 않습니다.
-`update --all`은 지원하지 않습니다. 재실행은 같은 `collect --all` 범위를 명시합니다.
-[원본 연결·검증·재실행 정책](docs/market-collection.md)을 참고하세요.
+For whole-market results, `succeeded`, `failed`, and `empty` count **dates**, `rows` counts validated bars, and `changed` counts inserted or corrected bars. Specific-ticker output retains its original meanings. `update --all` is not supported; use an explicit `collect --all` range again. See [whole-market collection and raw linkage](docs/market-collection.md) (Korean).
 
-`update`는 지정 범위 내 마지막 저장일에서 기본 7일 전부터 재조회합니다(`--overlap-days N`). 신규 종목에는 전체 지정 기간을 요청합니다. 7일보다 오래된 누락·정정이나 앞쪽 과거 구간 추가는 `collect`로 명시적으로 다시 수집합니다. 수정주가의 과거 전체 소급 보정은 지원하지 않습니다.
+For `update`, the default overlap is seven days before the most recently stored date within the requested range (`--overlap-days N`). New tickers use the complete requested period. Collect older missing or corrected intervals explicitly with `collect`. Full historical back-adjustment of corporate actions is not supported.
 
-| 환경 변수 | 기본값 | 의미 |
+| Variable | Default | Meaning |
 | --- | --- | --- |
-| `KRX_API_KEY` | 없음 | 승인된 KRX 키. Fake에는 불필요 |
-| `DSV_DB_PATH` | `.data/market.sqlite3` | raw·cleaned·audit·요청 제한 저장소. `--db` 우선 |
-| `DSV_KRX_MARKET` | `KOSPI` | `KOSPI`, `KOSDAQ`, `KONEX`; `--market` 우선 |
-| `DSV_REQUEST_INTERVAL` | `1.0` | HTTP 시도 간 최소 초, 1 이상 |
-| `DSV_DAILY_REQUEST_LIMIT` | `9500` | DB를 공유하는 프로세스의 서울 날짜별 요청 한도, 1~9500 |
+| `KRX_API_KEY` | None | Approved KRX key; unnecessary for Fake |
+| `DSV_DB_PATH` | `.data/market.sqlite3` | Raw, cleaned, audit, and request-limit store; overridden by `--db` |
+| `DSV_KRX_MARKET` | `KOSPI` | `KOSPI`, `KOSDAQ`, or `KONEX`; overridden by `--market` |
+| `DSV_REQUEST_INTERVAL` | `1.0` | Minimum seconds between HTTP attempts, >=1 |
+| `DSV_DAILY_REQUEST_LIMIT` | `9500` | Per-Seoul-day limit shared through the same DB, 1–9500 |
 
-KRX 키당 일 10,000회 이하 제한에 여유를 두어 로컬 기본값은 9,500회입니다. 재시도도 횟수에 포함하고, 재실행·같은 DB를 사용하는 프로세스 간 제한을 유지합니다. **같은 키를 쓰는 수집 프로세스는 같은 DB를 사용해야 합니다.** 다른 DB·다른 앱의 키 사용량까지 추적할 수 없으므로 공유 사용 시 한도를 낮춰야 합니다. 429/일시적 5xx/네트워크 오류는 최대 3회 시도하고 지수 백오프와 Retry-After를 적용합니다. 60초를 초과하는 서버 대기 요청은 일찍 재시도하지 않고 실패시킵니다.
+The local default is 9,500 attempts to allow headroom below KRX's stated 10,000 requests per key/day. Retries count against the limit. **Collection processes sharing one key must use the same database** to coordinate the local counter; requests made by other apps/databases cannot be counted and may require a lower limit. HTTP 429, temporary 5xx and network failures permit up to three attempts with exponential backoff and Retry-After. Server-directed waits above 60 seconds fail rather than immediately retry.
 
-실제 데이터 화면에는 “한국거래소 통계정보” 출처를 표시해야 합니다. KRX 약관의 비상업적 이용·제3자 제공 제한이 적용되므로 원본/DB를 Git에 넣지 않습니다. 향후 상업 서비스 또는 데이터 배포에는 별도 이용 권리 확인이 필요합니다. [제공업체 비교](docs/providers.md)에서 제한과 선택 근거를 확인하세요.
+Real-data displays must attribute “한국거래소 통계정보” (KRX statistics). Check KRX noncommercial-use and third-party redistribution restrictions. Do not commit original responses or database contents to Git. Commercial use and redistribution may require separate rights. See [provider evaluation](docs/providers.md) (Korean).
 
-## Phase 2: 학습·평가·분석
+## Phase 2: Learning, evaluation, and analysis
 
-라벨 `reversal_barrier_v1`은 **직전 반대 추세 문맥에서 5개 미래 세션 내 단기 역방향 장벽 최초 도달**을 예측합니다. 지속적 추세 반전, 검증된 상승 확률, 수익 또는 5일 보유 지시가 아닙니다. H=5, 최소 장벽 2%, 변동성 배수 2, 점수 임계값 0.5는 승인된 초기 가설로 고정했습니다. 상승 모델은 직전 5관측 로그수익률<0, 하락 모델은 >0인 모집단만 학습·평가합니다. 문맥 밖 점수는 `null/context_mismatch`, 평탄 문맥은 `no_context`입니다.
+The `reversal_barrier_v1` label represents the **first short-term opposite-direction barrier hit within the following five sessions in the context of a preceding opposite trend**. It is not a sustained trend-reversal prediction, validated probability of rising prices, profit expectation, or five-day holding instruction. Approved initial research hypotheses fix H=5, a minimum 2% barrier, volatility multiplier 2, and score threshold 0.5. Upward models use only contexts with negative preceding five-observation log returns; downward models use positive ones. Scores outside the applicable context are `null/context_mismatch`; flat context produces `no_context`.
 
-두 모드를 명시적으로 선택합니다.
+Select one of two explicit modes:
 
-| 모드 | 입력과 시간 | 사용 범위 |
+| Mode | Inputs and timing | Restriction |
 | --- | --- | --- |
-| `historical-research` | 실제 수집 cutoff의 불변 스냅샷, 과거 서울 16:00를 가상 EOD anchor로 사용 | `research_only`; 사후 수정·기업행사·생존편향 한계 |
-| `point-in-time` | 실제 `collected_at <= as_of`, 검증된 품질 manifest와 당시 가용 모델 | `pit_review_required`; 별도 검토·등록 이전 운영 조회 불가 |
+| `historical-research` | Frozen snapshot at actual collection cutoff; historic Seoul 16:00 is a simulated end-of-day anchor | `research_only`; retrospective revisions, corporate actions, and survivorship limitations |
+| `point-in-time` | Real `collected_at <= as_of`, verified quality manifest, and an eligible model existing at the time | `pit_review_required`; unavailable to operations without independent review and registration |
 
-과거 일괄수집 자료를 PIT로 바꾸지 않습니다. 연구 스냅샷에는 가격·거래량·실제 거래대금·메타데이터를 복사하고 SHA-256 `snapshot_id`로 고정합니다. 학습 이후 원래 시장 DB가 수정·삭제돼도 특징·라벨·평가·연구 추론은 저장된 스냅샷만 읽습니다. 새 시장 데이터는 새 학습 스냅샷/모델을 만들거나 PIT 추론으로 명시적으로 분석합니다. 연구 모델의 다른 스냅샷 추론은 거부합니다.
+Historical bulk-collected data is never silently upgraded to PIT. A research snapshot freezes prices, quantities, turnover, metadata, and a SHA-256 `snapshot_id`. Subsequent deletion/modification of the original market DB cannot alter snapshot-based feature, label, evaluation, or research-inference data. A new dataset requires a new snapshot/model or an explicitly PIT-qualified analysis. Cross-snapshot inference with a research model is rejected.
 
-**실제 학습 최소량:** 전체 5종목·504개 적격 anchor 날짜; 방향별 train 1,000행·252날짜·양성/음성 각각 50개, validation/test 각각 200행·63날짜·양성/음성 각각 20개입니다. 특징은 최소 11개 적격 일봉이 필요합니다. 부족한 방향은 필요한 값과 실제 값, `insufficient_data`를 보고하며 점수를 만들어 내지 않습니다. 기본 Fake 데모 5일 데이터로 모델을 학습할 수 없습니다.
+**Minimum real training data:** five tickers and 504 eligible anchor dates overall. Per direction, train requires 1,000 rows / 252 dates / at least 50 positives and negatives; validation and test each require 200 rows / 63 dates / at least 20 positives and negatives. Features require at least 11 eligible daily bars. Insufficient data yields explicit counts and `insufficient_data`, never fabricated scores. The five-day Fake demo cannot train a model.
 
-다음 명령의 종목·기간·시각은 형식 예시이며 해당 데이터가 로컬 DB에 있어야 합니다. `--snapshot-as-of`는 데이터를 실제로 확보한 timezone 포함 시각으로 지정합니다. 연구 품질 자료가 없으면 한계를 명시적으로 동의해야 하며, 알려진 불량 구간은 동의해도 제외합니다.
+The dates and ticker IDs below are examples only: the local database must actually contain the requested data. `--snapshot-as-of` must include a timezone and correspond to when the data was truly available. Missing research quality evidence requires explicit acknowledgement; known invalid ranges remain excluded.
 
 ```bash
 dsv --db .data/market.sqlite3 train --mode historical-research \
@@ -117,7 +112,7 @@ dsv --db .data/market.sqlite3 train --mode historical-research \
   --snapshot-as-of 2026-09-23T09:00:00+09:00 \
   --acknowledge-research-limitations --analysis-db .data/analysis.sqlite3
 
-# train JSON의 model_version, snapshot_id를 아래 셸 변수에 넣습니다.
+# Set the shell variables below from train JSON output.
 MODEL_VERSION='<model_version>'
 SNAPSHOT_ID='<snapshot_id>'
 dsv evaluate --mode historical-research --model-version "$MODEL_VERSION" \
@@ -129,16 +124,16 @@ dsv signals --scope research --model-version "$MODEL_VERSION" \
   --snapshot-id "$SNAPSHOT_ID" --direction up --analysis-db .data/analysis.sqlite3
 ```
 
-`evaluate`는 고정된 train-fit 모델과 스냅샷의 validation/test를 재현합니다. 공통 날짜축 60/20/20 분할 후 라벨 미래 구간이 경계에 닿으면 purge합니다. PIT는 라벨 수신 시각도 격리합니다. 표준화·가중치는 방향별 train에서만 계산합니다. C=0.1/1/10을 validation AP로 선택하고 최종 test로 재선택하지 않습니다. 조건부 빈도·단순 역방향 강도 기준 모델, Precision·Recall·AP·혼동행렬·Brier·미보정 구간 진단을 보고합니다. 계산 불가능한 지표는 null과 사유를 반환합니다. 반복 실험은 동일 holdout에 대한 독립 검증이 아닙니다.
+Evaluation replays validation/test for the fixed train-fitted model and snapshot. A shared 60/20/20 chronological split purges labels whose future intervals cross split boundaries; PIT also isolates label reception times. Standardization and weights use train data per direction only. Hyperparameter C=0.1/1/10 is selected using validation average precision, never reselected on final test. Reports include conditional frequency and simple reversal baselines, precision, recall, AP, confusion matrix, Brier score, and uncalibrated range diagnostics. Undefined metrics return null with a reason. Repeating experiments against the same holdout is not independent validation.
 
-PIT는 확인한 품질 자료와 지속적으로 수신 시각을 보존한 데이터가 필요합니다. manifest 형식은 [데이터 계약](docs/data-contract.md#phase-2-품질-manifest)을 따릅니다. 부족한 품질을 연구 동의로 우회할 수 없습니다.
+PIT requires reviewed quality evidence and preserved collection times. The manifest follows the [Phase 2 data contract](docs/data-contract.md) (Korean). Research acknowledgements cannot bypass missing PIT quality.
 
 ```bash
 dsv --db .data/market.sqlite3 train --mode point-in-time \
   --tickers 005930 000660 035420 035720 005380 \
   --start 2019-01-02 --end 2024-12-30 --as-of 2026-09-23T09:00:00+09:00 \
   --quality-manifest .data/quality.json --analysis-db .data/analysis.sqlite3
-# PIT_MODEL은 위 PIT 학습 결과의 model_version입니다.
+# PIT_MODEL is the model_version from the PIT training output.
 dsv --db .data/market.sqlite3 infer --mode point-in-time --model-version "$PIT_MODEL" \
   --tickers 005930 --as-of 2026-09-23T10:00:00+09:00 \
   --quality-manifest .data/quality.json --analysis-db .data/analysis.sqlite3
@@ -148,13 +143,13 @@ dsv signals --scope operational --direction up --as-of 2026-09-23T10:00:00+09:00
   --analysis-db .data/analysis.sqlite3
 ```
 
-모든 모델은 `unregistered`로 생성합니다. `validation_qualified`(두 기준 모델의 AP 최댓값보다 0.02 이상 높음)는 운영 적격 판정이 아닙니다. 실제 데이터 품질·PIT·고정 최종 테스트·별도 승인 증거가 없으므로 현재 운영 조회는 `no_registered_model`과 빈 목록을 반환합니다. 강제 등록 CLI나 자동 승격은 없습니다. 연구·합성 모델은 운영 등록 대상이 아닙니다.
+Every model starts as `unregistered`. `validation_qualified` (AP at least 0.02 above the better of two baselines) **does not qualify a model for production**. Without independent evidence of real data quality, PIT, locked final test, and approvals, operational queries return `no_registered_model` and an empty list. No forced registration command or automatic promotion exists. Research and synthetic models are ineligible for operational registration.
 
-새 명령의 stdout은 JSON입니다. 성공/정상 빈 조회는 종료 코드 0, 데이터·모델 부족/모드 위반/분석 불가는 1, 인자·파일·저장소 오류는 2입니다. 모델 파일은 pickle로 로드하지 않습니다. 실제 분석 시각·모델 생성 시각·시장 날짜·입력 상태·문맥·미보정 점수·선형 기여도를 함께 반환하며 기여도는 인과 설명이 아닙니다. 분석 DB는 시장 DB와 다른 경로를 요구합니다. `DSV_CODE_REVISION`은 배포 코드 SHA를 명시하는 선택 환경 변수이며 생략 시 Git SHA 또는 `unknown`을 기록하고 소스 hash도 보존합니다.
+New commands return JSON on stdout. Exit code 0 means success or a valid empty query, 1 means insufficient data/model, incompatible mode, or unavailable analysis, and 2 means argument/file/storage failure. Model inference never loads pickle. Results retain actual analysis/model timestamps, market date, input/context status, uncalibrated score, and linear contributions; contributions are not causal explanations. Market and analysis DB paths must differ. Optional `DSV_CODE_REVISION` pins deployment SHA; otherwise a Git SHA or `unknown` is recorded along with source hash.
 
-오프라인 기능 검증용 합성 fixture에만 `train --synthetic-test`로 작은 표본 정책을 명시적으로 허용합니다. 소스가 전부 `fake`여야 하고 `synthetic_test_only` 제한은 영구적입니다. 실제 종목 추천이나 성능 증거로 사용할 수 없습니다.
+`train --synthetic-test` relaxes sample limits only for wholly Fake offline fixtures, permanently tagging output `synthetic_test_only`. It cannot support real ticker recommendations or performance claims.
 
-## 검증과 CI
+## Validation and CI
 
 ```bash
 ruff check src tests
@@ -164,34 +159,33 @@ pytest
 python -m build
 ```
 
-일반 테스트는 실제 키·네트워크 없이 실행되며 실제 TCP 접속 시도를 차단합니다. Mock HTTP 응답으로 KRX 헤더·필드 변환·재시도를 검증합니다. `tests/integration`의 일반 통합 테스트도 모두 로컬 SQLite/Mock을 사용합니다.
+Regular tests run without credentials or network access and reject real TCP connections. Mock HTTP tests cover KRX headers, field conversion, and retries; regular integration tests use local SQLite and mocks.
 
-GitHub Actions는 `main` 대상 PR·main push·수동 실행에서 Python 3.12/3.13/3.14의 Ruff·mypy·pytest·패키지 빌드와 독립 가상환경 wheel 실행을 검사합니다. 기본 wheel에서 Phase 1, learning extra 설치 후 합성 학습→평가→시장 DB 삭제→추론→조회까지 검사합니다. 비밀키가 필요 없으며 live 테스트는 기본 제외됩니다.
+GitHub Actions checks PRs targeting `main`, pushes to `main`, and manual runs on Python 3.12/3.13/3.14, with Ruff, mypy, pytest, packaging, and isolated wheel smoke tests. After installing the learning extra, the wheel tests synthetic training → evaluation → market DB deletion → inference → queries. No secrets are required; live tests are excluded by default.
 
-승인 후 실제 API 테스트만 별도로 실행합니다. 이 테스트는 `.env`를 자동으로 읽지 않으므로 로컬 환경에 키를 export하세요(채팅·커밋에 키를 붙여넣지 마세요).
+Only after obtaining approved access, run live API tests manually with the key securely exported in the environment (never paste credentials into commits or chats). Live tests do not automatically read `.env`.
 
 ```bash
-# KRX_API_KEY를 안전하게 환경에 설정한 후
+# After securely exporting KRX_API_KEY to the environment
 DSV_RUN_LIVE=1 pytest -m live tests/integration/test_live_krx.py
 ```
 
-이 테스트는 KOSPI 삼성전자의 2024-01-02 데이터를 수집·재조회하고 멱등성을 확인합니다. 일반 CI에서 실행하지 않습니다. 실제 데이터는 pytest 임시 경로에만 남으며 테스트 응답을 저장소에 커밋하지 않습니다.
+The live test checks collection/requery idempotency for Samsung Electronics (`005930`, KOSPI) on 2024-01-02. Temporary test directories hold fetched data, which must not be committed.
 
-## 구조와 정책
+## Architecture and policies
 
-- [architecture.md](docs/architecture.md): 목표 구조와 Phase 1/2/3 경계, SQLite 선정 이유
-- [phase2-design.md](docs/phase2-design.md): 승인된 v2 라벨·표본량·시간순 검증·운영 등록 계약
-- [data-contract.md](docs/data-contract.md): 타입·시간대·원본·결측·거래정지·중복·수정주가 정책
-- [providers.md](docs/providers.md): 공식 출처 기반 공급자 비교 및 KRX 매핑
+- [Architecture](docs/architecture.md) — boundaries and SQLite rationale (Korean)
+- [Phase 2 design](docs/phase2-design.md) — label, samples, chronology, model registration (Korean)
+- [Data contract](docs/data-contract.md) — time, raw data, missing values, halted trading, duplicates, adjustments (Korean)
+- [Providers](docs/providers.md) — official provider evaluation and KRX mapping (Korean)
 
-`validate`는 SQLite·스키마·원본 체크섬·참조 연결을 검사합니다. 공식 거래일 캘린더나 종목 생애주기 마스터를 갖고 있지 않아 “모든 거래일이 빠짐없이 존재함”을 보증하지는 않습니다. 현재 종목 목록을 과거에 적용해 상장폐지 종목을 지우지 않습니다.
+`validate` checks SQLite integrity, schema, raw checksums and reference linkage. Without an authoritative historical exchange calendar and security-lifecycle master, it cannot guarantee complete coverage of every trading session; current constituents are not retroactively used to erase delisted securities.
 
+## Phase 3: Virtual research decisions
 
-## Phase 3 연구용 가상 판단
+The [Phase 3 design](docs/phase3-design.md) and [decision contract](docs/decision-contract.md) (Korean) require an exact Phase 2 `analysis_id` plus explicit JSON thresholds, budgets, sell rules, caps, TTL, costs and reentry policy. Omission yields WAIT/blocked; there are no trading-number defaults. Stop-loss, take-profit and maximum holding duration must each remain `disabled` with `parameters=null`. Decision, query and replay require only base dependencies; training new models requires the learning extra.
 
-[설계 v2](docs/phase3-design.md)와 [입력·정책 계약](docs/decision-contract.md)에 따라 Phase 2의 정확한 analysis_id를 소비합니다. 독립 임계값·예산·매도 방식·한도·TTL·비용·재진입 정책을 JSON으로 명시해야 합니다. 생략 시 WAIT/blocked이며 거래 수치 기본값은 없습니다. 손절·익절·최대 보유 기간은 각각 disabled/parameters=null만 허용합니다. 기본 패키지로 판단·조회·replay가 가능하며 새 모델 학습만 learning extra가 필요합니다.
-
-아래 경로는 사용자가 준비한 불변 가상 snapshot과 명시 연구 정책입니다. 파일 구조와 합성 fixture는 계약 문서를 참고하세요. 날짜·ID·정책은 동일 연구 시나리오에 맞춰 지정합니다.
+The following paths refer to user-provided immutable virtual snapshots and explicit research policies. Match IDs, dates, and policies to a single research scenario; consult contract documents for schemas and synthetic fixtures.
 
 ```bash
 dsv decide --scope research --ticker 005930 --as-of '2024-01-08T16:00:00+09:00' \
@@ -203,16 +197,13 @@ dsv decisions --decision-db .data/decisions.sqlite3 --scope research --ticker 00
 dsv decisions --decision-db .data/decisions.sqlite3 --scope research --decision-id DECISION_ID --replay
 ```
 
-정상 연구 판단은 virtual/종료 코드 0, 차단은 WAIT/blocked/1, 파일·형식 오류는 2입니다. 기본 decisions 조회 scope는 operational이며 연구 결과로 대체하지 않습니다. 운영 decide는 항상 차단합니다. 모든 결과의 operational_eligible/executable은 false이고 실제 주문·계좌 변경은 없습니다. HOLD는 안전성 보장이 아니며 하락 문맥에서 청산 모델이 비적용인 경우 그 사실과 비활성 리스크 규칙을 diagnostics에 보존합니다.
+Successful research decisions remain virtual (exit 0), blocked ones return WAIT/blocked (exit 1), and malformed inputs/files return exit 2. The default decisions query scope is operational and must never be silently replaced with research results. Operational `decide` is blocked; every outcome has `operational_eligible/executable=false`. No real orders or account balances are changed. HOLD does not certify safety. When exit models do not apply in a falling context, diagnostics preserve this along with disabled risk rules.
 
-별도 Decision SQLite에 입력·정책·결과를 원자적으로 저장합니다. 원본 시장/분석 DB를 수정하지 않으며 이후 DB·정책 파일 변경이나 삭제에도 replay는 최초 bundle을 사용합니다. 합성 테스트는 실제 매매 성능의 증거가 아닙니다. 당일 일봉, 운영 등록/철회 이력, 실제 리스크 청산 활성화는 후속 승인 대상입니다.
+An independent Decision SQLite store atomically persists inputs, policies and outputs. It does not modify market or analysis databases; replay uses the original bundle even if later files change or are deleted. Synthetic tests do not prove investment performance. Intraday daily bars, operational registration/revocation histories and real risk exits require later approval.
 
-## Phase 4 연구 성과 보고
+## Phase 4: Research performance reports
 
-`dsv backtest --input`은 명시적 정책과 고정된 **합성 historical research 입력**을 받아
-Runner → Ledger → Performance → Report를 실행합니다. 실제 시장 데이터나 모델을 자동으로
-구성하지 않습니다. 입력 생성 API, 필수 정책과 한계는
-[backtesting-performance.md](docs/backtesting-performance.md)를 참고하세요.
+`dsv backtest --input` runs Runner → Ledger → Performance → Report using an explicitly configured policy and **frozen synthetic historical-research input**. It never automatically constructs real market data or models. See [backtesting performance contract](docs/backtesting-performance.md).
 
 ```bash
 dsv backtest --input synthetic-request.json \
@@ -220,35 +211,19 @@ dsv backtest --input synthetic-request.json \
   --initial-cash 10000 --tickers 005930 --format text
 ```
 
-현금·종목은 고정 입력과 일치해야 하며 시각에는 timezone offset이 필요합니다.
-평가 가격·TTL·반올림 정책을 명시해야 하고, mark가 부족하면 equity/return은 null입니다.
-종료 포지션을 강제 매도하지 않으며 결과는 실제 PIT/OOS 투자 성과가 아닙니다.
+Tickers and cash must match the fixed input; timestamps require timezone offsets. Marking price, TTL and rounding policies must be explicit; insufficient marks result in null equity/returns. Open positions are not forcibly liquidated and outputs are **not** verified real PIT/out-of-sample investment results.
 
-실제 저장 일봉을 동결하는 입력 생성 전용 명령은 `dsv backtest-input`입니다.
-필수 manifest·정책·품질 입력과 분석 snapshot 제약은
-[historical-backtesting.md](docs/historical-backtesting.md)를 참고하세요.
-입력 생성 전용 결과는 아직 execution policy가 바인딩되지 않아 `execution_status=blocked`를
-명시합니다. 아래 E2E 경로에서 명시적 historical 정책과 증거를 검증한 경우에만 실행합니다.
-합성 체결 정책을 실데이터에 자동 적용하지 않습니다.
+`dsv backtest-input` is a separate command to freeze actual stored daily bars into a research input, subject to explicit manifests, policy and snapshot limits documented in [historical backtesting](docs/historical-backtesting.md). Generated inputs alone remain `execution_status=blocked` until historical execution policy and evidence are validated. Synthetic fill policy is not automatically applied to real data.
 
-실제 historical DB에서 실행·성과·보고서까지 연결하는 경로는
-`dsv backtest --market-db ... --analysis-db ... --model-id ... --config ...
---start YYYY-MM-DD --end YYYY-MM-DD --initial-cash ... --ticker 005930`입니다.
-명시적 historical execution/valuation 정책과 동일 모델 snapshot이 필요합니다.
-현재 실행은 단일 ticker 연구 시뮬레이션으로 제한됩니다.
-[필수 설정 및 실행 의미](docs/historical-backtest-e2e.md)를 확인하세요.
+The historical DB end-to-end path uses `dsv backtest --market-db ... --analysis-db ... --model-id ... --config ... --start YYYY-MM-DD --end YYYY-MM-DD --initial-cash ... --ticker 005930`. It requires explicit historical execution/valuation policies and a matching model snapshot; simulations are currently restricted to one ticker. See the [historical backtest E2E contract](docs/historical-backtest-e2e.md).
 
-## 로컬 Observability
+## Local observability
 
-독립적인 Docker Compose 스택으로 Prometheus와 Grafana OSS를 실행할 수 있습니다.
-현재는 Prometheus 자체 지표만 수집하며 애플리케이션·학습·DB와 연결하지 않습니다.
-[실행, 인증 정보 설정, 검증 및 데이터 삭제 안내](docs/observability.md)를 확인하세요.
+Run a standalone Docker Compose stack with Prometheus and Grafana OSS. It currently collects only Prometheus self-metrics and is **not** integrated with application, training, or DB telemetry. See [observability setup and cleanup](docs/observability.md).
 
 ## Read-only web API
 
-An optional FastAPI transport is available behind the `api` extra. It serves a
-validated immutable research snapshot and does not run inference, signals,
-evidence collection, or backtests.
+An optional FastAPI transport is available behind the `api` extra. It serves a validated immutable research snapshot and does not run inference, signals, evidence collection, or backtests.
 
 ```bash
 python -m pip install -e '.[api]'
@@ -257,10 +232,10 @@ dsv-api-export --root . --market-db .data/market.sqlite3 \
 dsv-api --snapshot .data/research-api-snapshot.json
 ```
 
-The exporter is deterministic and read-only: it validates the market DB, official
-evidence fingerprints, reviewed model publication metadata, and universe identity
-before writing a new snapshot. It never overwrites an existing snapshot.
+The deterministic read-only exporter validates the market database, official evidence fingerprints, reviewed model-publication metadata and universe identity before creating a new snapshot. It does not overwrite an existing snapshot.
 
-See [docs/research-api.md](docs/research-api.md) for the endpoint, export, and
-research-integrity contracts.
+See [research API contracts](docs/research-api.md) for endpoints, exporting, and research integrity.
 
+## Safety and operational readiness
+
+Recent PIT inference-input, real-OHLCV feature-adapter, snapshot-provenance, source-revision-ledger and source-collection-evidence components are **validation contracts**, not certificates of historical truth or authority to run a production model. An apparently consistent SHA-256 chain does not establish who collected data or when they first possessed it. Unverified quality flags must not be cleared automatically. No unapproved research HGB model is promoted; `registration_authorized` and `inference_authorized` remain false without the required independent authority and evidence.
