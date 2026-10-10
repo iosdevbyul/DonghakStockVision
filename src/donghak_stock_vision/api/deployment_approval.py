@@ -118,9 +118,7 @@ def inspect_deployment_approval(
             if len(signature) != 64:
                 raise ValueError("invalid Ed25519 signature")
             message = b"DonghakStockVision:deployment-approval:v1\x00" + receipt_bytes
-            Ed25519PublicKey.from_public_bytes(matches[0].public_key).verify(
-                signature, message
-            )
+            Ed25519PublicKey.from_public_bytes(matches[0].public_key).verify(signature, message)
         except (InvalidSignature, ValueError, binascii.Error):
             blockers.append("invalid_deployment_approval_signature")
     return DeploymentApprovalAssessment(
