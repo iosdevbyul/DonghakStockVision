@@ -22,7 +22,7 @@ def test_https_adapter_passes_stable_identity_for_put_and_get() -> None:
                 request.get_method(),
                 request.full_url,
                 request.get_header("Idempotency-key"),
-                request.data,
+                bytes(request.data) if isinstance(request.data, bytes) else None,
             )
         )
         return 200, b"unverified-claim"
