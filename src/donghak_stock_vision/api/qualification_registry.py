@@ -75,9 +75,8 @@ def inspect_qualification(
         and review_report.artifact_structurally_consistent
     ):
         blockers.append("registration_review_not_ready")
-    if (
-        len(independently_trusted_registry_sha256) != 64
-        or any(c not in "0123456789abcdef" for c in independently_trusted_registry_sha256)
+    if len(independently_trusted_registry_sha256) != 64 or any(
+        c not in "0123456789abcdef" for c in independently_trusted_registry_sha256
     ):
         blockers.append("independent_registry_pin_missing")
         return QualificationAssessment(False, False, False, tuple(blockers))
@@ -112,9 +111,7 @@ def inspect_qualification(
 
     # File hashes and reviewer claims are not proof of an authoritative registry.
     blockers.append("authoritative_registry_identity_not_authenticated")
-    valid = not (
-        set(blockers) - {"authoritative_registry_identity_not_authenticated"}
-    )
+    valid = not (set(blockers) - {"authoritative_registry_identity_not_authenticated"})
     return QualificationAssessment(
         qualification_record_valid=valid,
         ready_for_external_authorization=valid,
