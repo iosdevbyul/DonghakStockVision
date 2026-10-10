@@ -14,7 +14,9 @@ def parser() -> argparse.ArgumentParser:
         type=Path,
         help="validated research API snapshot JSON; defaults to DSV_API_SNAPSHOT_PATH",
     )
-    result.add_argument("--market-db", type=Path, help="optional immutable market database for OHLCV")
+    result.add_argument(
+        "--market-db", type=Path, help="optional immutable market database for OHLCV"
+    )
     result.add_argument("--market-db-sha256", help="approved market database SHA-256")
     result.add_argument("--host", default="127.0.0.1")
     result.add_argument("--port", type=int, default=8000)
