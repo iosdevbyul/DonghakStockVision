@@ -42,9 +42,7 @@ def review_operational_registration(
 ) -> RegistrationReviewReport:
     """Compose existing checks without turning consistency into authorization."""
     contract = assess_registration(proposal_bytes, review_bytes)
-    signature = verify_review_signature(
-        proposal_bytes, review_bytes, envelope_bytes, reviewer_keys
-    )
+    signature = verify_review_signature(proposal_bytes, review_bytes, envelope_bytes, reviewer_keys)
     artifact = inspect_operational_artifact(
         proposal_bytes,
         checkpoint_bytes,
@@ -75,9 +73,11 @@ def review_operational_registration(
         contract.structurallyEligible
         and signature.signature_valid
         and artifact.structurally_consistent
-        and not (set(blockers) - structural_exclusions - {
-            "authoritative_operational_qualification_required"
-        })
+        and not (
+            set(blockers)
+            - structural_exclusions
+            - {"authoritative_operational_qualification_required"}
+        )
     )
     return RegistrationReviewReport(
         contract_valid=contract.structurallyEligible,
