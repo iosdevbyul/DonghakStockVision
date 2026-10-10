@@ -67,9 +67,7 @@ def verify_qualification_issuer(
             if len(signature) != 64:
                 raise ValueError("incorrect signature length")
             message = b"DonghakStockVision:qualification-registry:v1\x00" + registry_bytes
-            Ed25519PublicKey.from_public_bytes(matches[0].public_key).verify(
-                signature, message
-            )
+            Ed25519PublicKey.from_public_bytes(matches[0].public_key).verify(signature, message)
         except (InvalidSignature, ValueError, binascii.Error):
             blockers.append("invalid_qualification_issuer_signature")
     return IssuerVerification(
