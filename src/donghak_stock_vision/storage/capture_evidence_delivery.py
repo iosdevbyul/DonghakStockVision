@@ -43,8 +43,7 @@ def reconcile_capture_receipts(
     raw_ids = [
         row[0]
         for row in connection.execute(
-            "SELECT raw_id FROM raw_capture_receipts WHERE raw_id > ? "
-            "ORDER BY raw_id LIMIT ?",
+            "SELECT raw_id FROM raw_capture_receipts WHERE raw_id > ? ORDER BY raw_id LIMIT ?",
             (after_raw_id, limit),
         )
     ]
