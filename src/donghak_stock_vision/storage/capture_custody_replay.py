@@ -50,8 +50,7 @@ def requeue_after_operator_review(
     connection.executescript(REPLAY_SCHEMA)
     with connection:
         row = connection.execute(
-            "SELECT state,attempt_count,last_blocker FROM capture_custody_outbox "
-            "WHERE raw_id=?",
+            "SELECT state,attempt_count,last_blocker FROM capture_custody_outbox WHERE raw_id=?",
             (raw_id,),
         ).fetchone()
         if row is None or row[0] != "manual_review":
