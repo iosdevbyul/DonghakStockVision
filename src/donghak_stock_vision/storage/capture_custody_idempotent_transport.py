@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Literal, Protocol
 
 from donghak_stock_vision.storage.capture_custody_idempotency import (
-    prepare_custody_submission_identity,
+    prepare_custody_submission_identity as prepare_custody_submission_identity,
 )
 
 
