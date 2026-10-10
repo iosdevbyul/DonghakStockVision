@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from donghak_stock_vision.api.execution_gate import ExecutionGateAssessment
-from donghak_stock_vision.data.learning import FEATURES, FEATURE_VERSION
+from donghak_stock_vision.data.learning import FEATURE_VERSION, FEATURES
 from donghak_stock_vision.data.schema import SEOUL, validate_ticker
 
 
