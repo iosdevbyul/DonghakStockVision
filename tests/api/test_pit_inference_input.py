@@ -4,7 +4,7 @@ import json
 
 from donghak_stock_vision.api.execution_gate import ExecutionGateAssessment
 from donghak_stock_vision.api.pit_inference_input import inspect_pit_input
-from donghak_stock_vision.data.learning import FEATURES, FEATURE_VERSION
+from donghak_stock_vision.data.learning import FEATURE_VERSION, FEATURES
 
 
 def _candidate() -> dict[str, object]:
