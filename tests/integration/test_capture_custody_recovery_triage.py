@@ -42,7 +42,7 @@ def test_recovery_triage_is_read_only_and_never_accepts() -> None:
         items = list_custody_recovery_items(connection)
         assert [(item.raw_id, item.action) for item in items] == [
             (1, "lookup"),
-            (2, "retry_pending"),
+            (2, "review"),
             (3, "review"),
         ]
         assert all(not item.authenticated_acceptance for item in items)
@@ -60,5 +60,16 @@ def test_recovery_triage_paginates_and_rejects_invalid_limits() -> None:
         assert [item.raw_id for item in first + second] == [1, 2, 3]
         with pytest.raises(ValueError, match="pagination"):
             list_custody_recovery_items(connection, after_raw_id=-1)
+    finally:
+        connection.close()
+
+
+def test_unverified_absence_never_recommends_retry() -> None:
+    connection = _connection()
+    try:
+        item = list_custody_recovery_items(connection)[1]
+        assert item.latest_lookup_status == "not_found_unverified"
+        assert item.action == "review"
+        assert not item.authenticated_acceptance
     finally:
         connection.close()
