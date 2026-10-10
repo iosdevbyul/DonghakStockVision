@@ -1,4 +1,5 @@
 """The API must never manufacture security-level inference from global metrics."""
+
 import json
 from pathlib import Path
 
@@ -30,13 +31,28 @@ def test_empty_approved_publication_reports_empty_records(tmp_path: Path) -> Non
 
 def test_rejects_unaudited_scored_record(tmp_path: Path) -> None:
     path = tmp_path / "published.json"
-    path.write_text(json.dumps({
+    payload = {
         "schemaVersion": "published_stock_analysis_v1",
-        "sources": [{"ticker": "005930", "records": [{
-            "id": "unapproved", "ticker": "005930", "analyzedAt": "2026-10-01T18:30:00+09:00",
-            "dataThrough": "2026-10-01", "modelId": "model", "modelVersion": "v1",
-            "direction": "up", "score": 0.8, "validation": "pending", "explanation": None,
-        }]}],
-    }))
+        "sources": [
+            {
+                "ticker": "005930",
+                "records": [
+                    {
+                        "id": "unapproved",
+                        "ticker": "005930",
+                        "analyzedAt": "2026-10-01T18:30:00+09:00",
+                        "dataThrough": "2026-10-01",
+                        "modelId": "model",
+                        "modelVersion": "v1",
+                        "direction": "up",
+                        "score": 0.8,
+                        "validation": "pending",
+                        "explanation": None,
+                    }
+                ],
+            }
+        ],
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValidationError):
         AnalysisPublicationReader.from_path(path)
