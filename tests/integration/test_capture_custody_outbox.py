@@ -65,10 +65,13 @@ def test_retries_are_bounded_and_durable(tmp_path: Path) -> None:
         assert third[0].state == "manual_review"
         assert third[0].attempt_count == 3
         assert _run(store, destination, BrokenTransport()) == ()
-        assert store.connection.execute(
-            "SELECT attempt_count FROM capture_custody_outbox WHERE raw_id=?",
-            (raw_id,),
-        ).fetchone()[0] == 3
+        assert (
+            store.connection.execute(
+                "SELECT attempt_count FROM capture_custody_outbox WHERE raw_id=?",
+                (raw_id,),
+            ).fetchone()[0]
+            == 3
+        )
     finally:
         store.close()
 
