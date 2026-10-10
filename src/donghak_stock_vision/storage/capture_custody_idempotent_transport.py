@@ -48,6 +48,7 @@ def observe_idempotent_custody(
             raw_id, None, operation, "blocked", ("export_not_verified",)
         )
     try:
+        response: bytes | None
         if operation == "submit":
             receipt_bytes = (destination / f"raw-{raw_id}.json").read_bytes()
             response = transport.submit(
