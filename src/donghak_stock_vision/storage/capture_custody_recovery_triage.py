@@ -11,7 +11,7 @@ class CustodyRecoveryItem:
     outbox_state: str
     attempt_count: int
     latest_lookup_status: str | None
-    action: Literal["review", "lookup", "retry_pending"]
+    action: Literal["review", "lookup"]
     authenticated_acceptance: bool = False
     inference_authorized: bool = False
 
@@ -39,11 +39,9 @@ def list_custody_recovery_items(
     ).fetchall()
     items: list[CustodyRecoveryItem] = []
     for raw_id, state, attempts, lookup_status in rows:
-        if state == "manual_review" or lookup_status == "claim_received_unverified":
-            action: Literal["review", "lookup", "retry_pending"] = "review"
-        elif lookup_status is None or lookup_status == "blocked":
-            action = "lookup"
+        if state == "manual_review" or lookup_status is not None:
+            action: Literal["review", "lookup"] = "review"
         else:
-            action = "retry_pending" if state in ("pending", "retry") else "review"
+            action = "lookup"
         items.append(CustodyRecoveryItem(raw_id, state, attempts, lookup_status, action))
     return tuple(items)
