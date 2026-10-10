@@ -5,7 +5,14 @@ from donghak_stock_vision.api.registration_review_gate import review_operational
 
 def test_invalid_registration_is_fail_closed() -> None:
     report = review_operational_registration(
-        b"{}", b"{}", b"{}", (), b"model", b"{}", b"{}", b"{}",
+        b"{}",
+        b"{}",
+        b"{}",
+        (),
+        b"model",
+        b"{}",
+        b"{}",
+        b"{}",
         trusted_checkpoint_sha256="0" * 64,
         trusted_manifest_sha256="0" * 64,
         trusted_lock_sha256="0" * 64,
@@ -21,7 +28,14 @@ def test_invalid_registration_is_fail_closed() -> None:
 
 def test_no_review_signature_cannot_be_bypassed() -> None:
     report = review_operational_registration(
-        b"not-json", b"not-json", b"not-json", (), b"", b"", b"", b"",
+        b"not-json",
+        b"not-json",
+        b"not-json",
+        (),
+        b"",
+        b"",
+        b"",
+        b"",
         trusted_checkpoint_sha256="x",
         trusted_manifest_sha256="x",
         trusted_lock_sha256="x",
