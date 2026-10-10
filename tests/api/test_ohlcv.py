@@ -16,13 +16,23 @@ def make_database(path: Path) -> str:
     with sqlite3.connect(path) as db:
         db.execute("CREATE TABLE bars (ticker TEXT, trading_date TEXT, payload TEXT)")
         bar = DailyBar(
-            ticker="005930", trading_date=date(2025, 6, 30),
-            open=100, high=110, low=90, close=105, volume=7,
-            trading_value=735, provider="krx", market="KOSPI",
-            adjustment="unadjusted", collected_at=datetime(2025, 7, 1, tzinfo=UTC),
+            ticker="005930",
+            trading_date=date(2025, 6, 30),
+            open=100,
+            high=110,
+            low=90,
+            close=105,
+            volume=7,
+            trading_value=735,
+            provider="krx",
+            market="KOSPI",
+            adjustment="unadjusted",
+            collected_at=datetime(2025, 7, 1, tzinfo=UTC),
         )
-        db.execute("INSERT INTO bars VALUES (?, ?, ?)",
-                   (bar.ticker, bar.trading_date.isoformat(), json.dumps(bar.to_dict())))
+        db.execute(
+            "INSERT INTO bars VALUES (?, ?, ?)",
+            (bar.ticker, bar.trading_date.isoformat(), json.dumps(bar.to_dict())),
+        )
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -39,24 +49,23 @@ def test_ohlcv_uses_exact_original_bars(tmp_path: Path) -> None:
     assert response.json() == {
         "ticker": "005930",
         "bars": [
-            {"date": "2025-06-30", "open": 100, "high": 110,
-             "low": 90, "close": 105, "volume": 7}
+            {"date": "2025-06-30", "open": 100, "high": 110, "low": 90, "close": 105, "volume": 7}
         ],
     }
 
 
 def test_ohlcv_rejects_unknown_and_invalid_ticker(tmp_path: Path) -> None:
-    path=tmp_path/"market.sqlite3"
-    reader=OhlcvMarketReader(path, expected_sha256=make_database(path))
-    client=TestClient(create_app(ohlcv_reader=reader))
-    assert client.get("/api/v1/stocks/999999/ohlcv").status_code==404
-    assert client.get("/api/v1/stocks/not-valid/ohlcv").status_code==422
+    path = tmp_path / "market.sqlite3"
+    reader = OhlcvMarketReader(path, expected_sha256=make_database(path))
+    client = TestClient(create_app(ohlcv_reader=reader))
+    assert client.get("/api/v1/stocks/999999/ohlcv").status_code == 404
+    assert client.get("/api/v1/stocks/not-valid/ohlcv").status_code == 422
 
 
 def test_ohlcv_rejects_modified_database(tmp_path: Path) -> None:
-    path=tmp_path/"market.sqlite3"
-    old_sha=make_database(path)
+    path = tmp_path / "market.sqlite3"
+    old_sha = make_database(path)
     with path.open("ab") as file:
         file.write(b"changed")
-    with pytest.raises(OhlcvReaderError,match="fingerprint"):
-        OhlcvMarketReader(path,expected_sha256=old_sha)
+    with pytest.raises(OhlcvReaderError, match="fingerprint"):
+        OhlcvMarketReader(path, expected_sha256=old_sha)
