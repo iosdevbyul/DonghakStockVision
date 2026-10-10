@@ -84,12 +84,8 @@ def test_replay_requires_explicit_operator_and_reason(tmp_path: Path) -> None:
     store = SQLiteStore(tmp_path / "market.sqlite3")
     try:
         with pytest.raises(ValueError, match="required"):
-            requeue_after_operator_review(
-                store.connection, 1, operator_id=" ", reason="reviewed"
-            )
+            requeue_after_operator_review(store.connection, 1, operator_id=" ", reason="reviewed")
         with pytest.raises(ValueError, match="required"):
-            requeue_after_operator_review(
-                store.connection, 1, operator_id="reviewer", reason=""
-            )
+            requeue_after_operator_review(store.connection, 1, operator_id="reviewer", reason="")
     finally:
         store.close()
