@@ -92,8 +92,6 @@ def test_revision_requires_explicit_predecessor() -> None:
 
 def test_timestamp_without_timezone_is_rejected() -> None:
     connection = _database()
-    connection.execute(
-        "UPDATE raw_pages SET collected_at='2026-10-09T00:00:00' WHERE id=1"
-    )
+    connection.execute("UPDATE raw_pages SET collected_at='2026-10-09T00:00:00' WHERE id=1")
     with pytest.raises(ValueError, match="invalid archived collection metadata"):
         _export(connection)
