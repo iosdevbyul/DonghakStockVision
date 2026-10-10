@@ -83,9 +83,10 @@ def test_deployment_approval_is_not_execution_authorization() -> None:
     assert valid.registration_authorized is False
     assert valid.inference_authorized is False
     assert "deployment_environment_mismatch" in assess(environment="production").blockers
-    assert "deployment_approval_expired_or_not_yet_valid" in assess(
-        when="2026-10-12T12:00:00+09:00"
-    ).blockers
+    assert (
+        "deployment_approval_expired_or_not_yet_valid"
+        in assess(when="2026-10-12T12:00:00+09:00").blockers
+    )
     revoked = TrustedDeploymentApprover("operator-key", "other-person", public, False)
     assert "deployment_approver_untrusted_or_revoked" in assess(key=revoked).blockers
     assert "invalid_deployment_approval_signature" in assess(source=receipt + b" ").blockers
