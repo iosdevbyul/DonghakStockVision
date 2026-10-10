@@ -59,7 +59,8 @@ def main(argv: list[str] | None = None) -> None:
 
         analysis_reader = AnalysisPublicationReader.from_path(args.analysis_publication)
     reader = SnapshotReader.from_path(snapshot_path)
-    uvicorn.run(create_app(reader, ohlcv_reader=ohlcv_reader, analysis_reader=analysis_reader), host=args.host, port=args.port)
+    app = create_app(reader, ohlcv_reader=ohlcv_reader, analysis_reader=analysis_reader)
+    uvicorn.run(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
