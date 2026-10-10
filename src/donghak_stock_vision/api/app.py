@@ -20,8 +20,8 @@ from donghak_stock_vision.api.models import (
     StockDetail,
     StockSummary,
 )
-from donghak_stock_vision.api.service import ResearchAPIReader
 from donghak_stock_vision.api.ohlcv import OhlcvMarketReader, OhlcvSeries
+from donghak_stock_vision.api.service import ResearchAPIReader
 
 
 def create_app(
