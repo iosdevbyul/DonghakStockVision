@@ -84,10 +84,7 @@ def inspect_source_collection(
         or evidence.snapshotId != expected_snapshot_id
     ):
         blockers.append("source_collection_identity_mismatch")
-    if (
-        evidence.sourceDate != raw_page.source_date
-        or evidence.collectedAt != raw_page.collected_at
-    ):
+    if evidence.sourceDate != raw_page.source_date or evidence.collectedAt != raw_page.collected_at:
         blockers.append("source_collection_page_metadata_mismatch")
     content_consistent = not blockers
     blockers.extend(
@@ -97,6 +94,4 @@ def inspect_source_collection(
             "operational_execution_not_authorized",
         )
     )
-    return SourceCollectionAssessment(
-        content_consistent, False, False, False, tuple(blockers)
-    )
+    return SourceCollectionAssessment(content_consistent, False, False, False, tuple(blockers))
