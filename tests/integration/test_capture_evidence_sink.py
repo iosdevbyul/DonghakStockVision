@@ -1,6 +1,5 @@
 """Offline tests for explicit export, tampering, duplicate and failure handling."""
 
-import sqlite3
 from datetime import UTC, date, datetime
 from pathlib import Path
 
