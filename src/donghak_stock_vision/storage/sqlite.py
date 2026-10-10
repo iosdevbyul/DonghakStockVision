@@ -244,19 +244,42 @@ class SQLiteStore:
             "FROM raw_pages r LEFT JOIN raw_capture_receipts c ON c.raw_id=r.id"
         ):
             (
-                raw_id, run_id, provider, scope, observed, source_date, digest, body,
-                version, receipt_run, receipt_provider, receipt_scope, receipt_time,
-                receipt_date, receipt_digest,
+                raw_id,
+                run_id,
+                provider,
+                scope,
+                observed,
+                source_date,
+                digest,
+                body,
+                version,
+                receipt_run,
+                receipt_provider,
+                receipt_scope,
+                receipt_time,
+                receipt_date,
+                receipt_digest,
             ) = row
             # Legacy rows have no receipt; do not fabricate retrospective evidence.
             if version is None:
                 continue
             expected = (
-                "raw_capture_receipt_v1", run_id, provider, scope, observed, source_date, digest
+                "raw_capture_receipt_v1",
+                run_id,
+                provider,
+                scope,
+                observed,
+                source_date,
+                digest,
             )
             recorded = (
-                version, receipt_run, receipt_provider, receipt_scope,
-                receipt_time, receipt_date, receipt_digest
+                version,
+                receipt_run,
+                receipt_provider,
+                receipt_scope,
+                receipt_time,
+                receipt_date,
+                receipt_digest,
             )
             if recorded != expected or hashlib.sha256(body).hexdigest() != digest:
                 issues.append(f"raw capture receipt mismatch: {raw_id}")
