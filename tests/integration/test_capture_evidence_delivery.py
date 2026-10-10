@@ -3,6 +3,8 @@
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+import pytest
+
 from donghak_stock_vision.providers.base import RawPage
 from donghak_stock_vision.storage.capture_evidence_delivery import reconcile_capture_receipts
 from donghak_stock_vision.storage.sqlite import SQLiteStore
@@ -87,5 +89,49 @@ def test_limit_is_bounded(tmp_path: Path) -> None:
         _archive(store, "run-1")
         _archive(store, "run-2")
         assert len(reconcile_capture_receipts(store.connection, dest, limit=1)) == 1
+    finally:
+        store.close()
+
+
+def test_cursor_pagination_reaches_every_receipt(tmp_path: Path) -> None:
+    store, dest = _setup(tmp_path)
+    try:
+        ids = [_archive(store, f"run-{i}") for i in range(5)]
+        first = reconcile_capture_receipts(store.connection, dest, limit=2)
+        second = reconcile_capture_receipts(
+            store.connection, dest, limit=2, after_raw_id=first[-1].raw_id
+        )
+        third = reconcile_capture_receipts(
+            store.connection, dest, limit=2, after_raw_id=second[-1].raw_id
+        )
+        assert [r.raw_id for r in (*first, *second, *third)] == ids
+        assert all(r.status == "recovered" for r in (*first, *second, *third))
+        assert reconcile_capture_receipts(
+            store.connection, dest, limit=2, after_raw_id=third[-1].raw_id
+        ) == ()
+    finally:
+        store.close()
+
+
+def test_blocked_receipt_does_not_hide_later_pages(tmp_path: Path) -> None:
+    store, dest = _setup(tmp_path)
+    try:
+        first_id, second_id = _archive(store, "run-1"), _archive(store, "run-2")
+        (dest / f"raw-{first_id}.json").write_bytes(b"conflicting")
+        first = reconcile_capture_receipts(store.connection, dest, limit=1)
+        assert first[0].status == "blocked"
+        second = reconcile_capture_receipts(
+            store.connection, dest, limit=1, after_raw_id=first[0].raw_id
+        )
+        assert [(r.raw_id, r.status) for r in second] == [(second_id, "recovered")]
+    finally:
+        store.close()
+
+
+def test_negative_cursor_is_rejected(tmp_path: Path) -> None:
+    store, dest = _setup(tmp_path)
+    try:
+        with pytest.raises(ValueError, match="after_raw_id"):
+            reconcile_capture_receipts(store.connection, dest, after_raw_id=-1)
     finally:
         store.close()
