@@ -59,8 +59,10 @@ class HTTPSCustodyTransport:
     def _call(
         self, method: str, *, raw_id: int, idempotency_key: str, body: bytes | None
     ) -> bytes | None:
-        if raw_id <= 0 or len(idempotency_key) != 64 or any(
-            char not in "0123456789abcdef" for char in idempotency_key
+        if (
+            raw_id <= 0
+            or len(idempotency_key) != 64
+            or any(char not in "0123456789abcdef" for char in idempotency_key)
         ):
             raise ValueError("invalid custody submission identity")
         url = f"{self.endpoint}/{raw_id}"
