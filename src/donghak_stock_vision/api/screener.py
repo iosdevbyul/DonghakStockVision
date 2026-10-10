@@ -1,4 +1,5 @@
 """Aggregate only explicitly published per-stock analysis records for read-only screening."""
+
 from pydantic import BaseModel, ConfigDict
 
 from donghak_stock_vision.api.service import ResearchAPIReader
