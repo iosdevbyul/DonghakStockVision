@@ -24,13 +24,11 @@ def _connection() -> sqlite3.Connection:
             (raw_id, state),
         )
     connection.execute(
-        "INSERT INTO capture_custody_lookup_events "
-        "(raw_id,status,observed_at) VALUES (?,?,?)",
+        "INSERT INTO capture_custody_lookup_events (raw_id,status,observed_at) VALUES (?,?,?)",
         (2, "not_found_unverified", "2026-10-11T00:00:00+00:00"),
     )
     connection.execute(
-        "INSERT INTO capture_custody_lookup_events "
-        "(raw_id,status,observed_at) VALUES (?,?,?)",
+        "INSERT INTO capture_custody_lookup_events (raw_id,status,observed_at) VALUES (?,?,?)",
         (3, "claim_received_unverified", "2026-10-11T00:01:00+00:00"),
     )
     connection.commit()
@@ -58,9 +56,7 @@ def test_recovery_triage_paginates_and_rejects_invalid_limits() -> None:
     connection = _connection()
     try:
         first = list_custody_recovery_items(connection, limit=2)
-        second = list_custody_recovery_items(
-            connection, limit=2, after_raw_id=first[-1].raw_id
-        )
+        second = list_custody_recovery_items(connection, limit=2, after_raw_id=first[-1].raw_id)
         assert [item.raw_id for item in first + second] == [1, 2, 3]
         with pytest.raises(ValueError, match="pagination"):
             list_custody_recovery_items(connection, after_raw_id=-1)
