@@ -2,6 +2,7 @@
 
 Never converts global model performance metrics into ticker predictions.
 """
+
 import json
 from datetime import date, datetime
 from pathlib import Path
