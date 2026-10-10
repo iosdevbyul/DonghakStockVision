@@ -4,7 +4,7 @@
 `raw_capture_receipts` rows in stable ID order. It explicitly exports missing
 files to a separately provisioned directory, confirms matching existing files,
 and **blocks** conflicting or unsafe paths rather than replacing them.
-A bounded `limit` restricts each call. The operation is idempotent for
+A bounded `limit` restricts each call. Use `after_raw_id` with the last\nreturned raw ID to continue through the entire archive; do not retry\nevery batch from the first receipt. Blocked rows remain visible to callers\nand must be tracked for operator remediation. The operation is idempotent for
 successfully exported files. An interrupted export can require operator
 intervention if a partial file exists; it is never silently overwritten.
 
