@@ -50,11 +50,13 @@ def test_valid_signature_is_not_operational_registration() -> None:
     private = Ed25519PrivateKey.generate()
     public = private.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
     signature = private.sign(b"DonghakStockVision:operational-model-review:v1\x00" + receipt)
-    envelope = json.dumps({
-        "schemaVersion": "signed_operational_model_review_v1",
-        "keyId": "reviewer-key",
-        "signatureBase64": base64.b64encode(signature).decode(),
-    }).encode()
+    envelope = json.dumps(
+        {
+            "schemaVersion": "signed_operational_model_review_v1",
+            "keyId": "reviewer-key",
+            "signatureBase64": base64.b64encode(signature).decode(),
+        }
+    ).encode()
     trusted = (TrustedReviewerKey("reviewer-key", "reviewer-b", public, True),)
     good = verify_review_signature(proposal, receipt, envelope, trusted)
     assert good.signature_valid
@@ -65,14 +67,18 @@ def test_valid_signature_is_not_operational_registration() -> None:
     assert "invalid_review_signature" in tampered.blockers
 
     revoked = verify_review_signature(
-        proposal, receipt, envelope,
+        proposal,
+        receipt,
+        envelope,
         (TrustedReviewerKey("reviewer-key", "reviewer-b", public, False),),
     )
     assert not revoked.signature_valid
     assert "reviewer_key_untrusted_or_revoked" in revoked.blockers
 
     wrong_reviewer = verify_review_signature(
-        proposal, receipt, envelope,
+        proposal,
+        receipt,
+        envelope,
         (TrustedReviewerKey("reviewer-key", "someone-else", public, True),),
     )
     assert "reviewer_key_identity_mismatch" in wrong_reviewer.blockers
@@ -80,11 +86,14 @@ def test_valid_signature_is_not_operational_registration() -> None:
 
 def test_unsigned_or_unauthorized_review_cannot_pass() -> None:
     proposal, receipt = _inputs()
-    envelope = json.dumps({
-        "schemaVersion": "signed_operational_model_review_v1",
-        "keyId": "unknown",
-        "signatureBase64": base64.b64encode(b"x" * 64).decode(),
-    }).encode()
-    assert "reviewer_key_untrusted_or_revoked" in verify_review_signature(
-        proposal, receipt, envelope, ()
-    ).blockers
+    envelope = json.dumps(
+        {
+            "schemaVersion": "signed_operational_model_review_v1",
+            "keyId": "unknown",
+            "signatureBase64": base64.b64encode(b"x" * 64).decode(),
+        }
+    ).encode()
+    assert (
+        "reviewer_key_untrusted_or_revoked"
+        in verify_review_signature(proposal, receipt, envelope, ()).blockers
+    )
