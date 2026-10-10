@@ -7,7 +7,9 @@ from pathlib import Path
 import pytest
 
 from donghak_stock_vision.providers.base import RawPage
-from donghak_stock_vision.storage import capture_custody_idempotent_transport as custody_transport_module
+from donghak_stock_vision.storage import (
+    capture_custody_idempotent_transport as custody_transport_module,
+)
 from donghak_stock_vision.storage.capture_custody_idempotency import CustodySubmissionIdentity
 from donghak_stock_vision.storage.capture_custody_idempotent_transport import (
     observe_idempotent_custody,
