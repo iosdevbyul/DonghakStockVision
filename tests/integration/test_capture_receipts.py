@@ -25,7 +25,10 @@ def test_capture_receipt_is_created_with_raw_page(tmp_path: Path) -> None:
             (raw_id,),
         ).fetchone()
         assert receipt == (
-            "run-1", "krx", "@krx_market:KOSPI", hashlib.sha256(page.body).hexdigest()
+            "run-1",
+            "krx",
+            "@krx_market:KOSPI",
+            hashlib.sha256(page.body).hexdigest(),
         )
         assert store.check_integrity() == []
     finally:
@@ -41,9 +44,7 @@ def test_receipt_is_immutable(tmp_path: Path) -> None:
                 "UPDATE raw_capture_receipts SET run_id='fake' WHERE raw_id=?", (raw_id,)
             )
         with pytest.raises(sqlite3.IntegrityError, match="immutable"):
-            store.connection.execute(
-                "DELETE FROM raw_capture_receipts WHERE raw_id=?", (raw_id,)
-            )
+            store.connection.execute("DELETE FROM raw_capture_receipts WHERE raw_id=?", (raw_id,))
     finally:
         store.close()
 
@@ -83,8 +84,15 @@ def test_existing_archive_without_receipt_is_not_backfilled(tmp_path: Path) -> N
             "INSERT INTO raw_pages "
             "(run_id,provider,ticker,collected_at,source_date,sha256,body) "
             "VALUES(?,?,?,?,?,?,?)",
-            ("legacy", "krx", "005930", _page().collected_at.isoformat(),
-             "2026-10-08", hashlib.sha256(_page().body).hexdigest(), _page().body),
+            (
+                "legacy",
+                "krx",
+                "005930",
+                _page().collected_at.isoformat(),
+                "2026-10-08",
+                hashlib.sha256(_page().body).hexdigest(),
+                _page().body,
+            ),
         )
         store.connection.commit()
     finally:
