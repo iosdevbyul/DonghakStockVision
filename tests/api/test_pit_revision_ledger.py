@@ -3,7 +3,10 @@
 import hashlib
 import json
 
-from donghak_stock_vision.api.pit_revision_ledger import inspect_revision_ledger
+from donghak_stock_vision.api.pit_revision_ledger import (
+    RevisionLedgerAssessment,
+    inspect_revision_ledger,
+)
 from donghak_stock_vision.data.learning import FEATURE_VERSION, FEATURES
 
 
@@ -46,7 +49,7 @@ def _documents() -> tuple[bytes, dict[str, object]]:
     return json.dumps(candidate).encode(), ledger
 
 
-def _inspect(candidate: bytes, ledger: dict[str, object]):
+def _inspect(candidate: bytes, ledger: dict[str, object]) -> RevisionLedgerAssessment:
     document = json.dumps(ledger).encode()
     return inspect_revision_ledger(
         candidate,
