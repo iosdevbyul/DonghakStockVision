@@ -25,8 +25,8 @@ def _sample() -> tuple[bytes, bytes, str]:
 def test_matching_claim_remains_unauthenticated() -> None:
     ack, receipt, pin = _sample()
     review = inspect_custody_acknowledgement(
-        ack, receipt, expected_raw_id=1,
-        expected_custodian_id="external-vault", independently_pinned_ack_sha256=pin,
+        ack,\n        receipt,\n        expected_raw_id=1,
+        expected_custodian_id="external-vault",\n        independently_pinned_ack_sha256=pin,
     )
     assert review.content_consistent
     assert not review.custodian_authenticated
@@ -37,8 +37,8 @@ def test_matching_claim_remains_unauthenticated() -> None:
 def test_changed_receipt_is_rejected() -> None:
     ack, _, pin = _sample()
     review = inspect_custody_acknowledgement(
-        ack, b"tampered", expected_raw_id=1,
-        expected_custodian_id="external-vault", independently_pinned_ack_sha256=pin,
+        ack,\n        b"tampered",\n        expected_raw_id=1,
+        expected_custodian_id="external-vault",\n        independently_pinned_ack_sha256=pin,
     )
     assert "custody_ack_receipt_digest_mismatch" in review.blockers
 
@@ -46,8 +46,8 @@ def test_changed_receipt_is_rejected() -> None:
 def test_wrong_independent_pin_is_rejected() -> None:
     ack, receipt, _ = _sample()
     review = inspect_custody_acknowledgement(
-        ack, receipt, expected_raw_id=1,
-        expected_custodian_id="external-vault", independently_pinned_ack_sha256="0" * 64,
+        ack,\n        receipt,\n        expected_raw_id=1,
+        expected_custodian_id="external-vault",\n        independently_pinned_ack_sha256="0" * 64,
     )
     assert not review.content_consistent
 
@@ -55,8 +55,8 @@ def test_wrong_independent_pin_is_rejected() -> None:
 def test_wrong_custodian_is_rejected() -> None:
     ack, receipt, pin = _sample()
     review = inspect_custody_acknowledgement(
-        ack, receipt, expected_raw_id=1,
-        expected_custodian_id="wrong", independently_pinned_ack_sha256=pin,
+        ack,\n        receipt,\n        expected_raw_id=1,
+        expected_custodian_id="wrong",\n        independently_pinned_ack_sha256=pin,
     )
     assert "custody_ack_identity_mismatch" in review.blockers
 
@@ -65,7 +65,7 @@ def test_naive_acceptance_time_is_invalid() -> None:
     ack, receipt, _ = _sample()
     invalid = ack.replace(b"+00:00", b"")
     review = inspect_custody_acknowledgement(
-        invalid, receipt, expected_raw_id=1,
+        invalid,\n        receipt,\n        expected_raw_id=1,
         expected_custodian_id="external-vault",
         independently_pinned_ack_sha256=hashlib.sha256(invalid).hexdigest(),
     )
