@@ -68,9 +68,10 @@ def test_modified_raw_content_is_rejected() -> None:
 
 def test_wrong_out_of_band_pin_is_rejected() -> None:
     evidence, raw = _fixture()
-    assert "source_collection_evidence_pin_mismatch" in _inspect(
-        evidence, raw, pin_override="0" * 64
-    )[3]
+    assert (
+        "source_collection_evidence_pin_mismatch"
+        in _inspect(evidence, raw, pin_override="0" * 64)[3]
+    )
 
 
 def test_wrong_snapshot_and_run_are_rejected() -> None:
