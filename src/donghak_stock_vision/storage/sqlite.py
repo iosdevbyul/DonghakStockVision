@@ -237,24 +237,27 @@ class SQLiteStore:
         for raw_id, body, digest in self.connection.execute("SELECT id,body,sha256 FROM raw_pages"):
             if hashlib.sha256(body).hexdigest() != digest:
                 issues.append(f"raw checksum mismatch: {raw_id}")
-        for row in (
-            self.connection.execute(
-                "SELECT r.id,r.run_id,r.provider,r.ticker,r.collected_at,r.source_date,"
-                "r.sha256,r.body,c.raw_id,c.schema_version,c.run_id,c.provider,c.scope,"
-                "c.collected_at,c.source_date,c.raw_sha256 "
-                "FROM raw_pages r LEFT JOIN raw_capture_receipts c ON c.raw_id=r.id"
-            )
+        for row in self.connection.execute(
+            "SELECT r.id,r.run_id,r.provider,r.ticker,r.collected_at,r.source_date,"
+            "r.sha256,r.body,c.schema_version,c.run_id,c.provider,c.scope,"
+            "c.collected_at,c.source_date,c.raw_sha256 "
+            "FROM raw_pages r LEFT JOIN raw_capture_receipts c ON c.raw_id=r.id"
         ):
-            # Legacy rows intentionally have no receipts; retroactive attestation is forbidden.
-            raw_id, run_id, provider, scope, observed, source_date, digest, body = row[:8]
-            if row[8] is None:
+            (
+                raw_id, run_id, provider, scope, observed, source_date, digest, body,
+                version, receipt_run, receipt_provider, receipt_scope, receipt_time,
+                receipt_date, receipt_digest,
+            ) = row
+            # Legacy rows have no receipt; do not fabricate retrospective evidence.
+            if version is None:
                 continue
-            recorded = self.connection.execute(
-                "SELECT schema_version,run_id,provider,scope,collected_at,source_date,raw_sha256 "
-                "FROM raw_capture_receipts WHERE raw_id=?",
-                (raw_id,),
-            ).fetchone()
-            expected = ("raw_capture_receipt_v1", run_id, provider, scope, observed, source_date, digest)
+            expected = (
+                "raw_capture_receipt_v1", run_id, provider, scope, observed, source_date, digest
+            )
+            recorded = (
+                version, receipt_run, receipt_provider, receipt_scope,
+                receipt_time, receipt_date, receipt_digest
+            )
             if recorded != expected or hashlib.sha256(body).hexdigest() != digest:
                 issues.append(f"raw capture receipt mismatch: {raw_id}")
         missing = self.connection.execute(
