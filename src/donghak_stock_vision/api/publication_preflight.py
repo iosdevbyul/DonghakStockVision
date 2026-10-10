@@ -97,7 +97,9 @@ def inspect_publication_inputs(
     # An ordinary JSON reviewer receipt asserts approval but cannot prove reviewer identity.
     blockers.append("independent_reviewer_signature_not_verified")
     return PublicationPreflight(
-        ready_for_manual_review=not (set(blockers) - {"independent_reviewer_signature_not_verified"}),
+        ready_for_manual_review=not (
+            set(blockers) - {"independent_reviewer_signature_not_verified"}
+        ),
         source_sha256=digest,
         candidate_records=count,
         blockers=tuple(dict.fromkeys(blockers)),
