@@ -48,14 +48,9 @@ class ReviewerRegistryRejected(ValueError):
     """Untrusted, invalid or unexpectedly modified reviewer key registry."""
 
 
-def load_pinned_reviewer_keys(
-    path: Path, *, trusted_sha256: str
-) -> tuple[TrustedReviewerKey, ...]:
+def load_pinned_reviewer_keys(path: Path, *, trusted_sha256: str) -> tuple[TrustedReviewerKey, ...]:
     """Load only an externally pinned registry file, never from a review envelope."""
-    if (
-        len(trusted_sha256) != 64
-        or any(ch not in "0123456789abcdef" for ch in trusted_sha256)
-    ):
+    if len(trusted_sha256) != 64 or any(ch not in "0123456789abcdef" for ch in trusted_sha256):
         raise ReviewerRegistryRejected("independent registry SHA-256 pin required")
     try:
         raw = path.read_bytes()
