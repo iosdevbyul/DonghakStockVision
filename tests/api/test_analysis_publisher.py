@@ -12,7 +12,9 @@ from donghak_stock_vision.api.analysis_publisher import (
 )
 
 
-def _files(tmp_path: Path, signals: dict[str, object], *, approved: bool = True) -> tuple[Path, Path, Path]:
+def _files(
+    tmp_path: Path, signals: dict[str, object], *, approved: bool = True
+) -> tuple[Path, Path, Path]:
     source = tmp_path / "signals.json"
     source.write_text(json.dumps(signals), encoding="utf-8")
     review = tmp_path / "approval.json"
