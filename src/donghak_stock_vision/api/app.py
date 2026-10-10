@@ -21,6 +21,7 @@ from donghak_stock_vision.api.models import (
     StockSummary,
 )
 from donghak_stock_vision.api.service import ResearchAPIReader
+from donghak_stock_vision.api.stock_analysis import AnalysisPublicationReader, PublishedStockAnalysis
 
 
 def create_app(
