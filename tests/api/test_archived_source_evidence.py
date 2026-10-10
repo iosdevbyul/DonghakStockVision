@@ -33,7 +33,7 @@ def _database() -> sqlite3.Connection:
     return connection
 
 
-def _export(connection: sqlite3.Connection, **kwargs: str) -> SourceCollectionEvidence:
+def _export(connection: sqlite3.Connection) -> SourceCollectionEvidence:
     result = build_archived_source_evidence(
         connection,
         raw_id=1,
@@ -41,7 +41,6 @@ def _export(connection: sqlite3.Connection, **kwargs: str) -> SourceCollectionEv
         collector_name="dsv",
         collector_version="2.0.0a3",
         observation_kind="initial",
-        **kwargs,  # type: ignore[arg-type]
     )
     assert result.sha256 == hashlib.sha256(result.evidence_bytes).hexdigest()
     return SourceCollectionEvidence.model_validate_json(result.evidence_bytes)
