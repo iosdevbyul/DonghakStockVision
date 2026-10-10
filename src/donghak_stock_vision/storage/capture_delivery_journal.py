@@ -53,6 +53,7 @@ def reconcile_and_journal(
     results = reconcile_capture_receipts(
         connection, destination, after_raw_id=after_raw_id, limit=limit
     )
+    recorded: list[ReceiptDelivery] = []
     for item in results:
         # Re-check the output before persisting a successful delivery observation.
         if item.status != "blocked" and not verify_exported_capture_receipt(
@@ -65,13 +66,5 @@ def reconcile_and_journal(
                 "(raw_id,recorded_at,outcome,reason) VALUES(?,?,?,?)",
                 (item.raw_id, datetime.now(UTC).isoformat(), item.status, item.reason),
             )
-    # Return the recorded results, not the preverification reconciliation results.
-    latest = connection.execute(
-        "SELECT raw_id,outcome,reason FROM capture_delivery_attempts "
-        "WHERE id > ? ORDER BY id",
-        (0,),
-    )
-    # Only this batch's last N attempt rows are relevant.
-    history = latest.fetchall()
-    batch = tuple(ReceiptDelivery(*row) for row in history[-len(results):]) if results else ()
-    return JournalBatch(batch, results[-1].raw_id if results else after_raw_id)
+        recorded.append(item)
+    return JournalBatch(tuple(recorded), results[-1].raw_id if results else after_raw_id)
