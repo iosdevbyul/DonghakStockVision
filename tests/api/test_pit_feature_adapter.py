@@ -11,7 +11,11 @@ class ReadOnlyStore:
         self.bars = bars
 
     def read(self, ticker: str, start: date, end: date) -> list[DailyBar]:
-        return [bar for bar in self.bars if bar.ticker == ticker and start <= bar.trading_date <= end]
+        return [
+            bar
+            for bar in self.bars
+            if bar.ticker == ticker and start <= bar.trading_date <= end
+        ]
 
 
 def test_missing_independent_quality_manifest_fails_closed() -> None:
