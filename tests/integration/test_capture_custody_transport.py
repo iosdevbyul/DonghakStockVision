@@ -36,14 +36,18 @@ def test_consistent_claim_still_unverified(tmp_path: Path) -> None:
     destination.mkdir()
     try:
         raw_id = store.archive(
-            "run", "krx", "005930",
+            "run",
+            "krx",
+            "005930",
             RawPage(b"raw", datetime(2026, 10, 10, tzinfo=UTC), date(2026, 10, 9)),
         )
         export_capture_receipt(store.connection, raw_id, destination)
         exported = (destination / f"raw-{raw_id}.json").read_bytes()
         expected_ack = MockCustodian().submit(exported, raw_id=raw_id)
         result = submit_capture_receipt(
-            store.connection, destination, raw_id,
+            store.connection,
+            destination,
+            raw_id,
             transport=MockCustodian(),
             expected_custodian_id="vault-test",
             independently_pinned_ack_sha256=hashlib.sha256(expected_ack).hexdigest(),
@@ -62,7 +66,9 @@ def test_missing_export_never_calls_transport(tmp_path: Path) -> None:
     destination.mkdir()
     try:
         result = submit_capture_receipt(
-            store.connection, destination, 999,
+            store.connection,
+            destination,
+            999,
             transport=FailingCustodian(),
             expected_custodian_id="vault-test",
             independently_pinned_ack_sha256="0" * 64,
@@ -78,12 +84,16 @@ def test_transport_error_is_redacted(tmp_path: Path) -> None:
     destination.mkdir()
     try:
         raw_id = store.archive(
-            "run", "krx", "005930",
+            "run",
+            "krx",
+            "005930",
             RawPage(b"raw", datetime(2026, 10, 10, tzinfo=UTC), date(2026, 10, 9)),
         )
         export_capture_receipt(store.connection, raw_id, destination)
         result = submit_capture_receipt(
-            store.connection, destination, raw_id,
+            store.connection,
+            destination,
+            raw_id,
             transport=FailingCustodian(),
             expected_custodian_id="vault-test",
             independently_pinned_ack_sha256="0" * 64,
