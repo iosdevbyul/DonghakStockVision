@@ -43,9 +43,12 @@ def enqueue_capture_receipt(connection: sqlite3.Connection, raw_id: int) -> None
             "SELECT raw_id FROM raw_capture_receipts WHERE raw_id=?",
             (raw_id,),
         )
-        if connection.execute(
-            "SELECT 1 FROM capture_custody_outbox WHERE raw_id=?", (raw_id,)
-        ).fetchone() is None:
+        if (
+            connection.execute(
+                "SELECT 1 FROM capture_custody_outbox WHERE raw_id=?", (raw_id,)
+            ).fetchone()
+            is None
+        ):
             raise ValueError("capture receipt does not exist")
 
 
