@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from collections.abc import Sequence
 
 from donghak_stock_vision.api.operational_artifact_preflight import (
     ArtifactProvenanceAssessment,
@@ -67,7 +68,7 @@ def _inputs(research_only: bool = False) -> tuple[bytes, bytes, bytes, bytes, by
     )
 
 
-def _check(inputs: tuple[bytes, bytes, bytes, bytes, bytes]) -> ArtifactProvenanceAssessment:
+def _check(inputs: Sequence[bytes]) -> ArtifactProvenanceAssessment:
     proposal, checkpoint, manifest, lock, qualification = inputs
     return inspect_operational_artifact(
         proposal,
