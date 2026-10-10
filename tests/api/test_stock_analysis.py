@@ -1,6 +1,6 @@
 """The API must never manufacture security-level inference from global metrics."""
-from pathlib import Path
 import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,7 +17,10 @@ def test_unconfigured_publication_is_unavailable() -> None:
 
 def test_empty_approved_publication_reports_empty_records(tmp_path: Path) -> None:
     path = tmp_path / "published.json"
-    path.write_text(json.dumps({"schemaVersion": "published_stock_analysis_v1", "sources": []}))
+    path.write_text(
+        json.dumps({"schemaVersion": "published_stock_analysis_v1", "sources": []}),
+        encoding="utf-8",
+    )
     client = TestClient(create_app(analysis_reader=AnalysisPublicationReader.from_path(path)))
     response = client.get("/api/v1/stocks/005930/analysis")
     assert response.status_code == 200
