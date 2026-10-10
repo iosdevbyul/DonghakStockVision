@@ -1,4 +1,5 @@
 """Offline publication guards: no approval, no scored output."""
+
 import hashlib
 import json
 from pathlib import Path
@@ -15,15 +16,20 @@ def _files(tmp_path: Path, signals: dict, *, approved: bool = True) -> tuple[Pat
     source = tmp_path / "signals.json"
     source.write_text(json.dumps(signals), encoding="utf-8")
     review = tmp_path / "approval.json"
-    review.write_text(json.dumps({
-        "schemaVersion": "approved_operational_signals_v1",
-        "sourceSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-        "reviewer": "reviewed-test",
-        "approved": approved,
-        "scope": "operational",
-        "sourceMode": "point_in_time",
-        "reviewedAt": "2026-10-02T08:00:00+09:00",
-    }), encoding="utf-8")
+    review.write_text(
+        json.dumps(
+            {
+                "schemaVersion": "approved_operational_signals_v1",
+                "sourceSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                "reviewer": "reviewed-test",
+                "approved": approved,
+                "scope": "operational",
+                "sourceMode": "point_in_time",
+                "reviewedAt": "2026-10-02T08:00:00+09:00",
+            }
+        ),
+        encoding="utf-8",
+    )
     return source, review, tmp_path / "published.json"
 
 
