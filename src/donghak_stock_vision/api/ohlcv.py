@@ -53,10 +53,10 @@ class OhlcvMarketReader:
                 raise OhlcvReaderError("market database integrity check failed")
             scopes = set(
                 conn.execute(
-                "SELECT DISTINCT json_extract(payload,'$.provider'), "
-                "json_extract(payload,'$.market'), "
-                "json_extract(payload,'$.adjustment') FROM bars"
-            )
+                    "SELECT DISTINCT json_extract(payload,'$.provider'), "
+                    "json_extract(payload,'$.market'), "
+                    "json_extract(payload,'$.adjustment') FROM bars"
+                )
             )
             if scopes != {("krx", "KOSPI", "unadjusted")}:
                 raise OhlcvReaderError("market database metadata scope mismatch")
