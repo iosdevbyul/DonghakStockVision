@@ -13,9 +13,7 @@ from donghak_stock_vision.storage.capture_custody_idempotency import (
 class IdempotentCustodyTransport(Protocol):
     """External implementer must enforce deduplication and secure status lookup."""
 
-    def submit(
-        self, receipt_bytes: bytes, *, raw_id: int, idempotency_key: str
-    ) -> bytes: ...
+    def submit(self, receipt_bytes: bytes, *, raw_id: int, idempotency_key: str) -> bytes: ...
 
     def lookup(self, *, raw_id: int, idempotency_key: str) -> bytes | None: ...
 
@@ -56,9 +54,7 @@ def observe_idempotent_custody(
                 receipt_bytes, raw_id=raw_id, idempotency_key=identity.idempotency_key
             )
         else:
-            response = transport.lookup(
-                raw_id=raw_id, idempotency_key=identity.idempotency_key
-            )
+            response = transport.lookup(raw_id=raw_id, idempotency_key=identity.idempotency_key)
     except Exception:
         return CustodyTransportObservation(
             raw_id, identity.idempotency_key, operation, "blocked", ("custody_transport_failed",)
