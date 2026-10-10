@@ -15,6 +15,10 @@ def parser() -> argparse.ArgumentParser:
         help="validated research API snapshot JSON; defaults to DSV_API_SNAPSHOT_PATH",
     )
     result.add_argument(
+        "--market-db", type=Path, help="optional immutable market database for OHLCV"
+    )
+    result.add_argument("--market-db-sha256", help="approved market database SHA-256")
+    result.add_argument(
         "--analysis-publication", type=Path, help="reviewed per-security analysis JSON"
     )
     result.add_argument("--host", default="127.0.0.1")
@@ -42,13 +46,20 @@ def main(argv: list[str] | None = None) -> None:
             "API dependencies are not installed; install donghak-stock-vision[api]"
         ) from error
 
+    if bool(args.market_db) != bool(args.market_db_sha256):
+        parser().error("--market-db and --market-db-sha256 must be specified together")
+    ohlcv_reader = None
+    if args.market_db:
+        from donghak_stock_vision.api.ohlcv import OhlcvMarketReader
+
+        ohlcv_reader = OhlcvMarketReader(args.market_db, expected_sha256=args.market_db_sha256)
     analysis_reader = None
     if args.analysis_publication:
         from donghak_stock_vision.api.stock_analysis import AnalysisPublicationReader
 
         analysis_reader = AnalysisPublicationReader.from_path(args.analysis_publication)
     reader = SnapshotReader.from_path(snapshot_path)
-    uvicorn.run(create_app(reader, analysis_reader=analysis_reader), host=args.host, port=args.port)
+    uvicorn.run(create_app(reader, ohlcv_reader=ohlcv_reader, analysis_reader=analysis_reader), host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

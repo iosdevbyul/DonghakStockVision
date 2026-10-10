@@ -20,6 +20,7 @@ from donghak_stock_vision.api.models import (
     StockDetail,
     StockSummary,
 )
+from donghak_stock_vision.api.ohlcv import OhlcvMarketReader, OhlcvSeries
 from donghak_stock_vision.api.service import ResearchAPIReader
 from donghak_stock_vision.api.stock_analysis import (
     AnalysisPublicationReader,
@@ -29,6 +30,7 @@ from donghak_stock_vision.api.stock_analysis import (
 
 def create_app(
     reader: ResearchAPIReader | None = None,
+    ohlcv_reader: OhlcvMarketReader | None = None,
     *,
     analysis_reader: AnalysisPublicationReader | None = None,
     allowed_origins: Sequence[str] = (
@@ -119,6 +121,15 @@ def create_app(
         source: Annotated[ResearchAPIReader, Depends(require_reader)],
     ) -> tuple[StockSummary, ...]:
         return source.stocks()
+
+    @app.get("/api/v1/stocks/{ticker}/ohlcv", response_model=OhlcvSeries)
+    def ohlcv(ticker: Annotated[str, Path(pattern=r"^[0-9A-Z]{6}$")]) -> OhlcvSeries:
+        if ohlcv_reader is None:
+            raise HTTPException(status_code=503, detail="verified market reader is not configured")
+        series = ohlcv_reader.series(ticker)
+        if series is None:
+            raise HTTPException(status_code=404, detail="stock bars not found")
+        return series
 
     @app.get("/api/v1/stocks/{ticker}/analysis", response_model=PublishedStockAnalysis)
     def stock_analysis(
