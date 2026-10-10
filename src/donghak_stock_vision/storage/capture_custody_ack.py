@@ -44,9 +44,7 @@ def inspect_custody_acknowledgement(
 ) -> CustodyAcknowledgementReview:
     """Compare explicit externally supplied claims; never promote local hashes to authority."""
     try:
-        acknowledgement = CaptureCustodyAcknowledgement.model_validate_json(
-            acknowledgement_bytes
-        )
+        acknowledgement = CaptureCustodyAcknowledgement.model_validate_json(acknowledgement_bytes)
     except (ValueError, UnicodeError):
         return CustodyAcknowledgementReview(
             False, False, False, False, ("invalid_custody_acknowledgement",)
@@ -54,10 +52,7 @@ def inspect_custody_acknowledgement(
     blockers: list[str] = []
     if (
         len(independently_pinned_ack_sha256) != 64
-        or any(
-            character not in "0123456789abcdef"
-            for character in independently_pinned_ack_sha256
-        )
+        or any(character not in "0123456789abcdef" for character in independently_pinned_ack_sha256)
         or hashlib.sha256(acknowledgement_bytes).hexdigest() != independently_pinned_ack_sha256
     ):
         blockers.append("custody_ack_independent_pin_mismatch")
