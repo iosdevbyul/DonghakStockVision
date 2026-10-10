@@ -18,8 +18,10 @@ def test_recovery_after_export_before_journal(tmp_path: Path) -> None:
     dest.mkdir()
     try:
         raw = store.archive(
-            "run", "krx", "005930",
-            RawPage(b"body", datetime(2026, 10, 9, tzinfo=UTC), date(2026, 10, 8))
+            "run",
+            "krx",
+            "005930",
+            RawPage(b"body", datetime(2026, 10, 9, tzinfo=UTC), date(2026, 10, 8)),
         )
         export_capture_receipt(store.connection, raw, dest)
         first = reconcile_and_journal(store.connection, dest)
@@ -27,9 +29,10 @@ def test_recovery_after_export_before_journal(tmp_path: Path) -> None:
         assert first.next_raw_id == raw
         second = reconcile_and_journal(store.connection, dest)
         assert second.results[0].status == "delivered"
-        assert store.connection.execute(
-            "SELECT COUNT(*) FROM capture_delivery_attempts"
-        ).fetchone()[0] == 2
+        assert (
+            store.connection.execute("SELECT COUNT(*) FROM capture_delivery_attempts").fetchone()[0]
+            == 2
+        )
         with pytest.raises(sqlite3.IntegrityError, match="immutable"):
             store.connection.execute("DELETE FROM capture_delivery_attempts")
     finally:
@@ -42,8 +45,10 @@ def test_conflict_is_journaled_not_overwritten(tmp_path: Path) -> None:
     dest.mkdir()
     try:
         raw = store.archive(
-            "run", "krx", "005930",
-            RawPage(b"body", datetime(2026, 10, 9, tzinfo=UTC), date(2026, 10, 8))
+            "run",
+            "krx",
+            "005930",
+            RawPage(b"body", datetime(2026, 10, 9, tzinfo=UTC), date(2026, 10, 8)),
         )
         (dest / f"raw-{raw}.json").write_bytes(b"corrupted")
         batch = reconcile_and_journal(store.connection, dest)
