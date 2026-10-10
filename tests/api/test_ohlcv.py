@@ -1,7 +1,7 @@
 import hashlib
 import json
 import sqlite3
-from datetime import date, datetime, UTC
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -36,7 +36,13 @@ def test_ohlcv_uses_exact_original_bars(tmp_path: Path) -> None:
     reader = OhlcvMarketReader(path, expected_sha256=fingerprint)
     response = TestClient(create_app(ohlcv_reader=reader)).get("/api/v1/stocks/005930/ohlcv")
     assert response.status_code == 200
-    assert response.json() == {"ticker":"005930","bars":[{"date":"2025-06-30","open":100,"high":110,"low":90,"close":105,"volume":7}]}
+    assert response.json() == {
+        "ticker": "005930",
+        "bars": [
+            {"date": "2025-06-30", "open": 100, "high": 110,
+             "low": 90, "close": 105, "volume": 7}
+        ],
+    }
 
 
 def test_ohlcv_rejects_unknown_and_invalid_ticker(tmp_path: Path) -> None:
