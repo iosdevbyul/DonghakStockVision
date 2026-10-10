@@ -1,0 +1,11 @@
+# Proposed operational model registration and independent review contract
+
+This is a **non-authorizing static schema** for the future operational model registry. No current Phase 2 HGB research model is registered or approved for operational predictions.
+
+A proposed registration binds an exact checkpoint SHA-256, independently pinned artifact manifest fingerprint, experiment lock and qualification IDs, training snapshot ID, feature/label versions, model identity/direction and an explicit proposer/time. It allows only `usageRestriction=operational_review_required` and `operationalStatus=proposed`; research-only/unregistered registrations are rejected. A separate review claim references **the SHA-256 of the exact proposal bytes**, names a different reviewer, states an explicit decision and a timezone-aware timestamp.
+
+The `assess_registration(proposal_bytes, review_bytes)` function is read-only and deliberately reports `registrationAuthorized=false` regardless of whether fields pass basic validation. Mere distinct reviewer names and an unsigned JSON receipt **do not authenticate a human reviewer**. A hash alone verifies equality, not provenance or permission. The blockers `authenticated_reviewer_signature_required` and `operational_artifact_provenance_not_verified` remain until a separate security-approved implementation verifies a trusted signature, a real registry, immutable experiment lock and qualification, checkpoint, training snapshot, PIT inference privileges and independent reviewer policy.
+
+This PR **does not** implement operational model registration, promote existing HGB checkpoints, execute inference, produce signals or permit publication. The existing trusted research artifact resolver's `research_only` and `unregistered` restrictions remain unchanged. No public endpoint or CLI switch was added.
+
+Future independent security/research review: choose signed approval format and managed public-key registry, implement reject/revoke semantics and safe atomic registry writes, separately qualify genuine operational model artifacts, then connect only verified registered models to the PIT inference runner. Do not modify research-only restrictions to bypass this.
