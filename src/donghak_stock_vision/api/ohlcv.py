@@ -2,6 +2,7 @@
 
 Never repairs, adjusts or synthesizes a missing market observation.
 """
+
 import hashlib
 import json
 import sqlite3
@@ -50,11 +51,13 @@ class OhlcvMarketReader:
         with self._connect() as conn:
             if [row[0] for row in conn.execute("PRAGMA integrity_check")] != ["ok"]:
                 raise OhlcvReaderError("market database integrity check failed")
-            scopes = set(conn.execute(
+            scopes = set(
+                conn.execute(
                 "SELECT DISTINCT json_extract(payload,'$.provider'), "
                 "json_extract(payload,'$.market'), "
                 "json_extract(payload,'$.adjustment') FROM bars"
-            ))
+            )
+            )
             if scopes != {("krx", "KOSPI", "unadjusted")}:
                 raise OhlcvReaderError("market database metadata scope mismatch")
 
@@ -88,6 +91,14 @@ class OhlcvMarketReader:
                 raise OhlcvReaderError("invalid persisted daily bar") from error
             if original.ticker != ticker or original.trading_date.isoformat() != trading_date:
                 raise OhlcvReaderError("bar identity mismatch")
-            bars.append(OhlcvBar(date=trading_date, open=original.open, high=original.high,
-                low=original.low, close=original.close, volume=original.volume))
+            bars.append(
+                OhlcvBar(
+                    date=trading_date,
+                    open=original.open,
+                    high=original.high,
+                    low=original.low,
+                    close=original.close,
+                    volume=original.volume,
+                )
+            )
         return OhlcvSeries(ticker=ticker, bars=tuple(bars))
