@@ -3,8 +3,7 @@
 Never converts global model performance metrics into ticker predictions.
 """
 import json
-import re
-from datetime import datetime, timezone
+from datetime import date, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -27,8 +26,6 @@ class PublishedAnalysisRecord(BaseModel):
 
     @model_validator(mode="after")
     def verify_dates(self) -> "PublishedAnalysisRecord":
-        from datetime import date
-
         date.fromisoformat(self.dataThrough)
         if self.analyzedAt.tzinfo is None or self.analyzedAt.utcoffset() is None:
             raise ValueError("analysis timestamp must have timezone")
