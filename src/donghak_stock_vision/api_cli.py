@@ -14,7 +14,9 @@ def parser() -> argparse.ArgumentParser:
         type=Path,
         help="validated research API snapshot JSON; defaults to DSV_API_SNAPSHOT_PATH",
     )
-    result.add_argument("--analysis-publication", type=Path, help="reviewed per-security analysis JSON")
+    result.add_argument(
+        "--analysis-publication", type=Path, help="reviewed per-security analysis JSON"
+    )
     result.add_argument("--host", default="127.0.0.1")
     result.add_argument("--port", type=int, default=8000)
     return result
@@ -43,9 +45,10 @@ def main(argv: list[str] | None = None) -> None:
     analysis_reader = None
     if args.analysis_publication:
         from donghak_stock_vision.api.stock_analysis import AnalysisPublicationReader
+
         analysis_reader = AnalysisPublicationReader.from_path(args.analysis_publication)
     reader = SnapshotReader.from_path(snapshot_path)
-    uvicorn.run(create_app(reader), host=args.host, port=args.port)
+    uvicorn.run(create_app(reader, analysis_reader=analysis_reader), host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
