@@ -3,7 +3,10 @@
 import hashlib
 import json
 
-from donghak_stock_vision.api.operational_artifact_preflight import inspect_operational_artifact
+from donghak_stock_vision.api.operational_artifact_preflight import (
+    ArtifactProvenanceAssessment,
+    inspect_operational_artifact,
+)
 
 
 def _sha(value: bytes) -> str:
@@ -55,16 +58,23 @@ def _inputs(research_only: bool = False) -> tuple[bytes, bytes, bytes, bytes, by
         "proposer": "author",
         "proposedAt": "2026-10-10T10:00:00+09:00",
     }
-    return tuple(
-        json.dumps(item).encode() if isinstance(item, dict) else item
-        for item in (proposal, checkpoint, manifest, lock, qualification)
+    return (
+        json.dumps(proposal).encode(),
+        checkpoint,
+        json.dumps(manifest).encode(),
+        json.dumps(lock).encode(),
+        json.dumps(qualification).encode(),
     )
 
 
-def _check(inputs: tuple[bytes, bytes, bytes, bytes, bytes]):
+def _check(inputs: tuple[bytes, bytes, bytes, bytes, bytes]) -> ArtifactProvenanceAssessment:
     proposal, checkpoint, manifest, lock, qualification = inputs
     return inspect_operational_artifact(
-        proposal, checkpoint, manifest, lock, qualification,
+        proposal,
+        checkpoint,
+        manifest,
+        lock,
+        qualification,
         trusted_checkpoint_sha256=_sha(checkpoint),
         trusted_manifest_sha256=_sha(manifest),
         trusted_lock_sha256=_sha(lock),
