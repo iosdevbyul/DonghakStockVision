@@ -29,12 +29,12 @@ def test_missing_receipt_file_is_recovered_and_idempotent(tmp_path: Path) -> Non
     try:
         raw_id = _archive(store, "run-1")
         before = store.connection.total_changes
-        assert [(r.raw_id, r.status) for r in reconcile_capture_receipts(
-            store.connection, dest
-        )] == [(raw_id, "recovered")]
-        assert [(r.raw_id, r.status) for r in reconcile_capture_receipts(
-            store.connection, dest
-        )] == [(raw_id, "delivered")]
+        assert [
+            (r.raw_id, r.status) for r in reconcile_capture_receipts(store.connection, dest)
+        ] == [(raw_id, "recovered")]
+        assert [
+            (r.raw_id, r.status) for r in reconcile_capture_receipts(store.connection, dest)
+        ] == [(raw_id, "delivered")]
         assert store.connection.total_changes == before
     finally:
         store.close()
@@ -58,9 +58,7 @@ def test_invalid_receipt_is_not_re_exported(tmp_path: Path) -> None:
     store, dest = _setup(tmp_path)
     try:
         raw_id = _archive(store, "run-1")
-        store.connection.execute(
-            "UPDATE raw_pages SET body=? WHERE id=?", (b"tampered", raw_id)
-        )
+        store.connection.execute("UPDATE raw_pages SET body=? WHERE id=?", (b"tampered", raw_id))
         result = reconcile_capture_receipts(store.connection, dest)
         assert result[0].status == "blocked"
         assert not (dest / f"raw-{raw_id}.json").exists()
