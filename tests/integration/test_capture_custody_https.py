@@ -3,8 +3,8 @@
 import pytest
 
 from donghak_stock_vision.storage.capture_custody_https import (
-    HTTPSCustodyTransport,
     MAX_RESPONSE_BYTES,
+    HTTPSCustodyTransport,
 )
 
 KEY = "a" * 64
