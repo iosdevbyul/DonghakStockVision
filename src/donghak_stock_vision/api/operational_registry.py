@@ -2,6 +2,7 @@
 
 This validates proposed registration metadata, not artifact provenance or signatures.
 """
+
 from datetime import datetime
 from typing import Literal
 
@@ -82,9 +83,10 @@ def assess_registration(
     else:
         try:
             review = IndependentReviewClaim.model_validate_json(review_bytes)
-            if proposal is None or review.proposalSha256 != hashlib.sha256(
-                proposal_bytes
-            ).hexdigest():
+            if (
+                proposal is None
+                or review.proposalSha256 != hashlib.sha256(proposal_bytes).hexdigest()
+            ):
                 blockers.append("review_proposal_hash_mismatch")
             if proposal is not None and review.reviewer == proposal.proposer:
                 blockers.append("self_review_not_allowed")
