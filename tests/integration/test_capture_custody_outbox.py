@@ -7,8 +7,8 @@ import pytest
 
 from donghak_stock_vision.providers.base import RawPage
 from donghak_stock_vision.storage.capture_custody_outbox import (
-    enqueue_capture_receipt,
     OutboxAttempt,
+    enqueue_capture_receipt,
     process_outbox,
 )
 from donghak_stock_vision.storage.capture_evidence_sink import export_capture_receipt
