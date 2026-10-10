@@ -6,6 +6,7 @@ Never repairs, adjusts or synthesizes a missing market observation.
 import hashlib
 import json
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
@@ -48,7 +49,7 @@ class OhlcvMarketReader:
         self._path = path.resolve()
         self._sha = expected_sha256
         self._verify_file()
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             if [row[0] for row in conn.execute("PRAGMA integrity_check")] != ["ok"]:
                 raise OhlcvReaderError("market database integrity check failed")
             scopes = set(
