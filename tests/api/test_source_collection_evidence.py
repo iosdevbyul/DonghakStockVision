@@ -2,14 +2,14 @@
 
 import hashlib
 import json
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from donghak_stock_vision.api.source_collection_evidence import inspect_source_collection
 from donghak_stock_vision.providers.base import RawPage
 
 
 def _fixture() -> tuple[dict[str, object], RawPage]:
-    observed = datetime(2026, 10, 9, 9, tzinfo=timezone.utc)
+    observed = datetime(2026, 10, 9, 9, tzinfo=UTC)
     raw = RawPage(b'{"rows":[]}', observed, date(2026, 10, 8))
     evidence: dict[str, object] = {
         "schemaVersion": "source_collection_evidence_v1",
