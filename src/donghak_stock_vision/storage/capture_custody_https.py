@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from ipaddress import ip_address
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -92,3 +93,37 @@ class HTTPSCustodyTransport:
 
     def lookup(self, *, raw_id: int, idempotency_key: str) -> bytes | None:
         return self._call("GET", raw_id=raw_id, idempotency_key=idempotency_key, body=None)
+
+
+def create_approved_https_custody_transport(
+    endpoint: str,
+    *,
+    approved_hostname: str,
+    timeout: float = 10.0,
+    execute: Callable[[Request, float], tuple[int, bytes]] = _request,
+) -> HTTPSCustodyTransport:
+    """Require an independently configured exact hostname before contacting a custodian.
+
+    An approval string must be supplied by the operator, not derived from the URL.
+    This prevents accidental destination substitution, not DNS or TLS compromise.
+    """
+    transport = HTTPSCustodyTransport(endpoint, timeout=timeout, execute=execute)
+    parsed = urlsplit(endpoint)
+    hostname = parsed.hostname
+    if (
+        not approved_hostname
+        or approved_hostname != approved_hostname.lower()
+        or hostname != approved_hostname
+        or parsed.port not in (None, 443)
+        or hostname == "localhost"
+        or hostname.endswith(".localhost")
+        or "." not in hostname
+    ):
+        raise ValueError("custody endpoint does not match approved public hostname")
+    try:
+        ip_address(hostname)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("custody endpoint IP literals are not approved")
+    return transport
