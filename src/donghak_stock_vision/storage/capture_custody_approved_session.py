@@ -71,3 +71,27 @@ def create_approved_custody_session(
             execute=execute,
         )
     return ApprovedCustodySession(transport)
+
+
+def create_authenticated_custody_session(
+    endpoint: str,
+    *,
+    approved_hostname: str,
+    bearer_token: str,
+    timeout: float = 10.0,
+    execute: Callable[[Request, float], tuple[int, bytes]] | None = None,
+) -> ApprovedCustodySession:
+    """Require an explicit runtime bearer credential before session construction.
+
+    The credential is supplied by the caller, never read from source,
+    configuration defaults, or the custody server's response.
+    """
+    if not bearer_token:
+        raise ValueError("explicit custody bearer credential required")
+    return create_approved_custody_session(
+        endpoint,
+        approved_hostname=approved_hostname,
+        timeout=timeout,
+        bearer_token=bearer_token,
+        execute=execute,
+    )
