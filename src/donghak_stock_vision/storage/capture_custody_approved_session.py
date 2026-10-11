@@ -1,12 +1,11 @@
 """Explicit operator-approved custody HTTPS submission and lookup workflow."""
 
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 from urllib.request import Request
-
-from collections.abc import Callable
 
 from donghak_stock_vision.storage.capture_custody_https import (
     HTTPSCustodyTransport,
@@ -55,9 +54,10 @@ def create_approved_custody_session(
     execute: Callable[[Request, float], tuple[int, bytes]] | None = None,
 ) -> ApprovedCustodySession:
     """Build a session through the explicit destination approval gate."""
-    options = {"approved_hostname": approved_hostname, "timeout": timeout}
     if execute is None:
-        transport = create_approved_https_custody_transport(endpoint, **options)
+        transport = create_approved_https_custody_transport(
+            endpoint, approved_hostname=approved_hostname, timeout=timeout
+        )
     else:
         transport = create_approved_https_custody_transport(
             endpoint, approved_hostname=approved_hostname, timeout=timeout, execute=execute
