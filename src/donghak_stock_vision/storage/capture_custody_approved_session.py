@@ -56,9 +56,7 @@ class ApprovedCustodySession:
         raw_id: int,
     ) -> CustodyReadbackReview:
         """Compare stored remote bytes with the verified local export, not trust status."""
-        return verify_custody_readback(
-            connection, destination, raw_id, transport=self.transport
-        )
+        return verify_custody_readback(connection, destination, raw_id, transport=self.transport)
 
 
 def create_approved_custody_session(
