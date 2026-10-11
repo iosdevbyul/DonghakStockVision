@@ -39,12 +39,8 @@ def test_approved_submit_and_lookup_audit_without_acceptance(tmp_path: Path) -> 
             approved_hostname="custodian.example",
             execute=fake,
         )
-        submitted = session.execute(
-            store.connection, destination, raw_id, operation="submit"
-        )
-        looked_up = session.execute(
-            store.connection, destination, raw_id, operation="lookup"
-        )
+        submitted = session.execute(store.connection, destination, raw_id, operation="submit")
+        looked_up = session.execute(store.connection, destination, raw_id, operation="lookup")
         assert seen == ["PUT", "GET"]
         assert submitted.observation.idempotency_key == looked_up.observation.idempotency_key
         assert not submitted.observation.independent_custody_verified
