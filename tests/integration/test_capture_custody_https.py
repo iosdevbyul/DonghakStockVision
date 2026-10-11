@@ -83,9 +83,7 @@ def test_approved_hostname_requires_exact_match() -> None:
         "https://127.0.0.1/receipts",
     ):
         with pytest.raises(ValueError, match="approved"):
-            create_approved_https_custody_transport(
-                endpoint, approved_hostname="custodian.example"
-            )
+            create_approved_https_custody_transport(endpoint, approved_hostname="custodian.example")
 
 
 def test_unapproved_hostname_rejected_before_network() -> None:
