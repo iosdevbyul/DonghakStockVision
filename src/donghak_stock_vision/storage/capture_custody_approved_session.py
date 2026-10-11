@@ -51,15 +51,20 @@ def create_approved_custody_session(
     *,
     approved_hostname: str,
     timeout: float = 10.0,
+    bearer_token: str | None = None,
     execute: Callable[[Request, float], tuple[int, bytes]] | None = None,
 ) -> ApprovedCustodySession:
     """Build a session through the explicit destination approval gate."""
     if execute is None:
         transport = create_approved_https_custody_transport(
-            endpoint, approved_hostname=approved_hostname, timeout=timeout
+            endpoint, approved_hostname=approved_hostname, timeout=timeout, bearer_token=bearer_token
         )
     else:
         transport = create_approved_https_custody_transport(
-            endpoint, approved_hostname=approved_hostname, timeout=timeout, execute=execute
+            endpoint,
+            approved_hostname=approved_hostname,
+            timeout=timeout,
+            bearer_token=bearer_token,
+            execute=execute
         )
     return ApprovedCustodySession(transport)
