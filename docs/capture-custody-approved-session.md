@@ -15,3 +15,17 @@ This is not a deployed independently administered custodian. DNS
 resolution restrictions, authentication, signed acknowledgement
 validation, remote durability and verified replay are outstanding.
 A-2 remains incomplete.
+
+## Opt-in credential-required session
+
+Use `create_authenticated_custody_session` when an operator requires
+a caller-provided bearer credential to construct the approved session.
+Missing or malformed tokens fail before any network call. The token
+is excluded from the transport's ordinary representation and is only
+placed in the HTTPS Authorization header for outbound requests.
+
+The existing optional-auth factory stays available for backwards
+compatibility. A bearer credential authenticates the **request to the
+provider** according to that provider's policy; it does not authenticate
+the provider's acknowledgement, prove independent custody, or grant
+inference authorization. Do not persist credentials in source control.
