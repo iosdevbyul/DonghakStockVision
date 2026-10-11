@@ -1,8 +1,8 @@
 """Opt-in HTTPS adapter; its responses do not establish trusted custody."""
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
-import re
 from ipaddress import ip_address
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
