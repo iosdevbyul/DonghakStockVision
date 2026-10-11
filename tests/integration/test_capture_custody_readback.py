@@ -57,9 +57,7 @@ def test_unverified_local_export_prevents_remote_request(tmp_path: Path) -> None
     destination.mkdir()
     try:
         transport = FakeReadback(b"data")
-        result = verify_custody_readback(
-            store.connection, destination, 999, transport=transport
-        )
+        result = verify_custody_readback(store.connection, destination, 999, transport=transport)
         assert result.blocker == "export_not_verified"
         assert transport.calls == 0
     finally:
