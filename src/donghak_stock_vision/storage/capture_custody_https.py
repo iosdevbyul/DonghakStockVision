@@ -65,7 +65,13 @@ class HTTPSCustodyTransport:
             raise ValueError("invalid custody bearer token")
 
     def _call(
-        self, method: str, *, raw_id: int, idempotency_key: str, body: bytes | None
+        self,
+        method: str,
+        *,
+        raw_id: int,
+        idempotency_key: str,
+        body: bytes | None,
+        suffix: str = "",
     ) -> bytes | None:
         if (
             raw_id <= 0
@@ -73,7 +79,7 @@ class HTTPSCustodyTransport:
             or any(char not in "0123456789abcdef" for char in idempotency_key)
         ):
             raise ValueError("invalid custody submission identity")
-        url = f"{self.endpoint}/{raw_id}"
+        url = f"{self.endpoint}/{raw_id}{suffix}"
         headers = {
             "Idempotency-Key": idempotency_key,
             "Accept": "application/octet-stream",
@@ -102,6 +108,12 @@ class HTTPSCustodyTransport:
 
     def lookup(self, *, raw_id: int, idempotency_key: str) -> bytes | None:
         return self._call("GET", raw_id=raw_id, idempotency_key=idempotency_key, body=None)
+
+    def retrieve(self, *, raw_id: int, idempotency_key: str) -> bytes | None:
+        """Retrieve stored receipt bytes from the explicit /content resource."""
+        return self._call(
+            "GET", raw_id=raw_id, idempotency_key=idempotency_key, body=None, suffix="/content"
+        )
 
 
 def create_approved_https_custody_transport(
