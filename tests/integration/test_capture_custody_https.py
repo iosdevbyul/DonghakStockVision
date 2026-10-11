@@ -109,9 +109,7 @@ def test_readback_uses_distinct_content_resource() -> None:
     seen: list[tuple[str, str, str | None]] = []
 
     def fake(request: Request, timeout: float) -> tuple[int, bytes]:
-        seen.append(
-            (request.get_method(), request.full_url, request.get_header("Idempotency-key"))
-        )
+        seen.append((request.get_method(), request.full_url, request.get_header("Idempotency-key")))
         return 200, b"original-receipt-bytes"
 
     adapter = HTTPSCustodyTransport("https://custodian.example/receipts", execute=fake)
