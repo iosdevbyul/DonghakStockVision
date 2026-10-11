@@ -41,12 +41,8 @@ def test_explicit_submit_is_audited_without_acceptance(tmp_path: Path) -> None:
         export_capture_receipt(store.connection, raw_id, destination)
         enqueue_capture_receipt(store.connection, raw_id)
         transport = RecordingTransport()
-        first = submit_outbox_and_audit(
-            store.connection, destination, raw_id, transport=transport
-        )
-        second = submit_outbox_and_audit(
-            store.connection, destination, raw_id, transport=transport
-        )
+        first = submit_outbox_and_audit(store.connection, destination, raw_id, transport=transport)
+        second = submit_outbox_and_audit(store.connection, destination, raw_id, transport=transport)
         assert first.observation.status == "claim_received_unverified"
         assert first.event_id != second.event_id
         assert len(set(transport.calls)) == 1
@@ -70,9 +66,7 @@ def test_submission_rejects_unknown_and_quarantined_receipts(tmp_path: Path) -> 
     try:
         transport = RecordingTransport()
         with pytest.raises(ValueError, match="queued"):
-            submit_outbox_and_audit(
-                store.connection, destination, 999, transport=transport
-            )
+            submit_outbox_and_audit(store.connection, destination, 999, transport=transport)
         assert transport.calls == []
     finally:
         store.close()
