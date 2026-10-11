@@ -101,3 +101,27 @@ def test_unapproved_hostname_rejected_before_network() -> None:
             execute=fake,
         )
     assert not called
+
+
+def test_readback_uses_distinct_content_resource() -> None:
+    from urllib.request import Request
+
+    seen: list[tuple[str, str, str | None]] = []
+
+    def fake(request: Request, timeout: float) -> tuple[int, bytes]:
+        seen.append((request.get_method(), request.full_url, request.get_header("Idempotency-key")))
+        return 200, b"original-receipt-bytes"
+
+    adapter = HTTPSCustodyTransport("https://custodian.example/receipts", execute=fake)
+    assert adapter.retrieve(raw_id=8, idempotency_key=KEY) == b"original-receipt-bytes"
+    assert seen == [
+        ("GET", "https://custodian.example/receipts/8/content", KEY),
+    ]
+
+
+def test_missing_readback_returns_unverified_absence() -> None:
+    adapter = HTTPSCustodyTransport(
+        "https://custodian.example/receipts",
+        execute=lambda request, timeout: (404, b"missing"),
+    )
+    assert adapter.retrieve(raw_id=8, idempotency_key=KEY) is None
