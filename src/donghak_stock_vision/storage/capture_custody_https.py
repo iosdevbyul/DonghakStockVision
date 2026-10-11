@@ -58,9 +58,10 @@ class HTTPSCustodyTransport:
             raise ValueError("endpoint must be a fixed HTTPS URL without credentials")
         if not 0 < self.timeout <= 60:
             raise ValueError("invalid HTTPS timeout")
-        if self.bearer_token is not None and re.fullmatch(
-            r"[A-Za-z0-9._~+/-]+={0,2}", self.bearer_token
-        ) is None:
+        if (
+            self.bearer_token is not None
+            and re.fullmatch(r"[A-Za-z0-9._~+/-]+={0,2}", self.bearer_token) is None
+        ):
             raise ValueError("invalid custody bearer token")
 
     def _call(
