@@ -21,3 +21,15 @@ observation layer never promotes it to inference permission.
 A-2 remains in progress pending a genuine external custodian,
 provider-specific authenticated acknowledgement contract, and
 delivery/recovery verification.
+
+## Explicit endpoint approval gate
+
+Use `create_approved_https_custody_transport(endpoint,
+approved_hostname=...)` for operator-controlled HTTPS destinations.
+The independently supplied approved hostname must exactly match the URL
+hostname. The gate refuses hostname suffix impersonation, localhost,
+IP literals and non-443 ports. It rejects a mismatch before any request.
+The lower-level transport constructor remains available for backward
+compatibility, so callers must opt into the approval gate. This is not
+a DNS/IP resolution policy, TLS certificate pinning or proof that a
+third-party custodian is independent. A-2 remains in progress.
