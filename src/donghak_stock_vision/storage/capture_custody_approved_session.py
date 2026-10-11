@@ -11,6 +11,10 @@ from donghak_stock_vision.storage.capture_custody_https import (
     HTTPSCustodyTransport,
     create_approved_https_custody_transport,
 )
+from donghak_stock_vision.storage.capture_custody_readback import (
+    CustodyReadbackReview,
+    verify_custody_readback,
+)
 from donghak_stock_vision.storage.capture_custody_lookup_audit import (
     AuditedCustodyLookup,
     lookup_outbox_and_audit,
@@ -44,6 +48,17 @@ class ApprovedCustodySession:
                 connection, destination, raw_id, transport=self.transport
             )
         raise ValueError("unsupported custody operation")
+
+    def verify_readback(
+        self,
+        connection: sqlite3.Connection,
+        destination: Path,
+        raw_id: int,
+    ) -> CustodyReadbackReview:
+        """Compare stored remote bytes with the verified local export, not trust status."""
+        return verify_custody_readback(
+            connection, destination, raw_id, transport=self.transport
+        )
 
 
 def create_approved_custody_session(
