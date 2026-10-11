@@ -1,8 +1,9 @@
 """Opt-in HTTPS adapter; its responses do not establish trusted custody."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from ipaddress import ip_address
+import re
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -40,6 +41,7 @@ class HTTPSCustodyTransport:
 
     endpoint: str
     timeout: float = 10.0
+    bearer_token: str | None = field(default=None, repr=False)
     execute: Callable[[Request, float], tuple[int, bytes]] = _request
 
     def __post_init__(self) -> None:
@@ -56,6 +58,10 @@ class HTTPSCustodyTransport:
             raise ValueError("endpoint must be a fixed HTTPS URL without credentials")
         if not 0 < self.timeout <= 60:
             raise ValueError("invalid HTTPS timeout")
+        if self.bearer_token is not None and re.fullmatch(
+            r"[A-Za-z0-9._~+/-]+={0,2}", self.bearer_token
+        ) is None:
+            raise ValueError("invalid custody bearer token")
 
     def _call(
         self, method: str, *, raw_id: int, idempotency_key: str, body: bytes | None
@@ -73,6 +79,8 @@ class HTTPSCustodyTransport:
         }
         if body is not None:
             headers["Content-Type"] = "application/json"
+        if self.bearer_token is not None:
+            headers["Authorization"] = f"Bearer {self.bearer_token}"
         request = Request(url, data=body, headers=headers, method=method)
         status, response = self.execute(request, self.timeout)
         if len(response) > MAX_RESPONSE_BYTES:
@@ -100,6 +108,7 @@ def create_approved_https_custody_transport(
     *,
     approved_hostname: str,
     timeout: float = 10.0,
+    bearer_token: str | None = None,
     execute: Callable[[Request, float], tuple[int, bytes]] = _request,
 ) -> HTTPSCustodyTransport:
     """Require an independently configured exact hostname before contacting a custodian.
@@ -107,7 +116,9 @@ def create_approved_https_custody_transport(
     An approval string must be supplied by the operator, not derived from the URL.
     This prevents accidental destination substitution, not DNS or TLS compromise.
     """
-    transport = HTTPSCustodyTransport(endpoint, timeout=timeout, execute=execute)
+    transport = HTTPSCustodyTransport(
+        endpoint, timeout=timeout, bearer_token=bearer_token, execute=execute
+    )
     parsed = urlsplit(endpoint)
     hostname = parsed.hostname
     if (
