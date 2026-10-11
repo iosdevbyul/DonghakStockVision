@@ -2,8 +2,8 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from ipaddress import ip_address
 import re
+from ipaddress import ip_address
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
