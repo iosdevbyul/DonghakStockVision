@@ -5,6 +5,7 @@ import pytest
 from donghak_stock_vision.storage.capture_custody_https import (
     MAX_RESPONSE_BYTES,
     HTTPSCustodyTransport,
+    create_approved_https_custody_transport,
 )
 
 KEY = "a" * 64
@@ -67,3 +68,38 @@ def test_oversized_response_is_rejected() -> None:
     )
     with pytest.raises(ValueError, match="size limit"):
         adapter.lookup(raw_id=1, idempotency_key=KEY)
+
+
+def test_approved_hostname_requires_exact_match() -> None:
+    transport = create_approved_https_custody_transport(
+        "https://custodian.example/receipts", approved_hostname="custodian.example"
+    )
+    assert transport.endpoint == "https://custodian.example/receipts"
+    for endpoint in (
+        "https://custodian.example.attacker.com/receipts",
+        "https://other.example/receipts",
+        "https://custodian.example:8443/receipts",
+        "https://localhost/receipts",
+        "https://127.0.0.1/receipts",
+    ):
+        with pytest.raises(ValueError, match="approved"):
+            create_approved_https_custody_transport(
+                endpoint, approved_hostname="custodian.example"
+            )
+
+
+def test_unapproved_hostname_rejected_before_network() -> None:
+    called = False
+
+    def fake(request: object, timeout: float) -> tuple[int, bytes]:
+        nonlocal called
+        called = True
+        return 200, b"response"
+
+    with pytest.raises(ValueError, match="approved"):
+        create_approved_https_custody_transport(
+            "https://attacker.example/receipts",
+            approved_hostname="custodian.example",
+            execute=fake,
+        )
+    assert not called
