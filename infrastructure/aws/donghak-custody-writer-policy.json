@@ -1,0 +1,33 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EvidenceObjectAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:GetObjectRetention"
+      ],
+      "Resource": [
+        "arn:aws:s3:::donghak-custody-dev/evidence/*",
+        "arn:aws:s3:::donghak-custody-dev/dev-tests/*"
+      ]
+    },
+    {
+      "Sid": "EvidenceVersionListing",
+      "Effect": "Allow",
+      "Action": "s3:ListBucketVersions",
+      "Resource": "arn:aws:s3:::donghak-custody-dev",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "evidence/*",
+            "dev-tests/*"
+          ]
+        }
+      }
+    }
+  ]
+}

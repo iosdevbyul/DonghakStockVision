@@ -15,6 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+custody = ["boto3[crt]>=1.41,<2"]
 learning = ["scikit-learn>=1.9.1,<1.10", "numpy>=2.3,<3", "threadpoolctl>=3.6,<4"]
 api = ["fastapi>=0.115,<1", "pydantic>=2.10,<3", "uvicorn>=0.34,<1", "cryptography>=44,<49"]
 dev = ["pytest>=8.3,<10", "ruff>=0.11,<1", "mypy>=1.15,<2", "build>=1.2,<2"]
@@ -28,7 +29,7 @@ dsv-api-export = "donghak_stock_vision.api_export_cli:main"
 packages = ["src/donghak_stock_vision"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/tests", "/docs", "/pyproject.toml", "/README.md", "/.env.example"]
+include = ["/src", "/tests", "/docs", "/pyproject.toml", "/README.md", "/.env.example", "/infrastructure"]
 
 [tool.ruff]
 target-version = "py312"
@@ -47,8 +48,8 @@ files = ["src", "tests"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra -m 'not live'"
-markers = ["live: explicit opt-in network test requiring an approved KRX key"]
+markers = ["live: explicit opt-in network test requiring explicit provider approval"]
 
 [[tool.mypy.overrides]]
-module = ["sklearn.*", "threadpoolctl"]
+module = ["sklearn.*", "threadpoolctl", "boto3.*", "botocore.*"]
 ignore_missing_imports = true
