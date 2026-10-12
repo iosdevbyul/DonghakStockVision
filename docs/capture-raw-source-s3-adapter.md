@@ -197,8 +197,54 @@ A-2 requirements even after a successful real S3 storage observation.
 - New offline adapter/audit/regression tests: 46 passed.
 - Full offline suite: 1,579 passed, 3 live tests deselected.
 - Ruff check/format, Mypy and sdist/wheel build passed locally.
-- Requested live scope: at most two synthetic objects, each <=80 KiB, only under
-  `dev-tests/20261012-raw-source-6d901a/`, using `donghak-custody` after STS checks.
-- At initial PR preparation the explicit approval is pending, so **no new S3
-  object has been uploaded** and no real raw-object retention/readback result is
-  claimed. Existing IAM, bucket settings and S3 receipt objects are unchanged.
+- The human explicitly approved at most two synthetic objects, each <=80 KiB,
+  only under `dev-tests/20261012-raw-source-6d901a/` using `donghak-custody`.
+- PR #94's feature branch was clean and matched the reviewed commit before the
+  live run. The prefix was empty (no objects/delete markers, no truncation).
+- STS confirmed
+  `arn:aws:sts::101180464666:assumed-role/DonghakCustodyWriterRole/donghak-custody-dev`.
+- The existing explicit live test passed: **1 passed**. It was executed once;
+  no additional upload run or actual KRX/receipt object upload was performed.
+
+### Actual approved S3 result (2026-10-12)
+
+The sanitized, reviewable report is
+[`evidence/raw-source-s3/live-report.json`](evidence/raw-source-s3/live-report.json).
+The original runtime report remains Git-ignored at
+`.data/raw-source-s3-live-report.json`, and the post-test read-only inventory is
+`.data/raw-source-s3-inventory.json`. Reports contain public verification metadata,
+not source response bodies, access keys or session tokens.
+
+Two binary source objects were created, each **71,680 bytes (70 KiB)**. A separate
+actual `ListObjectVersions` request with `donghak-custody` confirmed exactly two
+keys, one latest version per key, no duplicate versions/delete markers and no
+truncation. Both keys preserve the contract path inside the approved boundary.
+
+| Raw ID | VersionId | GOVERNANCE retention deadline (KST) |
+| --- | --- | --- |
+| 1 | `nuPgqqj9BQH7WeFHDCd5ZQrIUlcNbMUF` | 2026-10-13 23:24:15.216 +09:00 |
+| 2 | `tNHxgBS.P2GgfXwMOc_JboPzh9oeKaCe` | 2026-10-13 23:24:18.187 +09:00 |
+
+The actual-byte SHA-256 values matched the S3 checksum, original byte comparison
+and VersionId-pinned Readback:
+
+- Raw 1: `2920ecaf33981119c0059ab10092ba73292ca91e560ae117a23456b4ee8279ba`.
+- Raw 2: `7fced1dd603bd6879fc8e99e4ea51fd3075adbcfc05a8a7b1265b995ee7c935c`.
+
+The first object survived local connection/session restart with the same VersionId.
+For the second, an application wrapper deliberately discarded one successful
+PutObject response, producing a blocked local result. This simulated application
+response loss, not an actual AWS/network outage. A fresh session after restart
+looked up the same key and recovered the retained remote object; replay and
+Readback preserved the same VersionId without another object/version.
+
+No IAM role/policy/trust, bucket/Object Lock settings, existing source data or
+receipt exports/objects were modified. New synthetic objects were not deleted;
+they continue consuming storage after the one-day retention expires. Bucket-wide
+configuration remains unreadable to this least-privilege role; the verified
+GOVERNANCE deadlines above are observations of the exact object versions.
+
+Actual S3 storage/readback verification succeeded for these synthetic objects.
+`independent_custody_verified` and `inference_authorized` remained **false**.
+Independent administration, authenticated custody attestations/signatures,
+long-term retention policy and A-3 trust management are still outstanding.
