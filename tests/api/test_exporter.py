@@ -195,3 +195,49 @@ def test_market_universe_must_match_reviewed_mapping(tmp_path: Path) -> None:
             root=root,
             publication_path=root / "docs/research-api/model-publication.json",
         )
+
+
+@pytest.mark.parametrize(
+    ("complete", "historical", "message"),
+    [
+        (993, 0, "corporate-action coverage exceeds historical identity coverage"),
+        (-1, 0, "invalid corporate-action coverage count"),
+        (True, 0, "invalid corporate-action coverage count"),
+        ("993", 0, "invalid corporate-action coverage count"),
+        (993, 993, "corporate-action coverage contradicts blocked lifecycle evidence"),
+    ],
+)
+def test_snapshot_rejects_unsupported_corporate_coverage_claims(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    complete: object,
+    historical: int,
+    message: str,
+) -> None:
+    """Self-consistent hashes and counts cannot override upstream evidence gates."""
+    from dataclasses import replace
+
+    from donghak_stock_vision.api import exporter
+    from donghak_stock_vision.data.learning import digest
+
+    root = repository_root()
+    market_db = make_market_db(tmp_path)
+    sources = exporter.load_sources(root)
+    manifest = dict(sources.dart_manifest.artifact)
+    manifest["complete_corporate_coverage_count"] = complete
+    manifest["historical_identity_count"] = historical
+    mapping = dict(sources.historical_mapping.artifact)
+    mapping["full_period_verified"] = historical
+    altered = replace(
+        sources,
+        dart_manifest=exporter.LoadedArtifact(manifest, digest(manifest)),
+        historical_mapping=exporter.LoadedArtifact(mapping, digest(mapping)),
+    )
+    monkeypatch.setattr(exporter, "load_sources", lambda _: altered)
+
+    with pytest.raises(SnapshotExportError, match=message):
+        build_snapshot(
+            market_db=market_db,
+            root=root,
+            publication_path=root / "docs/research-api/model-publication.json",
+        )

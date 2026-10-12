@@ -86,3 +86,20 @@ def test_tampering_and_mismatched_identity_fail_closed() -> None:
         trusted_evidence_sha256=hashlib.sha256(changed_bytes).hexdigest(),
     )
     assert "pit_evidence_candidate_mismatch" in result.blockers
+
+
+def test_unverified_corporate_actions_block_even_with_matching_evidence_hash() -> None:
+    candidate, evidence = _inputs()
+    for status in ("unverified", "unknown"):
+        changed = json.loads(evidence)
+        changed["corporateActionStatus"] = status
+        changed_bytes = json.dumps(changed).encode()
+        report = inspect_pit_provenance(
+            candidate,
+            changed_bytes,
+            trusted_evidence_sha256=hashlib.sha256(changed_bytes).hexdigest(),
+        )
+        assert "pit_corporate_actions_not_verified" in report.blockers
+        assert not report.evidence_bound
+        assert not report.provenance_authenticated
+        assert not report.inference_authorized

@@ -165,3 +165,59 @@ def test_duplicate_security_coverage_is_rejected() -> None:
     record = coverage()
     with pytest.raises(ValueError, match="duplicate_security_coverage"):
         summarize_corporate_action_coverage(("005930",), (record, record))
+
+
+@pytest.mark.parametrize("missing_class", EVENT_CLASSES)
+def test_each_required_action_class_must_be_covered(missing_class: str) -> None:
+    record = coverage(covered_classes=tuple(c for c in EVENT_CLASSES if c != missing_class))
+    assert record.status == "BLOCKED_ON_SOURCE_COVERAGE"
+
+
+@pytest.mark.parametrize(
+    ("start", "end"),
+    [
+        (date(2024, 6, 15), date(2025, 7, 7)),
+        (date(2024, 6, 14), date(2025, 7, 6)),
+    ],
+)
+def test_query_must_cover_warmup_and_execution_tail(start: date, end: date) -> None:
+    from dataclasses import replace
+
+    record = replace(coverage(), query_start=start, query_end=end)
+    assert record.status == "BLOCKED_ON_SOURCE_COVERAGE"
+
+
+def test_reviewed_non_session_effective_date_is_preserved_without_rolling() -> None:
+    """Legal effective dates need not be sessions; this layer approves no trade date."""
+    event = CorporateActionEventEvidence(
+        ticker="005930",
+        event_class="name_change",
+        effective_date=date(2024, 8, 3),  # Saturday, explicit synthetic review evidence.
+        source=source("event"),
+        review_reference="synthetic-weekend-review",
+        document_reference="20240802000001",
+    )
+    manifest = summarize_corporate_action_coverage(
+        ("005930",), (coverage(events=(event,)),)
+    ).to_dict()
+    assert event.to_dict()["effective_date"] == "2024-08-03"
+    assert manifest["prices_adjusted"] is False
+    assert manifest["prediction_or_backtest_invoked"] is False
+
+
+def test_unofficial_event_source_cannot_support_coverage() -> None:
+    with pytest.raises(ValueError, match="official_event_source_required"):
+        CorporateActionEventEvidence(
+            ticker="005930",
+            event_class="split",
+            effective_date=date(2024, 8, 1),
+            source=FrozenJSON.freeze(
+                {
+                    "url": "https://example.com/action",
+                    "raw_sha256": "a" * 64,
+                    "document_reference": "synthetic",
+                }
+            ),
+            review_reference="synthetic-review",
+            document_reference="20240701000001",
+        )
