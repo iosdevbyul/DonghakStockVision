@@ -11,7 +11,7 @@ import pytest
 
 from donghak_stock_vision.providers.base import RawPage
 from donghak_stock_vision.storage.capture_custody_outbox import enqueue_capture_receipt
-from donghak_stock_vision.storage.capture_custody_s3 import S3Client
+from donghak_stock_vision.storage.capture_custody_s3 import BUCKET, S3Client
 from donghak_stock_vision.storage.capture_raw_source_s3 import (
     RawSourceS3Adapter,
     RawSourceS3Session,
@@ -46,6 +46,11 @@ def test_approved_raw_only_roundtrip_and_response_loss(tmp_path: Path) -> None:
     if os.environ.get("DSV_RAW_S3_LIVE_APPROVED") != "yes" or not prefix.startswith("dev-tests/"):
         pytest.skip("explicit approval and unique raw-source dev-tests prefix required")
     factory = create_raw_source_s3_session(test_prefix=prefix)
+    # A rerun must not create extra objects beyond the approved two-object scope.
+    # Recover an interrupted run explicitly instead of regenerating new identities.
+    existing = factory.adapter.client.list_object_versions(Bucket=BUCKET, Prefix=prefix, MaxKeys=1)
+    assert not existing.get("Versions") and not existing.get("DeleteMarkers")
+    assert not existing.get("IsTruncated"), "live prefix must be new and empty"
     path = tmp_path / "synthetic.sqlite3"
     store = SQLiteStore(path)
     observations = []

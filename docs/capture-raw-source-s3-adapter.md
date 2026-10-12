@@ -170,7 +170,9 @@ existing object permissions.
 The opt-in live test creates at most two non-sensitive synthetic bodies of 70 KiB,
 under one approved unique dev-tests boundary. It simulates loss of one successful
 application response and uses fresh sessions/SQLite connections to recover,
-replay and verify both objects. No receipt S3 object is uploaded. The test requires:
+replay and verify both objects. No receipt S3 object is uploaded. The test first requires an empty prefix, preventing a rerun from creating extra
+objects beyond the approved scope. Recover an interrupted run explicitly rather
+than regenerate its local identities. The test requires:
 
 ```sh
 DSV_RAW_S3_LIVE_APPROVED=yes \
