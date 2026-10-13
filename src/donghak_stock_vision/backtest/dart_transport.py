@@ -5,14 +5,18 @@ import hashlib
 import io
 import json
 import logging
+import re
 import time
 import zipfile
+import zlib
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
 
 import httpx
 
-from donghak_stock_vision.backtest.validation import require
+from donghak_stock_vision.backtest.validation import ContractError, require
 from donghak_stock_vision.data.learning import digest
 
 ENDPOINT = "https://opendart.fss.or.kr/api/"
@@ -32,11 +36,86 @@ PARAMETERS = {
     "page_count",
     "rcept_no",
 }
+# Official document API guide (DS001 / 2019003), reviewed 2026-10-13.
+# These describe reported API codes, not independent proof of the underlying cause.
+API_ERROR_CATEGORIES = {
+    "010": "unregistered_key",
+    "011": "disabled_key",
+    "012": "ip_denied",
+    "013": "no_data",
+    "014": "file_missing",
+    "020": "request_limit",
+    "021": "company_limit",
+    "100": "invalid_field",
+    "101": "invalid_access",
+    "800": "service_maintenance",
+    "900": "undefined_error",
+    "901": "expired_key",
+}
+
+
+class DartAPIError(ContractError):
+    """Code-only diagnostics; never include server text, URLs or credentials."""
+
+    def __init__(self, status: str, message_present: bool, *, cached: bool = False) -> None:
+        require(re.fullmatch(r"[0-9]{3}", status) is not None, "invalid_dart_diagnostic_status")
+        self.status = status
+        self.category = API_ERROR_CATEGORIES.get(status, "unknown_status")
+        self.message_present = message_present
+        prefix = "DART_CACHED_RESPONSE_BLOCKED" if cached else "DART_OFFICIAL_ERROR"
+        super().__init__(
+            f"{prefix}: status={status} category={self.category} "
+            f"message_present={str(message_present).lower()}"
+        )
+
+
+def document_api_error(raw: bytes, *, cached: bool = False) -> DartAPIError | None:
+    """Parse a bounded, unambiguous error envelope without exposing message text."""
+
+    if len(raw) > 65536 or b"<!DOCTYPE" in raw.upper() or b"<!ENTITY" in raw.upper():
+        return None
+    try:
+        root = ElementTree.fromstring(raw)
+    except (ElementTree.ParseError, LookupError, ValueError):
+        return None
+    statuses = root.findall("status")
+    if root.tag != "result" or len(statuses) != 1:
+        return None
+    status = (statuses[0].text or "").strip()
+    if re.fullmatch(r"[0-9]{3}", status) is None or status == "000":
+        return None
+    message_present = any((node.text or "").strip() for node in root.findall("message"))
+    return DartAPIError(status, message_present, cached=cached)
+
+
+def response_content_type(value: str) -> str:
+    """Retain known MIME labels only; arbitrary header text may contain secrets."""
+
+    mime = value.partition(";")[0].strip().lower()
+    if not mime:
+        return "not_recorded"
+    known = {
+        "application/zip",
+        "application/x-zip-compressed",
+        "application/octet-stream",
+        "application/xml",
+        "text/xml",
+        "text/html",
+        "application/json",
+    }
+    return mime if mime in known else "unrecognized"
 
 
 def request_identity(api: str, params: dict[str, str]) -> dict[str, Any]:
     require(api in ALLOWED, "unsupported_evidence_endpoint")
     require(set(params) <= PARAMETERS, "unsupported_request_parameter")
+    if api == "document.xml":
+        require(
+            set(params) == {"rcept_no"}
+            and isinstance(params["rcept_no"], str)
+            and re.fullmatch(r"[0-9]{14}", params["rcept_no"]) is not None,
+            "invalid_document_request",
+        )
     # Every allowed value is a documented code, date, integer or sort literal.
     for v in params.values():
         allowed = v.isascii() and v.isalnum() and len(v) <= 14
@@ -50,7 +129,7 @@ def request_identity(api: str, params: dict[str, str]) -> dict[str, Any]:
 
 
 def zip_response_valid(api: str, raw: bytes) -> bool:
-    """Require documented ZIP payloads for binary DART endpoints."""
+    """Require ZIP bytes, readable CRCs and safe member names; never extract files."""
 
     if api not in ZIP_BINARY_ENDPOINTS:
         return True
@@ -58,8 +137,29 @@ def zip_response_valid(api: str, raw: bytes) -> bool:
         return False
     try:
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-            return bool(archive.namelist())
-    except (ValueError, zipfile.BadZipFile):
+            members = archive.infolist()
+            names = [item.filename for item in members]
+            if not any(not item.is_dir() for item in members) or len(set(names)) != len(names):
+                return False
+            for item in members:
+                if (
+                    not item.filename
+                    or item.filename.startswith("/")
+                    or "\\" in item.filename
+                    or ".." in item.filename.split("/")
+                    or re.match(r"[A-Za-z]:", item.filename)
+                    or item.flag_bits & 1
+                ):
+                    return False
+            return archive.testzip() is None
+    except (
+        ValueError,
+        zipfile.BadZipFile,
+        RuntimeError,
+        NotImplementedError,
+        zlib.error,
+        EOFError,
+    ):
         return False
 
 
@@ -70,7 +170,14 @@ def safe_body(raw: bytes, secret: str) -> bool:
         try:
             with zipfile.ZipFile(io.BytesIO(raw)) as z:
                 return all(secret.encode() not in z.read(n) for n in z.namelist())
-        except (ValueError, zipfile.BadZipFile):
+        except (
+            ValueError,
+            zipfile.BadZipFile,
+            RuntimeError,
+            NotImplementedError,
+            zlib.error,
+            EOFError,
+        ):
             return False
     return True
 
@@ -83,9 +190,13 @@ class DartEvidenceClient:
     stop immediately. Resumption reuses verified cached bytes, never overwrites.
     """
 
-    def __init__(self, key: str | None, output: Path, client: httpx.Client) -> None:
+    def __init__(
+        self, key: str | None, output: Path, client: httpx.Client, *, max_attempts: int = 3
+    ) -> None:
         require(bool(key), "BLOCKED_ON_DART_CREDENTIAL")
+        require(type(max_attempts) is int and 1 <= max_attempts <= 3, "invalid_dart_attempt_budget")
         self._key = str(key)
+        self.max_attempts = max_attempts
         self.output = output
         self.client = client
         output.mkdir(parents=True, exist_ok=True)
@@ -97,15 +208,24 @@ class DartEvidenceClient:
         body = self.output / (ident + ".gz")
         if receipt.exists():
             saved = json.loads(receipt.read_text())
+            require(
+                isinstance(saved, dict) and all(saved.get(k) == v for k, v in meta.items()),
+                "cache_request_identity_mismatch",
+            )
             raw = gzip.decompress(body.read_bytes())
             require(hashlib.sha256(raw).hexdigest() == saved["raw_sha256"], "cache_hash_mismatch")
             require(saved["http_status"] == 200, "DART_TRANSPORT_BLOCKED")
+            require(safe_body(raw, self._key), "unsafe_response_not_preserved")
+            if api == "document.xml" and (error := document_api_error(raw, cached=True)):
+                raise error
             require(zip_response_valid(api, raw), "DART_CACHED_RESPONSE_BLOCKED")
             return raw, saved
         require(not body.exists(), "incomplete_cache_receipt")
         attempts: list[dict[str, Any]] = []
         raw = b""
-        for attempt in range(3):
+        content_type = "not_recorded"
+        retrieved_at = ""
+        for attempt in range(self.max_attempts):
             time.sleep(0.35 if attempt == 0 else 2 ** (attempt - 1))
             # httpx INFO logs contain query strings. Suppress both libraries around
             # the sensitive request, and never propagate their exception objects.
@@ -120,12 +240,16 @@ class DartEvidenceClient:
                 )
                 status = response.status_code
                 raw = response.content
+                content_type = response_content_type(response.headers.get("content-type", ""))
             except Exception:
                 raw = b""
             finally:
                 logging.disable(prior_logging_threshold)
+            retrieved_at = datetime.now(UTC).isoformat()
             require(safe_body(raw, self._key), "unsafe_response_not_preserved")
             attempts.append(dict(attempt=attempt + 1, http_status=status))
+            if api == "document.xml" and (error := document_api_error(raw)):
+                raise error
             if status == 200 or (status and status < 500 and status != 429):
                 break
         meta.update(
@@ -133,6 +257,8 @@ class DartEvidenceClient:
             attempts=attempts,
             bytes=len(raw),
             raw_sha256=hashlib.sha256(raw).hexdigest(),
+            content_type=content_type,
+            retrieved_at=retrieved_at,
         )
         require(status == 200, "DART_TRANSPORT_BLOCKED")
         require(zip_response_valid(api, raw), "DART_OFFICIAL_ERROR")

@@ -8,7 +8,7 @@ import httpx
 from dotenv import dotenv_values
 
 from donghak_stock_vision.backtest.corporate_action_acquisition import build_document_plan
-from donghak_stock_vision.backtest.dart_transport import DartEvidenceClient
+from donghak_stock_vision.backtest.dart_transport import DartAPIError, DartEvidenceClient
 from donghak_stock_vision.backtest.validation import require
 
 
@@ -24,6 +24,7 @@ def collect(
     *,
     offset: int,
     limit: int,
+    max_attempts: int = 3,
 ) -> dict[str, int]:
     """Collect one deterministic batch without approving any corporate action."""
 
@@ -41,6 +42,7 @@ def collect(
             dotenv_values(root / ".env").get("DART_API_KEY"),
             output,
             http,
+            max_attempts=max_attempts,
         )
         for receipt in selected:
             client.fetch("document.xml", {"rcept_no": receipt})
@@ -60,6 +62,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--limit", type=int, default=25)
+    parser.add_argument("--max-attempts", type=int, choices=(1, 2, 3), default=3)
     args = parser.parse_args()
     try:
         result = collect(
@@ -67,7 +70,10 @@ def main() -> None:
             args.output.resolve(),
             offset=args.offset,
             limit=args.limit,
+            max_attempts=args.max_attempts,
         )
+    except DartAPIError as error:
+        raise SystemExit(f"CORPORATE_ACTION_DOCUMENT_ACQUISITION_BLOCKED: {error}") from None
     except Exception:
         raise SystemExit(
             "CORPORATE_ACTION_DOCUMENT_ACQUISITION_BLOCKED: inspect sanitized receipts"
