@@ -45,7 +45,10 @@ def zip_body() -> bytes:
     return output.getvalue()
 
 
-def test_pilot_is_fixed_one_request_and_replays_only_selected_scope(root: Path) -> None:
+@pytest.mark.parametrize("mime", ["application/zip", "application/unrecognized", None])
+def test_pilot_is_fixed_one_request_and_replays_only_selected_scope(
+    root: Path, mime: str | None
+) -> None:
     seen = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -54,7 +57,8 @@ def test_pilot_is_fixed_one_request_and_replays_only_selected_scope(root: Path) 
         assert request.url.path == "/api/document.xml"
         assert request.url.params["rcept_no"] == collector.PILOT_RECEIPT
         assert request.headers["accept-encoding"] == "identity"
-        return httpx.Response(200, headers={"Content-Type": "application/zip"}, content=zip_body())
+        headers = {} if mime is None else {"Content-Type": mime}
+        return httpx.Response(200, headers=headers, content=zip_body())
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http:
         report = collector.pilot(root, access_confirmed=True, http=http)

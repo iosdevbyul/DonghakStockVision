@@ -358,7 +358,9 @@ class DartEvidenceClient:
         )
         require(status == 200, "DART_TRANSPORT_BLOCKED")
         require(zip_response_valid(api, raw, limits=self.limits), "DART_OFFICIAL_ERROR")
-        if self.limits and api in ZIP_BINARY_ENDPOINTS:
+        # The document guide specifies binary ZIP, not a required HTTP MIME label.
+        # Content-Type remains a secret-safe diagnostic; ZIP validation above is mandatory.
+        if self.limits and api in ZIP_BINARY_ENDPOINTS and api != "document.xml":
             require(
                 content_type
                 in {
