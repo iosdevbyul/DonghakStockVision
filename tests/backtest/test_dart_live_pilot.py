@@ -1,5 +1,6 @@
 """One-shot pilot orchestration with fake keys and MockTransport only."""
 
+import hashlib
 import io
 import json
 import zipfile
@@ -223,3 +224,137 @@ def test_client_close_failure_does_not_lose_safe_audit(
     assert report["api_status"] == "800"
     assert SECRET not in json.dumps(report)
     assert (root / collector.PILOT_DIRECTORY / "audit/pilot-report.json").exists()
+
+
+def test_retry_has_only_new_fixed_path_and_preserves_old_failed_audit(root: Path) -> None:
+    assert collector.PILOT_DIRECTORY == ".data/dart-document-live-pilot-retry-20261013"
+    old = root / ".data/dart-document-live-pilot-20261013"
+    old.mkdir(parents=True)
+    audit = old / "pilot-failure.json"
+    audit.write_bytes(b"synthetic previous failed audit")
+    calls = []
+    raw = zip_body()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        assert request.url.path == "/api/document.xml"
+        assert request.url.params["rcept_no"] == collector.PILOT_RECEIPT
+        return httpx.Response(200, headers={"Content-Type": "application/nonstandard"}, content=raw)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+        report = collector.pilot(root, access_confirmed=True, http=http)
+        with pytest.raises(ValueError, match="pilot_output_must_be_new"):
+            collector.pilot(root, access_confirmed=True, http=http)
+    assert calls == [1]
+    assert audit.read_bytes() == b"synthetic previous failed audit"
+    assert report["success"] is True
+    assert report["response_sha256"] == hashlib.sha256(raw).hexdigest()
+    assert report["response_bytes"] == len(raw)
+    assert report["offline_replay_complete"] is True
+    assert report["full_plan_complete"] is False
+    assert len(list((root / collector.PILOT_DIRECTORY).glob("*.json"))) == 1
+
+
+@pytest.mark.parametrize(
+    "directory",
+    [
+        ".data/dart-document-live-pilot-20261013",
+        ".data/dart-document-live-pilot-retry-20261013",
+        ".data/dart-document-live-pilot-20261013/audit",
+        ".data/dart-document-live-pilot-retry-20261013/audit",
+    ],
+)
+def test_batch_cannot_bypass_either_pilot_path(
+    root: Path, directory: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def no_client(*args: object, **kwargs: object) -> object:
+        raise AssertionError("HTTP client must not be constructed")
+
+    monkeypatch.setattr(
+        "donghak_stock_vision.backtest.collect_corporate_action_documents.httpx.Client", no_client
+    )
+    with pytest.raises(ValueError, match="pilot_path_requires_single_request_mode"):
+        collector.collect(root, root / directory, offset=0, limit=25)
+    assert not (root / directory).exists()
+
+
+@pytest.mark.parametrize(
+    "directory", [".data/dart-document-live-pilot-20261013", ".data/arbitrary-pilot"]
+)
+def test_cli_rejects_old_and_arbitrary_output_before_dispatch(
+    root: Path, directory: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import sys
+
+    dispatched = []
+
+    def no_pilot(*args: object, **kwargs: object) -> dict[str, object]:
+        dispatched.append(1)
+        raise AssertionError("pilot must not be dispatched")
+
+    monkeypatch.setattr(collector, "pilot", no_pilot)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "collector",
+            "--root",
+            str(root),
+            "--output",
+            str(root / directory),
+            "--live-pilot",
+            "--access-confirmed",
+        ],
+    )
+    with pytest.raises(SystemExit, match="CORPORATE_ACTION_DOCUMENT_ACQUISITION_BLOCKED"):
+        collector.main()
+    assert dispatched == []
+    assert not (root / directory).exists()
+
+
+def test_retry_failure_is_also_a_permanent_one_shot_latch(root: Path) -> None:
+    calls = []
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(200, content=b"<result><status>800</status></result>")
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+        report = collector.pilot(root, access_confirmed=True, http=http)
+        with pytest.raises(ValueError, match="pilot_output_must_be_new"):
+            collector.pilot(root, access_confirmed=True, http=http)
+    assert calls == [1]
+    assert report["api_status"] == "800"
+    assert report["success"] is False
+
+
+def test_retry_preserves_full_3108_plan_incomplete(root: Path) -> None:
+    queue = root / "docs/evidence/baseline-dart/artifacts/corporate-action-events.json"
+    artifact = json.loads(queue.read_text())["artifact"]
+    template = artifact["candidates"][0]
+    artifact["candidates"] = [template] + [
+        {**template, "filing": {"rcept_no": f"20240101{index:06d}"}} for index in range(3107)
+    ]
+    queue.write_text(json.dumps({"artifact": artifact, "fingerprint": digest(artifact)}))
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, content=zip_body()))
+    ) as http:
+        report = collector.pilot(root, access_confirmed=True, http=http)
+    assert report["attempt_count"] == 1
+    assert report["offline_replay_complete"] is True
+    assert report["pilot_preserved_document_count"] == 1
+    assert report["full_plan_complete"] is False
+    assert report["full_plan_missing_document_count"] == 3107
+    assert report["corporate_action_gate_verified"] is False
+    assert report["historical_identity_verified"] is False
+    assert report["prediction_or_backtest_invoked"] is False
+
+
+def test_retry_dangling_symlink_is_rejected_without_client(root: Path) -> None:
+    output = root / collector.PILOT_DIRECTORY
+    output.parent.mkdir(parents=True)
+    output.symlink_to(root / "missing-directory", target_is_directory=True)
+    with pytest.raises(ValueError, match="pilot_output_must_be_new"):
+        collector.pilot(root, access_confirmed=True)
+    assert output.is_symlink()
+    assert not output.exists()

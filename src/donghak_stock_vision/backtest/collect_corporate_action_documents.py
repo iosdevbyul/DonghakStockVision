@@ -22,7 +22,8 @@ from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
 
 PILOT_RECEIPT = "20240603800041"
-PILOT_DIRECTORY = ".data/dart-document-live-pilot-20261013"
+PREVIOUS_PILOT_DIRECTORY = ".data/dart-document-live-pilot-20261013"
+PILOT_DIRECTORY = ".data/dart-document-live-pilot-retry-20261013"
 
 
 def read(path: Path) -> dict[str, object]:
@@ -44,7 +45,10 @@ def collect(
     require(offset >= 0, "invalid_document_batch_offset")
     require(limit > 0, "invalid_document_batch_limit")
     require(
-        output.resolve() != (root / PILOT_DIRECTORY).resolve(),
+        not any(
+            output.resolve().is_relative_to((root / directory).resolve())
+            for directory in (PREVIOUS_PILOT_DIRECTORY, PILOT_DIRECTORY)
+        ),
         "pilot_path_requires_single_request_mode",
     )
     corporate_actions = read(
