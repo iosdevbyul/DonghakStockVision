@@ -2,14 +2,27 @@
 
 import argparse
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 import httpx
 from dotenv import dotenv_values
 
-from donghak_stock_vision.backtest.corporate_action_acquisition import build_document_plan
-from donghak_stock_vision.backtest.dart_transport import DartAPIError, DartEvidenceClient
+from donghak_stock_vision.backtest.corporate_action_acquisition import (
+    build_document_plan,
+    inspect_document_sources,
+)
+from donghak_stock_vision.backtest.dart_transport import (
+    ENDPOINT,
+    DartAPIError,
+    DartEvidenceClient,
+    DartTransferLimits,
+)
+from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
+
+PILOT_RECEIPT = "20240603800041"
+PILOT_DIRECTORY = ".data/dart-document-live-pilot-20261013"
 
 
 def read(path: Path) -> dict[str, object]:
@@ -30,6 +43,10 @@ def collect(
 
     require(offset >= 0, "invalid_document_batch_offset")
     require(limit > 0, "invalid_document_batch_limit")
+    require(
+        output.resolve() != (root / PILOT_DIRECTORY).resolve(),
+        "pilot_path_requires_single_request_mode",
+    )
     corporate_actions = read(
         root / "docs/evidence/baseline-dart/artifacts/corporate-action-events.json"
     )
@@ -56,6 +73,102 @@ def collect(
     }
 
 
+def pilot(
+    root: Path, *, access_confirmed: bool, http: httpx.Client | None = None
+) -> dict[str, object]:
+    """One fixed receipt, one attempt, fresh directory; only after operator confirmation."""
+
+    require(access_confirmed is True, "pilot_access_and_quota_not_confirmed")
+    output = root / PILOT_DIRECTORY
+    require(not output.exists() and not output.is_symlink(), "pilot_output_must_be_new")
+    key = dotenv_values(root / ".env").get("DART_API_KEY")
+    require(isinstance(key, str) and len(key) == 40, "pilot_local_key_not_configured")
+    parent = read(root / "docs/evidence/baseline-dart/artifacts/corporate-action-events.json")
+    plan = build_document_plan(parent)
+    selected = [r for r in plan.to_dict()["documents"] if r["rcept_no"] == PILOT_RECEIPT]
+    require(len(selected) == 1, "pilot_receipt_missing_from_plan")
+    pilot_plan = FrozenJSON.freeze(
+        {
+            **plan.to_dict(),
+            "documents": selected,
+            "document_count": 1,
+            "pilot_parent_plan_fingerprint": plan.identifier,
+        }
+    )
+    limits = DartTransferLimits()
+    # Directory creation is also a persistent one-shot latch, including after a crash.
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.mkdir(exist_ok=False)
+    owned_http = http is None
+    client: DartEvidenceClient | None = None
+    report: dict[str, object] = {
+        "version": "dart_document_live_pilot_v1",
+        "endpoint": ENDPOINT + "document.xml",
+        "rcept_no": PILOT_RECEIPT,
+        "limits": asdict(limits),
+        "access_confirmation": "operator_attested",
+        "success": False,
+        "api_status": None,
+        "api_category": None,
+        "normal_zip_verified": False,
+        "corporate_action_gate_verified": False,
+        "historical_identity_verified": False,
+        "prediction_or_backtest_invoked": False,
+        "attempt_count": 0,
+        "http_status": None,
+        "bytes_read": 0,
+        "response_complete": False,
+    }
+    try:
+        if http is None:
+            http = httpx.Client(
+                timeout=45, transport=httpx.HTTPTransport(retries=0), trust_env=False
+            )
+        client = DartEvidenceClient(key, output, http, max_attempts=1, limits=limits)
+        raw, metadata = client.fetch("document.xml", {"rcept_no": PILOT_RECEIPT})
+        replay = inspect_document_sources(pilot_plan, output, limits=limits).to_dict()
+        full_replay = inspect_document_sources(plan, output, limits=limits).to_dict()
+        report.update(
+            success=True,
+            normal_zip_verified=True,
+            response_bytes=len(raw),
+            response_sha256=metadata["raw_sha256"],
+            offline_replay_complete=replay["complete"],
+            pilot_preserved_document_count=replay["preserved_document_count"],
+            full_plan_complete=full_replay["complete"],
+            full_plan_missing_document_count=full_replay["missing_document_count"],
+        )
+    except DartAPIError as error:
+        report.update(api_status=error.status, api_category=error.category)
+    except ValueError as error:
+        code = str(error)
+        known = {
+            "DART_RESPONSE_LIMIT_EXCEEDED",
+            "DART_CONTENT_ENCODING_BLOCKED",
+            "DART_TRANSPORT_BLOCKED",
+            "DART_OFFICIAL_ERROR",
+            "DART_DOCUMENT_MIME_BLOCKED",
+            "unsafe_response_not_preserved",
+        }
+        report["failure_code"] = code if code in known else "pilot_validation_blocked"
+    except Exception:
+        report["failure_code"] = "pilot_unexpected_failure"
+    finally:
+        if owned_http and http is not None:
+            try:
+                http.close()
+            except Exception:
+                report["client_close_failed"] = True
+        if client is not None:
+            report.update(client.last_response)
+        audit = output / "audit"
+        audit.mkdir()
+        with (audit / "pilot-report.json").open("x", encoding="utf-8") as handle:
+            json.dump(report, handle, sort_keys=True)
+            handle.write("\n")
+    return report
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
@@ -63,8 +176,20 @@ def main() -> None:
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--limit", type=int, default=25)
     parser.add_argument("--max-attempts", type=int, choices=(1, 2, 3), default=3)
+    parser.add_argument("--live-pilot", action="store_true")
+    parser.add_argument("--access-confirmed", action="store_true")
     args = parser.parse_args()
     try:
+        if args.live_pilot:
+            require(
+                args.output.resolve() == (args.root.resolve() / PILOT_DIRECTORY),
+                "pilot_output_path_mismatch",
+            )
+            report = pilot(args.root.resolve(), access_confirmed=args.access_confirmed)
+            print(json.dumps(report, sort_keys=True))
+            if report["success"] is not True:
+                raise SystemExit("DART_DOCUMENT_PILOT_BLOCKED: inspect safe pilot audit")
+            return
         result = collect(
             args.root.resolve(),
             args.output.resolve(),

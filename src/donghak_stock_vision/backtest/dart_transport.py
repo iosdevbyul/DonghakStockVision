@@ -9,8 +9,9 @@ import re
 import time
 import zipfile
 import zlib
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 from xml.etree import ElementTree
 
@@ -52,6 +53,39 @@ API_ERROR_CATEGORIES = {
     "900": "undefined_error",
     "901": "expired_key",
 }
+
+
+@dataclass(frozen=True)
+class DartTransferLimits:
+    """Local pilot budgets, not official OpenDART service limits."""
+
+    response_bytes: int = 16 * 1024 * 1024
+    zip_members: int = 100
+    member_bytes: int = 16 * 1024 * 1024
+    uncompressed_bytes: int = 64 * 1024 * 1024
+
+    def __post_init__(self) -> None:
+        for value in (
+            self.response_bytes,
+            self.zip_members,
+            self.member_bytes,
+            self.uncompressed_bytes,
+        ):
+            require(type(value) is int and value > 0, "invalid_dart_transfer_limit")
+
+
+class DartTransferLimitError(ContractError):
+    """A local resource limit must stop processing without a retry."""
+
+
+def read_cached_body(path: Path, *, limits: DartTransferLimits | None = None) -> bytes:
+    if limits is None:
+        return gzip.decompress(path.read_bytes())
+    with gzip.open(path, "rb") as source:
+        raw = source.read(limits.response_bytes + 1)
+    if len(raw) > limits.response_bytes:
+        raise DartTransferLimitError("DART_RESPONSE_LIMIT_EXCEEDED")
+    return raw
 
 
 class DartAPIError(ContractError):
@@ -128,18 +162,30 @@ def request_identity(api: str, params: dict[str, str]) -> dict[str, Any]:
     )
 
 
-def zip_response_valid(api: str, raw: bytes) -> bool:
+def zip_response_valid(api: str, raw: bytes, *, limits: DartTransferLimits | None = None) -> bool:
     """Require ZIP bytes, readable CRCs and safe member names; never extract files."""
 
     if api not in ZIP_BINARY_ENDPOINTS:
         return True
-    if not raw.startswith(b"PK"):
+    return _inspect_zip(raw, limits=limits)
+
+
+def _inspect_zip(
+    raw: bytes, *, limits: DartTransferLimits | None, secret: bytes | None = None
+) -> bool:
+    if not raw.startswith(b"PK") or (limits and len(raw) > limits.response_bytes):
         return False
     try:
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
             members = archive.infolist()
-            names = [item.filename for item in members]
+            names = [PurePosixPath(item.filename).as_posix().casefold() for item in members]
             if not any(not item.is_dir() for item in members) or len(set(names)) != len(names):
+                return False
+            if limits and (
+                len(members) > limits.zip_members
+                or any(item.file_size > limits.member_bytes for item in members)
+                or sum(item.file_size for item in members) > limits.uncompressed_bytes
+            ):
                 return False
             for item in members:
                 if (
@@ -151,7 +197,26 @@ def zip_response_valid(api: str, raw: bytes) -> bool:
                     or item.flag_bits & 1
                 ):
                     return False
-            return archive.testzip() is None
+            total_read = 0
+            for item in members:
+                member_read = 0
+                tail = b""
+                with archive.open(item) as source:
+                    while chunk := source.read(65536):
+                        member_read += len(chunk)
+                        total_read += len(chunk)
+                        if limits and (
+                            member_read > limits.member_bytes
+                            or total_read > limits.uncompressed_bytes
+                        ):
+                            return False
+                        if secret and secret in tail + chunk:
+                            return False
+                        if secret:
+                            tail = (tail + chunk)[-(len(secret) - 1) :] if len(secret) > 1 else b""
+                if member_read != item.file_size:
+                    return False
+            return True
     except (
         ValueError,
         zipfile.BadZipFile,
@@ -163,22 +228,11 @@ def zip_response_valid(api: str, raw: bytes) -> bool:
         return False
 
 
-def safe_body(raw: bytes, secret: str) -> bool:
+def safe_body(raw: bytes, secret: str, *, limits: DartTransferLimits | None = None) -> bool:
     if secret.encode() in raw:
         return False
     if raw.startswith(b"PK"):
-        try:
-            with zipfile.ZipFile(io.BytesIO(raw)) as z:
-                return all(secret.encode() not in z.read(n) for n in z.namelist())
-        except (
-            ValueError,
-            zipfile.BadZipFile,
-            RuntimeError,
-            NotImplementedError,
-            zlib.error,
-            EOFError,
-        ):
-            return False
+        return _inspect_zip(raw, limits=limits, secret=secret.encode())
     return True
 
 
@@ -191,15 +245,40 @@ class DartEvidenceClient:
     """
 
     def __init__(
-        self, key: str | None, output: Path, client: httpx.Client, *, max_attempts: int = 3
+        self,
+        key: str | None,
+        output: Path,
+        client: httpx.Client,
+        *,
+        max_attempts: int = 3,
+        limits: DartTransferLimits | None = None,
     ) -> None:
         require(bool(key), "BLOCKED_ON_DART_CREDENTIAL")
         require(type(max_attempts) is int and 1 <= max_attempts <= 3, "invalid_dart_attempt_budget")
         self._key = str(key)
         self.max_attempts = max_attempts
+        self.limits = limits
+        self.last_response: dict[str, Any] = {}
         self.output = output
         self.client = client
         output.mkdir(parents=True, exist_ok=True)
+
+    def _read_response(self, response: httpx.Response) -> bytes:
+        if self.limits:
+            encoding = response.headers.get("content-encoding", "identity").strip().lower()
+            if encoding not in {"", "identity"}:
+                raise DartTransferLimitError("DART_CONTENT_ENCODING_BLOCKED")
+            length = response.headers.get("content-length", "")
+            if re.fullmatch(r"[0-9]+", length) and int(length) > self.limits.response_bytes:
+                raise DartTransferLimitError("DART_RESPONSE_LIMIT_EXCEEDED")
+        body = bytearray()
+        for chunk in response.iter_bytes(chunk_size=65536):
+            self.last_response["bytes_read"] += len(chunk)
+            if self.limits and len(body) + len(chunk) > self.limits.response_bytes:
+                raise DartTransferLimitError("DART_RESPONSE_LIMIT_EXCEEDED")
+            body.extend(chunk)
+        self.last_response["response_complete"] = True
+        return bytes(body)
 
     def fetch(self, api: str, params: dict[str, str]) -> tuple[bytes, dict[str, Any]]:
         meta = request_identity(api, params)
@@ -212,13 +291,15 @@ class DartEvidenceClient:
                 isinstance(saved, dict) and all(saved.get(k) == v for k, v in meta.items()),
                 "cache_request_identity_mismatch",
             )
-            raw = gzip.decompress(body.read_bytes())
+            raw = read_cached_body(body, limits=self.limits)
             require(hashlib.sha256(raw).hexdigest() == saved["raw_sha256"], "cache_hash_mismatch")
             require(saved["http_status"] == 200, "DART_TRANSPORT_BLOCKED")
-            require(safe_body(raw, self._key), "unsafe_response_not_preserved")
+            require(safe_body(raw, self._key, limits=self.limits), "unsafe_response_not_preserved")
             if api == "document.xml" and (error := document_api_error(raw, cached=True)):
                 raise error
-            require(zip_response_valid(api, raw), "DART_CACHED_RESPONSE_BLOCKED")
+            require(
+                zip_response_valid(api, raw, limits=self.limits), "DART_CACHED_RESPONSE_BLOCKED"
+            )
             return raw, saved
         require(not body.exists(), "incomplete_cache_receipt")
         attempts: list[dict[str, Any]] = []
@@ -232,21 +313,36 @@ class DartEvidenceClient:
             prior_logging_threshold = logging.root.manager.disable
             logging.disable(logging.CRITICAL)
             status = 0
+            self.last_response = {
+                "attempt_count": attempt + 1,
+                "http_status": None,
+                "bytes_read": 0,
+                "content_type": "not_recorded",
+                "response_complete": False,
+            }
             try:
-                response = self.client.get(
+                with self.client.stream(
+                    "GET",
                     ENDPOINT + api,
                     params={**params, "crtfc_key": self._key},
+                    headers={"Accept-Encoding": "identity"} if self.limits else None,
                     follow_redirects=False,
-                )
-                status = response.status_code
-                raw = response.content
-                content_type = response_content_type(response.headers.get("content-type", ""))
+                ) as response:
+                    status = response.status_code
+                    content_type = response_content_type(response.headers.get("content-type", ""))
+                    self.last_response.update(http_status=status, content_type=content_type)
+                    raw = self._read_response(response)
+                    self.last_response["raw_sha256"] = hashlib.sha256(raw).hexdigest()
+            except DartTransferLimitError:
+                raise
             except Exception:
                 raw = b""
+                status = 0
             finally:
                 logging.disable(prior_logging_threshold)
+                self.last_response["retrieved_at"] = datetime.now(UTC).isoformat()
             retrieved_at = datetime.now(UTC).isoformat()
-            require(safe_body(raw, self._key), "unsafe_response_not_preserved")
+            require(safe_body(raw, self._key, limits=self.limits), "unsafe_response_not_preserved")
             attempts.append(dict(attempt=attempt + 1, http_status=status))
             if api == "document.xml" and (error := document_api_error(raw)):
                 raise error
@@ -261,9 +357,23 @@ class DartEvidenceClient:
             retrieved_at=retrieved_at,
         )
         require(status == 200, "DART_TRANSPORT_BLOCKED")
-        require(zip_response_valid(api, raw), "DART_OFFICIAL_ERROR")
-        body.write_bytes(gzip.compress(raw, mtime=0))
-        receipt.write_text(json.dumps(meta, sort_keys=True, ensure_ascii=True) + "\n")
+        require(zip_response_valid(api, raw, limits=self.limits), "DART_OFFICIAL_ERROR")
+        if self.limits and api in ZIP_BINARY_ENDPOINTS:
+            require(
+                content_type
+                in {
+                    "application/zip",
+                    "application/x-zip-compressed",
+                    "application/octet-stream",
+                    "application/xml",
+                    "text/xml",
+                },
+                "DART_DOCUMENT_MIME_BLOCKED",
+            )
+        with body.open("xb") as handle:
+            handle.write(gzip.compress(raw, mtime=0))
+        with receipt.open("x", encoding="utf-8") as handle:
+            handle.write(json.dumps(meta, sort_keys=True, ensure_ascii=True) + "\n")
         return raw, meta
 
     def filings(self, params: dict[str, str]) -> list[dict[str, Any]]:

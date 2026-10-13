@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import gzip
 import hashlib
 import json
 import re
@@ -10,7 +9,12 @@ from pathlib import Path
 from typing import Any, cast
 
 from donghak_stock_vision.backtest.dart_evidence import EVENT_CLASSES, security_code_valid
-from donghak_stock_vision.backtest.dart_transport import request_identity, zip_response_valid
+from donghak_stock_vision.backtest.dart_transport import (
+    DartTransferLimits,
+    read_cached_body,
+    request_identity,
+    zip_response_valid,
+)
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
 from donghak_stock_vision.data.learning import digest
@@ -106,7 +110,9 @@ def build_document_plan(corporate_actions: dict[str, Any]) -> FrozenJSON:
     )
 
 
-def inspect_document_sources(plan: FrozenJSON, source_dir: Path) -> FrozenJSON:
+def inspect_document_sources(
+    plan: FrozenJSON, source_dir: Path, *, limits: DartTransferLimits | None = None
+) -> FrozenJSON:
     """Verify cached DART document bytes and receipts without parsing event meaning."""
 
     value = plan.to_dict()
@@ -135,10 +141,10 @@ def inspect_document_sources(plan: FrozenJSON, source_dir: Path) -> FrozenJSON:
         )
         body_path = receipt_path.with_suffix(".gz")
         require(body_path.is_file(), "document_body_missing")
-        raw = gzip.decompress(body_path.read_bytes())
+        raw = read_cached_body(body_path, limits=limits)
         raw_sha256 = hashlib.sha256(raw).hexdigest()
         require(raw_sha256 == meta.get("raw_sha256"), "document_body_hash_mismatch")
-        require(zip_response_valid("document.xml", raw), "document_archive_required")
+        require(zip_response_valid("document.xml", raw, limits=limits), "document_archive_required")
         require(rcept_no not in preserved, "duplicate_document_source")
         preserved[rcept_no] = raw_sha256
 
