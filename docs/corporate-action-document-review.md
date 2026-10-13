@@ -1,6 +1,7 @@
 # Corporate-action document review index
 
-The DART acquisition stage now preserves all planned official source bytes. This
+This stage requires all planned official document bytes to pass acquisition replay.
+HTTP 200 receipts or cached files alone do not satisfy that prerequisite. This
 review stage builds a deterministic local index from those bytes without approving
 an economic event or an effective date.
 

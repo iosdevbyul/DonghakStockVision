@@ -334,7 +334,11 @@ def _evidence(
 
     current = int(manifest["current_identity_count"])
     historical_count = int(manifest["historical_identity_count"])
-    complete_corporate = int(manifest["complete_corporate_coverage_count"])
+    complete_corporate = manifest["complete_corporate_coverage_count"]
+    if type(complete_corporate) is not int or not 0 <= complete_corporate <= market.universe:
+        raise SnapshotExportError("invalid corporate-action coverage count")
+    if complete_corporate > historical_count:
+        raise SnapshotExportError("corporate-action coverage exceeds historical identity coverage")
     parent_unexplained = int(manifest["unresolved_missing_sessions"])
     parent_explained = int(manifest["explained_missing_sessions"])
     newly_explained = int(lifecycle_reconciliation["explained"])
@@ -415,6 +419,10 @@ def _evidence(
             raise SnapshotExportError("blocked security lifecycle has no unresolved gaps")
     if lifecycle_integrated.get("corporate_action") != "BLOCKED_ON_CORPORATE_ACTION_EVIDENCE":
         raise SnapshotExportError("unexpected corporate-action lifecycle status")
+    if complete_corporate == market.universe:
+        raise SnapshotExportError(
+            "corporate-action coverage contradicts blocked lifecycle evidence"
+        )
     if int(historical["full_period_verified"]) != historical_count:
         raise SnapshotExportError("historical identity count mismatch")
     if current > market.universe or complete_corporate > market.universe:
