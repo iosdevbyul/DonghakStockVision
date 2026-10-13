@@ -51,30 +51,8 @@ def collect(
         ),
         "pilot_path_requires_single_request_mode",
     )
-    corporate_actions = read(
-        root / "docs/evidence/baseline-dart/artifacts/corporate-action-events.json"
-    )
-    plan = build_document_plan(corporate_actions).to_dict()
-    receipts = [row["rcept_no"] for row in plan["documents"]]
-    selected = receipts[offset : offset + limit]
-
-    with httpx.Client(timeout=45) as http:
-        client = DartEvidenceClient(
-            dotenv_values(root / ".env").get("DART_API_KEY"),
-            output,
-            http,
-            max_attempts=max_attempts,
-        )
-        for receipt in selected:
-            client.fetch("document.xml", {"rcept_no": receipt})
-
-    return {
-        "planned_documents": len(receipts),
-        "batch_offset": offset,
-        "batch_limit": limit,
-        "selected_documents": len(selected),
-        "preserved_receipts": len(tuple(output.glob("*.json"))),
-    }
+    require(False, "batch_approval_record_required")
+    return {}  # Unreachable: legacy unapproved network dispatch is deliberately disabled.
 
 
 def pilot(
@@ -182,9 +160,12 @@ def main() -> None:
     parser.add_argument("--max-attempts", type=int, choices=(1, 2, 3), default=3)
     parser.add_argument("--live-pilot", action="store_true")
     parser.add_argument("--access-confirmed", action="store_true")
+    parser.add_argument("--batch-approval", type=Path)
+    parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
     try:
         if args.live_pilot:
+            require(args.batch_approval is None and not args.resume, "pilot_batch_scope_conflict")
             require(
                 args.output.resolve() == (args.root.resolve() / PILOT_DIRECTORY),
                 "pilot_output_path_mismatch",
@@ -194,6 +175,19 @@ def main() -> None:
             if report["success"] is not True:
                 raise SystemExit("DART_DOCUMENT_PILOT_BLOCKED: inspect safe pilot audit")
             return
+        if args.batch_approval is not None:
+            from donghak_stock_vision.backtest.dart_document_batch import execute, load
+
+            require(
+                args.offset == 0 and args.limit == 25 and args.max_attempts == 3,
+                "batch_legacy_flags_forbidden",
+            )
+            report = execute(args.root, load(args.batch_approval), args.output, resume=args.resume)
+            print(json.dumps(report, sort_keys=True))
+            if not report["success"]:
+                raise SystemExit("DART_BATCH_BLOCKED: inspect safe execution records")
+            return
+        require(not args.resume, "batch_approval_record_required")
         result = collect(
             args.root.resolve(),
             args.output.resolve(),
