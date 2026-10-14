@@ -21,6 +21,14 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument(
         "--analysis-publication", type=Path, help="reviewed per-security analysis JSON"
     )
+    result.add_argument(
+        "--operations-root", type=Path, help="optional read-only DART evidence root"
+    )
+    result.add_argument(
+        "--dart-acquisition-freshness-seconds",
+        type=int,
+        help="optional acquisition-age policy, not publication freshness",
+    )
     result.add_argument("--host", default="127.0.0.1")
     result.add_argument("--port", type=int, default=8000)
     return result
@@ -59,7 +67,19 @@ def main(argv: list[str] | None = None) -> None:
 
         analysis_reader = AnalysisPublicationReader.from_path(args.analysis_publication)
     reader = SnapshotReader.from_path(snapshot_path)
-    app = create_app(reader, ohlcv_reader=ohlcv_reader, analysis_reader=analysis_reader)
+    from donghak_stock_vision.api.operations import OperationsReader
+
+    app = create_app(
+        reader,
+        ohlcv_reader=ohlcv_reader,
+        analysis_reader=analysis_reader,
+        operations_reader=OperationsReader(
+            args.operations_root,
+            reader,
+            acquisition_threshold_seconds=args.dart_acquisition_freshness_seconds,
+            market=ohlcv_reader,
+        ),
+    )
     uvicorn.run(app, host=args.host, port=args.port)
 
 

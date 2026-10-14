@@ -7,6 +7,7 @@ import hashlib
 import json
 import sqlite3
 from contextlib import closing
+from dataclasses import dataclass
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
@@ -32,6 +33,14 @@ class OhlcvSeries(BaseModel):
 
 class OhlcvReaderError(ValueError):
     pass
+
+
+@dataclass(frozen=True)
+class CollectionAuditRow:
+    identifier: int
+    finished_at: str
+    status: str
+    rows: int
 
 
 class OhlcvMarketReader:
@@ -72,6 +81,30 @@ class OhlcvMarketReader:
         conn = sqlite3.connect(self._path.as_uri() + "?mode=ro&immutable=1", uri=True)
         conn.execute("PRAGMA query_only=ON")
         return conn
+
+    def collection_audit(self) -> tuple[CollectionAuditRow, ...]:
+        """Recorded outcomes only; these rows do not prove raw-source provenance.
+
+        Reuses the pinned, query-only immutable DB boundary. No raw exceptions,
+        run names, scopes or provider payloads leave this adapter.
+        """
+        self._verify_file()
+        with closing(self._connect()) as conn:
+            rows = []
+            for identifier, finished, status, count in conn.execute(
+                "SELECT id,finished_at,status,rows FROM collection_runs ORDER BY id DESC"
+            ):
+                if (
+                    type(identifier) is not int
+                    or identifier < 1
+                    or type(count) is not int
+                    or not isinstance(status, str)
+                    or not isinstance(finished, str)
+                ):
+                    raise OhlcvReaderError("invalid collection audit row")
+                rows.append(CollectionAuditRow(identifier, finished, status, count))
+        self._verify_file()
+        return tuple(rows)
 
     def series(self, ticker: str) -> OhlcvSeries | None:
         # Verify fingerprint on each query so an unexpected replacement fails closed.
