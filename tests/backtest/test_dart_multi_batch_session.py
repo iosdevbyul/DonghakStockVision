@@ -334,3 +334,185 @@ def test_parent_completion_durability_failure_is_not_silently_complete(
         run(root, value, lambda _: httpx.Response(200, content=zipped()))
     with pytest.raises(ValueError, match="session_terminal_record_conflict"):
         session.prepare(root, 25)
+
+
+@pytest.mark.parametrize("phase", ["completed_child", "saved_receipt", "missing_binding"])
+def test_explicit_resume_recovers_safe_recorded_stop(
+    root: Path, monkeypatch: pytest.MonkeyPatch, phase: str
+) -> None:
+    value = parent(root)
+    original = batch.write_once
+    calls: list[str] = []
+    fired = False
+
+    def write(path: Path, record: dict[str, Any]) -> None:
+        nonlocal fired
+        if (
+            not fired
+            and phase == "saved_receipt"
+            and path.parent.name == "events"
+            and path.name != "complete.json"
+        ):
+            fired = True
+            raise OSError("synthetic event persistence interruption")
+        if not fired and phase == "missing_binding" and path.name == "binding.json":
+            fired = True
+            raise Crash()
+        original(path, record)
+        if not fired and phase == "completed_child" and path.name == "complete.json":
+            fired = True
+            raise OSError("synthetic batch boundary interruption")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.params["rcept_no"])
+        return httpx.Response(200, content=zipped())
+
+    monkeypatch.setattr(batch, "write_once", write)
+    with pytest.raises((ValueError, Crash)):
+        run(root, value, handler)
+    monkeypatch.setattr(batch, "write_once", original)
+    before = files(root)
+    result = run(root, value, handler, resume=True)
+    assert result["state"] == "COMPLETE"
+    assert calls == value["receipts"] and len(set(calls)) == 50
+    after = files(root)
+    assert all(after[p] == body for p, body in before.items())
+    with pytest.raises(ValueError):
+        run(root, value, lambda _: pytest.fail("completed session cannot repeat"), resume=True)
+
+
+@pytest.mark.parametrize("phase", ["intent", "approval", "binding", "reservation"])
+def test_kernel_releases_lock_after_forced_process_death(root: Path, phase: str) -> None:
+    import multiprocessing
+    import os
+    import signal
+
+    value = parent(root, 25)
+
+    def killed_child() -> None:
+        original = batch.write_once
+
+        def write(path: Path, value: dict[str, Any]) -> None:
+            original(path, value)
+            if (
+                (phase == "intent" and path.name == "approval-intent.json")
+                or (
+                    phase == "approval"
+                    and path.name == "approval.json"
+                    and path.parent.name == "session-0001"
+                )
+                or (phase == "binding" and path.name == "binding.json")
+                or (phase == "reservation" and path.parent.name == "attempts")
+            ):
+                os.kill(os.getpid(), signal.SIGKILL)
+
+        batch.write_once = write
+        run(root, value, lambda _: pytest.fail("killed before document request"))
+
+    process = multiprocessing.get_context("fork").Process(target=killed_child)
+    process.start()
+    process.join(30)
+    assert not process.is_alive()
+    assert process.exitcode == -signal.SIGKILL
+    with batch.execution_lock(root):
+        pass  # The child did not leak the kernel lock.
+    before = files(root)
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.params["rcept_no"])
+        return httpx.Response(200, content=zipped())
+
+    if phase == "reservation":
+        with pytest.raises(ValueError, match="session_ambiguous_or_failed_attempt"):
+            run(
+                root,
+                value,
+                lambda _: pytest.fail("ambiguous reservation cannot retry"),
+                resume=True,
+            )
+        assert not calls
+        with pytest.raises(ValueError):
+            session.prepare(root, 25)
+    else:
+        assert run(root, value, handler, resume=True)["state"] == "COMPLETE"
+        assert calls == value["receipts"]
+    after = files(root)
+    assert all(after[p] == body for p, body in before.items())
+
+
+def test_repeated_safe_stops_append_history_without_overwriting(
+    root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    value = parent(root)
+    original = batch.write_once
+    fail = True
+
+    def write(path: Path, record: dict[str, Any]) -> None:
+        if fail and path.name != "complete.json" and path.parent.name == "events":
+            raise OSError("synthetic repeated safe persistence interruption")
+        original(path, record)
+
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.params["rcept_no"])
+        return httpx.Response(200, content=zipped())
+
+    monkeypatch.setattr(batch, "write_once", write)
+    with pytest.raises(ValueError):
+        run(root, value, handler)
+    first = files(root)
+    with pytest.raises(ValueError):
+        run(root, value, handler, resume=True)
+    second = files(root)
+    assert all(second[p] == body for p, body in first.items())
+    fail = False
+    assert run(root, value, handler, resume=True)["state"] == "COMPLETE"
+    assert calls == value["receipts"]
+    assert len(list((root / value["execution_path"] / "resumes").glob("*.json"))) == 2
+
+
+@pytest.mark.parametrize("damage", ["intent_mismatch", "legacy_missing", "binding_after_execution"])
+def test_partial_binding_recovery_requires_original_scope_and_no_execution(
+    root: Path, monkeypatch: pytest.MonkeyPatch, damage: str
+) -> None:
+    value = parent(root, 25)
+    original = batch.write_once
+
+    def write(path: Path, record: dict[str, Any]) -> None:
+        if damage != "binding_after_execution" and path.name == "binding.json":
+            raise Crash()
+        original(path, record)
+        if damage == "binding_after_execution" and path.name == "complete.json":
+            raise Crash()
+
+    monkeypatch.setattr(batch, "write_once", write)
+    with pytest.raises(Crash):
+        run(root, value, lambda _: httpx.Response(200, content=zipped()))
+    monkeypatch.setattr(batch, "write_once", original)
+    directory = root / value["execution_path"]
+    if damage == "intent_mismatch":
+        value["approved_at"] = "2001-01-01T00:00:00+00:00"
+        (directory / "approval.json").write_text(json.dumps(value))
+    elif damage == "legacy_missing":
+        # Synthetic migration fixture for an original PR103 approval without intent.
+        (directory / "approval-intent.json").unlink()
+    else:
+        (directory / "binding.json").unlink()
+    before = files(root)
+    if damage == "legacy_missing":
+        assert (
+            run(root, value, lambda _: httpx.Response(200, content=zipped()), resume=True)["state"]
+            == "COMPLETE"
+        )
+    else:
+        with pytest.raises(ValueError):
+            run(
+                root,
+                value,
+                lambda _: pytest.fail("invalid binding recovery must not request"),
+                resume=True,
+            )
+    after = files(root)
+    assert all(after[p] == body for p, body in before.items())

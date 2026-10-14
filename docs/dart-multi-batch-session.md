@@ -59,9 +59,11 @@ A process death can leave no stop record. Explicit `--resume` is required; saved
 parent approval/bindings, existing child approvals and all sources are revalidated.
 Completed children are skipped. A fully preserved ZIP plus receipt can be
 reconciled by the original executor without repeating its request. Reserved but
-unresolved requests, body-only saves, Failed/Blocked states and persisted stops
-are refused. Operator review is required; there is no reset/retry override.
-A missing/partial parent binding also fails closed. No automatic repair is made.
+unresolved requests, body-only saves and Failed/Blocked states are refused.
+A recorded stop permits explicit resume only when every reservation, source,
+receipt, owner and budget is revalidated as safe. There is no reset/retry override.
+Missing binding has a narrowly defined offline recovery contract below;
+corrupt or partially written binding is never overwritten.
 
 Completion persists the exact scope's source SHA-256 map and revalidates it on
 subsequent status/preparation. It proves local acquisition/replay only, not
@@ -113,3 +115,74 @@ reused without modification. No parent/child executable approval was generated.
 Plan fingerprint: `74540d0b223a8da4f375eef59feef49ca0da892d640434c085c27f9dd917e7ab`.
 The preservation check compared SHA-256 of 6,482 existing evidence/control/DB/
 snapshot files and found zero changes. The new draft is Git-ignored.
+
+## Stop and resume correction (PR #103 follow-up)
+
+The original implementation unconditionally rejected `stopped.json`, including
+safe control/storage interruptions after a completed child or fully saved source
+and receipt. It also rejected an approval written before its binding. Three
+regression cases first reproduced these failures without network requests.
+
+The first `stopped.json` remains immutable. Further stops append
+`interruptions/NNNN.json`; explicit resumes append `resumes/NNNN.json`. Resume
+records link the parent approval fingerprint, prior resume fingerprint, observed
+stop fingerprints, original SHA-256 map and immutable reservation fingerprints.
+A recovered completion additionally binds the last resume fingerprint. Historical
+stop files remain present after successful recovery; Status distinguishes
+completion from an active stop and reports resume/stop history counts.
+
+A new stop records `recovery_policy`: `revalidate_evidence` or `blocked`. This is
+not an execution approval. Failed API/HTTP responses, ambiguous claims or corrupted
+sources mark the stop blocked and cannot be retried using the original approval
+or a new session ID. Original PR103 two-field stop records are accepted for
+backward compatibility, but still undergo the complete evidence/claim review.
+
+Explicit resume (`--resume` together with the same approved parent file and
+`--confirm-execution`) can continue only if:
+
+- Original Draft, plan and complete parent approval still match.
+- All existing child approvals and bindings are exact; claim owners are correct.
+- Global inventory contains only Pending or Verified Local documents.
+- Reserved requests plus remaining Pending scope fit the original total budget.
+- Every saved source and receipt passes identity, SHA, ZIP/CRC and transfer limits.
+- Unfinished work has either no reservation, or a fully verified source+receipt.
+
+Completed children are skipped. A source+receipt whose success event was not
+written can be reconciled by the existing single-batch executor without fetching
+again. An API error remains blocked even if other documents completed normally.
+Normal completed sessions cannot execute again.
+
+### Approval publication interruption
+
+New executions exclusively create `approval-intent.json` before `approval.json`.
+The intent anchors the approved parent fingerprint and original Draft fingerprint.
+If approval or binding is missing, explicit resume requires the externally supplied
+approved record to match those anchors and any saved approval exactly. Every child
+path must be absent and every scoped receipt Pending and unreserved. Only then can
+missing records be exclusively created. Existing files are never rewritten.
+
+For legacy PR103 approval-only records lacking an intent, the operator must supply
+the exact authoritative approved parent record matching the saved approval and
+original Draft. Its fingerprint is validated, then an intent and missing binding
+are appended only after proving no child execution/reservation exists. This is a
+local operator attestation, not independent proof of who approved the old record.
+A changed approval, malformed binding, existing child, scope claim or partial JSON
+refuses recovery. Status never performs this repair.
+
+### Conditions requiring operator review
+
+No command deletes or repairs malformed JSON, mismatched binding, failed responses,
+missing/corrupted source or receipt, ambiguous reservations, altered plan/scope,
+over-budget claims or inconsistent terminal records. Preserve all records and
+inspect the child events, claims, source receipts and hashes offline. Supply the
+original authoritative approval for a missing-binding case; never edit a stored
+approval to make it match. Escalate unrecoverable evidence/terminal contradictions
+for a separately designed reconciliation policy; the current CLI offers no reset,
+new-session bypass or automatic recollection. A legacy completion+stop conflict
+without an explicit recovery chain remains blocked.
+
+Tests also SIGKILL a dedicated child process at approval intent, approval, binding
+and request reservation boundaries. The kernel lock releases on death. Explicit
+resume recovers only the pre-request cases; a reservation without response evidence
+stays blocked. All HTTP responses in these tests use MockTransport and fake keys;
+real OpenDART requests remain zero.

@@ -110,12 +110,212 @@ def validate(root: Path, value: dict[str, Any], *, approved: bool) -> str:
     return digest(value)
 
 
+def binding_for(approval: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "parent_fingerprint": digest(approval),
+        "children": {c["execution_path"]: digest(c) for c in child_approvals(approval)},
+    }
+
+
+def verified_inventory(root: Path) -> dict[str, Any]:
+    try:
+        return batch.inventory(root, batch.plan_for(root))
+    except Exception:
+        raise ValueError("session_existing_evidence_invalid") from None
+
+
+def unused_scope(root: Path, approval: dict[str, Any]) -> None:
+    view = verified_inventory(root)
+    require(
+        all(not (root / c["execution_path"]).exists() for c in child_approvals(approval))
+        and all(
+            view["states"][r] == "Pending" and r not in view["claims"] for r in approval["receipts"]
+        ),
+        "session_partial_binding_has_execution",
+    )
+
+
+def numbered(path: Path) -> list[Path]:
+    require(not path.is_symlink(), "session_path_invalid")
+    if not path.exists():
+        return []
+    require(path.is_dir(), "session_path_invalid")
+    files = sorted(path.iterdir())
+    require(
+        [p.name for p in files] == [f"{n:04d}.json" for n in range(1, len(files) + 1)],
+        "session_journal_invalid",
+    )
+    return files
+
+
+def stop_records(path: Path, fingerprint: str) -> list[str]:
+    paths = ([path / "stopped.json"] if (path / "stopped.json").exists() else []) + numbered(
+        path / "interruptions"
+    )
+    expected = {
+        "parent_fingerprint": fingerprint,
+        "reason": "session_execution_stopped_operator_review_required",
+    }
+    for record in paths:
+        value = batch.load(record)
+        require(
+            value == expected
+            or value == {**expected, "recovery_policy": "revalidate_evidence"}
+            or value == {**expected, "recovery_policy": "blocked"},
+            "session_stop_record_changed",
+        )
+    return [digest(batch.load(record)) for record in paths]
+
+
+def recoverable_stops(path: Path, fingerprint: str) -> None:
+    stop_records(path, fingerprint)
+    paths = ([path / "stopped.json"] if (path / "stopped.json").exists() else []) + numbered(
+        path / "interruptions"
+    )
+    require(
+        all(batch.load(p).get("recovery_policy") != "blocked" for p in paths),
+        "session_stop_permanently_blocked",
+    )
+
+
+def resume_check(root: Path, approval: dict[str, Any]) -> dict[str, Any]:
+    """Only proven saved success or unreserved Pending work may consume the old scope."""
+    view = verified_inventory(root)
+    require(
+        not any(s in {"Attempted", "Failed", "Blocked"} for s in view["states"].values()),
+        "session_ambiguous_or_failed_attempt",
+    )
+    scope = approval["receipts"]
+    owners = {r: digest(c) for c in child_approvals(approval) for r in c["receipts"]}
+    require(
+        all(
+            r not in view["claims"] or view["claims"][r]["approval_fingerprint"] == owners[r]
+            for r in scope
+        ),
+        "session_claim_owner_mismatch",
+    )
+    used = sum(r in view["claims"] for r in scope)
+    pending = sum(view["states"][r] == "Pending" for r in scope)
+    require(used + pending <= approval["max_requests"], "session_budget_exceeded")
+    return view
+
+
+def resume_records(root: Path, path: Path, approval: dict[str, Any]) -> list[str]:
+    records = numbered(path / "resumes")
+    if not records:
+        return []
+    view = verified_inventory(root)
+    stops = stop_records(path, digest(approval))
+    history: list[str] = []
+    for record in records:
+        value = batch.load(record)
+        require(
+            set(value)
+            == {
+                "parent_fingerprint",
+                "previous_resume",
+                "stop_fingerprints",
+                "source_sha256",
+                "claim_sha256",
+            },
+            "session_journal_invalid",
+        )
+        require(
+            value["parent_fingerprint"] == digest(approval)
+            and value["previous_resume"] == (history[-1] if history else None),
+            "session_journal_invalid",
+        )
+        source, claims, observed_stops = (
+            value["source_sha256"],
+            value["claim_sha256"],
+            value["stop_fingerprints"],
+        )
+        require(
+            isinstance(source, dict)
+            and isinstance(claims, dict)
+            and isinstance(observed_stops, list),
+            "session_journal_invalid",
+        )
+        require(
+            observed_stops == stops[: len(observed_stops)] and len(observed_stops) <= len(stops),
+            "session_journal_invalid",
+        )
+        require(
+            set(source) <= set(approval["receipts"])
+            and all(view["hashes"].get(r) == sha for r, sha in source.items()),
+            "session_replay_failed",
+        )
+        require(
+            set(claims) <= set(approval["receipts"])
+            and all(
+                r in view["claims"] and digest(view["claims"][r]) == sha
+                for r, sha in claims.items()
+            ),
+            "session_claim_owner_mismatch",
+        )
+        history.append(digest(value))
+    return history
+
+
+def record_resume(root: Path, path: Path, approval: dict[str, Any]) -> None:
+    recoverable_stops(path, digest(approval))
+    view = resume_check(root, approval)
+    history = resume_records(root, path, approval)
+    directory = path / "resumes"
+    directory.mkdir(exist_ok=True)
+    batch.write_once(
+        directory / f"{len(history) + 1:04d}.json",
+        {
+            "parent_fingerprint": digest(approval),
+            "previous_resume": history[-1] if history else None,
+            "stop_fingerprints": stop_records(path, digest(approval)),
+            "source_sha256": {
+                r: view["hashes"][r] for r in approval["receipts"] if r in view["hashes"]
+            },
+            "claim_sha256": {
+                r: digest(view["claims"][r]) for r in approval["receipts"] if r in view["claims"]
+            },
+        },
+    )
+
+
+def record_stop(root: Path, path: Path, approval: dict[str, Any]) -> None:
+    fingerprint = digest(approval)
+    try:
+        resume_check(root, approval)
+        policy = "revalidate_evidence"
+    except Exception:
+        policy = "blocked"
+    value = {
+        "parent_fingerprint": fingerprint,
+        "reason": "session_execution_stopped_operator_review_required",
+        "recovery_policy": policy,
+    }
+    if not (path / "stopped.json").exists():
+        batch.write_once(path / "stopped.json", value)
+    else:
+        directory = path / "interruptions"
+        existing = numbered(directory)
+        directory.mkdir(exist_ok=True)
+        batch.write_once(directory / f"{len(existing) + 1:04d}.json", value)
+
+
 def checked_records(root: Path) -> list[Path]:
     paths = records(root)
     for path in paths:
         require(
-            not ((path / "complete.json").exists() and (path / "stopped.json").exists()),
-            "session_terminal_record_conflict",
+            all(
+                not (path / name).is_symlink()
+                for name in (
+                    "draft.json",
+                    "approval.json",
+                    "approval-intent.json",
+                    "binding.json",
+                    "stopped.json",
+                    "complete.json",
+                )
+            ),
+            "session_path_invalid",
         )
         draft = batch.load(path / "draft.json")
         validate(root, draft, approved=False)
@@ -128,37 +328,38 @@ def checked_records(root: Path) -> list[Path]:
                 == {k: v for k, v in draft.items() if k not in orchestrator.GATES},
                 "session_approval_changed",
             )
-            binding = batch.load(path / "binding.json")
-            require(
-                binding
-                == {
-                    "parent_fingerprint": fingerprint,
-                    "children": {c["execution_path"]: digest(c) for c in child_approvals(approval)},
-                },
-                "session_approval_changed",
-            )
+            if (path / "approval-intent.json").exists():
+                require(
+                    batch.load(path / "approval-intent.json")
+                    == {"parent_fingerprint": fingerprint, "draft_fingerprint": digest(draft)},
+                    "session_approval_changed",
+                )
+            if (path / "binding.json").exists():
+                require(
+                    batch.load(path / "binding.json") == binding_for(approval),
+                    "session_approval_changed",
+                )
+            else:
+                unused_scope(root, approval)
+            stop_records(path, fingerprint)
+            history = resume_records(root, path, approval)
             for child in child_approvals(approval):
                 unit = root / child["execution_path"]
                 if unit.exists():
                     require(batch.load(unit / "approval.json") == child, "session_child_mismatch")
-            if (path / "stopped.json").exists():
-                require(
-                    batch.load(path / "stopped.json")
-                    == {
-                        "parent_fingerprint": fingerprint,
-                        "reason": "session_execution_stopped_operator_review_required",
-                    },
-                    "session_stop_record_changed",
-                )
             if (path / "complete.json").exists():
-                view = batch.inventory(root, batch.plan_for(root))
+                recoverable_stops(path, fingerprint)
+                view = verified_inventory(root)
                 expected = {r: view["hashes"].get(r) for r in approval["receipts"]}
                 require(all(expected.values()), "session_replay_failed")
+                completed = {"parent_fingerprint": fingerprint, "source_sha256": expected}
+                if history:
+                    completed["recovery_fingerprint"] = history[-1]
                 require(
-                    batch.load(path / "complete.json")
-                    == {"parent_fingerprint": fingerprint, "source_sha256": expected},
-                    "session_replay_failed",
+                    not (path / "stopped.json").exists() or bool(history),
+                    "session_terminal_record_conflict",
                 )
+                require(batch.load(path / "complete.json") == completed, "session_replay_failed")
                 for child in child_approvals(approval):
                     unit = root / child["execution_path"]
                     require(
@@ -167,6 +368,15 @@ def checked_records(root: Path) -> list[Path]:
                         "session_child_mismatch",
                     )
         else:
+            if (path / "approval-intent.json").exists():
+                intent = batch.load(path / "approval-intent.json")
+                require(
+                    set(intent) == {"parent_fingerprint", "draft_fingerprint"}
+                    and intent["draft_fingerprint"] == digest(draft)
+                    and isinstance(intent["parent_fingerprint"], str)
+                    and re.fullmatch(r"[0-9a-f]{64}", intent["parent_fingerprint"]) is not None,
+                    "session_approval_changed",
+                )
             require(
                 not any(
                     (path / name).exists()
@@ -187,17 +397,44 @@ def execution_guard(root: Path, approval: dict[str, Any]) -> None:
             )
             parent = batch.load(path / "approval.json")
             require(approval in child_approvals(parent), "session_child_mismatch")
-            require(not (path / "stopped.json").exists(), "session_stopped")
 
 
 def report(root: Path) -> dict[str, Any]:
-    view = batch.inventory(root, batch.plan_for(root))
+    view = verified_inventory(root)
     paths = checked_records(root)
     active = paths[-1] if paths else None
     value = batch.load(active / "draft.json") if active else None
+    started = active is not None and any(
+        (active / name).exists() for name in ("approval.json", "approval-intent.json")
+    )
+    recovery = (
+        "PARTIAL APPROVAL: MATCHING RECORD REQUIRED"
+        if started and active and not (active / "approval.json").exists()
+        else "NOT REQUIRED"
+    )
+    if active and (active / "approval.json").exists() and not (active / "complete.json").exists():
+        try:
+            approved = batch.load(active / "approval.json")
+            recoverable_stops(active, digest(approved))
+            resume_check(root, approved)
+            recovery = "EXPLICIT RESUME ALLOWED"
+        except Exception:
+            recovery = "BLOCKED: OPERATOR REVIEW REQUIRED"
     return {
+        "recovery": recovery,
+        "resume_history_count": len(numbered(active / "resumes")) if active else 0,
+        "stop_history_count": (
+            int((active / "stopped.json").exists()) + len(numbered(active / "interruptions"))
+        )
+        if active
+        else 0,
+        "binding": "RECOVERY REQUIRED"
+        if active and (active / "approval.json").exists() and not (active / "binding.json").exists()
+        else "VERIFIED"
+        if active and (active / "binding.json").exists()
+        else "NOT CREATED",
         "execution": "NOT STARTED"
-        if not active or not (active / "approval.json").exists()
+        if not active or not started
         else "COMPLETE"
         if (active / "complete.json").exists()
         else "STOPPED"
@@ -224,7 +461,7 @@ def report(root: Path) -> dict[str, Any]:
             else "STOPPED"
             if (active / "stopped.json").exists()
             else "APPROVAL REQUIRED"
-            if not (active / "approval.json").exists()
+            if not started
             else "OPERATOR RESUME REQUIRED"
         )
         if active
@@ -248,7 +485,7 @@ def prepare(root: Path, max_requests: int) -> dict[str, Any]:
         base, first = orchestrator.inspect_next(root, min(25, max_requests))
         if first is None:
             return report(root)
-        view = batch.inventory(root, batch.plan_for(root))
+        view = verified_inventory(root)
         pending = [r for r, state in view["states"].items() if state == "Pending"]
         selected = pending[:max_requests]
         require(
@@ -327,20 +564,35 @@ def execute(
             == {k: v for k, v in approval.items() if k not in orchestrator.GATES},
             "session_approval_changed",
         )
+        require(not (path / "complete.json").exists(), "session_stopped_or_complete")
         require(
-            not (path / "stopped.json").exists() and not (path / "complete.json").exists(),
-            "session_stopped_or_complete",
+            resume
+            == ((path / "approval.json").exists() or (path / "approval-intent.json").exists()),
+            "session_duplicate_or_missing_execution",
         )
-        require(
-            resume == (path / "approval.json").exists(), "session_duplicate_or_missing_execution"
-        )
+        intent = {"parent_fingerprint": fingerprint, "draft_fingerprint": digest(draft)}
         if resume:
-            require(batch.load(path / "approval.json") == approval, "session_approval_changed")
+            if (path / "approval.json").exists():
+                require(batch.load(path / "approval.json") == approval, "session_approval_changed")
+            else:
+                require(
+                    batch.load(path / "approval-intent.json") == intent, "session_approval_changed"
+                )
+                unused_scope(root, approval)
+                batch.write_once(path / "approval.json", approval)
+            recoverable_stops(path, fingerprint)
+            resume_check(root, approval)
+            if not (path / "binding.json").exists():
+                unused_scope(root, approval)
+                if not (path / "approval-intent.json").exists():
+                    batch.write_once(path / "approval-intent.json", intent)
+                batch.write_once(path / "binding.json", binding_for(approval))
+            record_resume(root, path, approval)
         else:
             # Validate the entire original Pending scope before persisting approval.
             _, first = orchestrator.inspect_next(root, len(approval["children"][0]["receipts"]))
             require(first == approval["children"][0], "session_scope_changed")
-            view = batch.inventory(root, batch.plan_for(root))
+            view = verified_inventory(root)
             require(
                 approval["receipts"]
                 == [r for r, state in view["states"].items() if state == "Pending"][
@@ -355,14 +607,9 @@ def execute(
                 ),
                 "session_scope_changed",
             )
+            batch.write_once(path / "approval-intent.json", intent)
             batch.write_once(path / "approval.json", approval)
-            batch.write_once(
-                path / "binding.json",
-                {
-                    "parent_fingerprint": fingerprint,
-                    "children": {c["execution_path"]: digest(c) for c in child_approvals(approval)},
-                },
-            )
+            batch.write_once(path / "binding.json", binding_for(approval))
         token = _ACTIVE.set((root, path.name, os.getpid(), get_ident()))
         lock_token = batch._SESSION_LOCK.set((root, os.getpid(), get_ident()))
         try:
@@ -394,26 +641,21 @@ def execute(
                 require(
                     result["success"] and result["selected_replay_complete"], "session_child_failed"
                 )
-            view = batch.inventory(root, batch.plan_for(root))
+            view = verified_inventory(root)
             require(
                 all(view["states"][r] == "Verified Local" for r in approval["receipts"]),
                 "session_replay_failed",
             )
-            batch.write_once(
-                path / "complete.json",
-                {
-                    "parent_fingerprint": fingerprint,
-                    "source_sha256": {r: view["hashes"][r] for r in approval["receipts"]},
-                },
-            )
+            completed = {
+                "parent_fingerprint": fingerprint,
+                "source_sha256": {r: view["hashes"][r] for r in approval["receipts"]},
+            }
+            history = resume_records(root, path, approval)
+            if history:
+                completed["recovery_fingerprint"] = history[-1]
+            batch.write_once(path / "complete.json", completed)
         except Exception:
-            batch.write_once(
-                path / "stopped.json",
-                {
-                    "parent_fingerprint": fingerprint,
-                    "reason": "session_execution_stopped_operator_review_required",
-                },
-            )
+            record_stop(root, path, approval)
             raise ValueError("session_execution_stopped_operator_review_required") from None
         finally:
             batch._SESSION_LOCK.reset(lock_token)
