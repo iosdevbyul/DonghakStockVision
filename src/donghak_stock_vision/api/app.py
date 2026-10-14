@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Path, status
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from donghak_stock_vision.api.models import (
@@ -21,6 +21,12 @@ from donghak_stock_vision.api.models import (
     StockSummary,
 )
 from donghak_stock_vision.api.ohlcv import OhlcvMarketReader, OhlcvSeries
+from donghak_stock_vision.api.operations import (
+    AlertsPayload,
+    FreshnessPayload,
+    OperationsReader,
+    RunsPayload,
+)
 from donghak_stock_vision.api.screener import ScreenerSnapshot, published_screener
 from donghak_stock_vision.api.service import ResearchAPIReader
 from donghak_stock_vision.api.stock_analysis import (
@@ -34,6 +40,7 @@ def create_app(
     ohlcv_reader: OhlcvMarketReader | None = None,
     *,
     analysis_reader: AnalysisPublicationReader | None = None,
+    operations_reader: OperationsReader | None = None,
     allowed_origins: Sequence[str] = (
         "http://localhost:3000",
         "http://127.0.0.1:3000",
@@ -161,5 +168,25 @@ def create_app(
         if stock is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="stock not found")
         return stock
+
+    operations = operations_reader or OperationsReader(research=reader, market=ohlcv_reader)
+
+    @app.get("/api/v1/operations/runs", response_model=RunsPayload)
+    def operation_runs(
+        offset: Annotated[int, Query(ge=0, le=100_000)] = 0,
+        limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    ) -> RunsPayload:
+        return operations.runs(offset, limit)
+
+    @app.get("/api/v1/operations/freshness", response_model=FreshnessPayload)
+    def operation_freshness() -> FreshnessPayload:
+        return operations.freshness()
+
+    @app.get("/api/v1/operations/alerts", response_model=AlertsPayload)
+    def operation_alerts(
+        offset: Annotated[int, Query(ge=0, le=100_000)] = 0,
+        limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    ) -> AlertsPayload:
+        return operations.alerts(offset, limit)
 
     return app
