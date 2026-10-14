@@ -10,8 +10,10 @@ import re
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import get_ident
 from typing import Any
 
 import httpx
@@ -39,6 +41,10 @@ from donghak_stock_vision.data.learning import digest
 
 DIRECTORY = ".data/dart-document-batch-runs"
 VERSION = "dart_document_batch_approval_v1"
+_SESSION_LOCK: ContextVar[tuple[Path, int, int] | None] = ContextVar(
+    "dart_session_lock", default=None
+)
+
 FIELDS = {
     "version",
     "endpoint",
@@ -83,13 +89,17 @@ def plan_for(root: Path) -> FrozenJSON:
 
 
 def approval_check(plan: FrozenJSON, value: dict[str, Any]) -> str:
+    return _record_check(plan, value, approved=True)
+
+
+def draft_check(plan: FrozenJSON, value: dict[str, Any]) -> str:
+    return _record_check(plan, value, approved=False)
+
+
+def _record_check(plan: FrozenJSON, value: dict[str, Any], *, approved: bool) -> str:
     require(set(value) == FIELDS and value["version"] == VERSION, "batch_approval_required")
     require(value["endpoint"] == ENDPOINT + "document.xml", "batch_endpoint_mismatch")
     require(value["plan_fingerprint"] == plan.identifier, "batch_plan_fingerprint_mismatch")
-    require(
-        value["access_confirmed"] is True and value["quota_confirmed"] is True,
-        "batch_access_unconfirmed",
-    )
     require(
         type(value["max_requests"]) is int and 1 <= value["max_requests"] <= 25,
         "batch_request_budget_invalid",
@@ -100,14 +110,26 @@ def approval_check(plan: FrozenJSON, value: dict[str, Any]) -> str:
         type(interval) in (int, float) and math.isfinite(interval) and interval >= 1,
         "batch_interval_invalid",
     )
-    stamp = value["approved_at"]
-    require(isinstance(stamp, str), "batch_approval_time_required")
-    instant = datetime.fromisoformat(stamp)
-    offset = instant.utcoffset()
-    require(
-        offset is not None and offset.total_seconds() == 0 and instant <= datetime.now(UTC),
-        "batch_approval_time_invalid",
-    )
+    if approved:
+        require(
+            value["access_confirmed"] is True and value["quota_confirmed"] is True,
+            "batch_access_unconfirmed",
+        )
+        stamp = value["approved_at"]
+        require(isinstance(stamp, str), "batch_approval_time_required")
+        instant = datetime.fromisoformat(stamp)
+        offset = instant.utcoffset()
+        require(
+            offset is not None and offset.total_seconds() == 0 and instant <= datetime.now(UTC),
+            "batch_approval_time_invalid",
+        )
+    else:
+        require(
+            value["approved_at"] is None
+            and value["access_confirmed"] is False
+            and value["quota_confirmed"] is False,
+            "batch_draft_required",
+        )
     receipts = value["receipts"]
     require(type(receipts) is list and 1 <= len(receipts) <= 25, "batch_scope_invalid")
     require(
@@ -295,6 +317,9 @@ def summary(plan: FrozenJSON, view: dict[str, Any]) -> dict[str, Any]:
 
 @contextmanager
 def execution_lock(root: Path) -> Iterator[Path]:
+    if _SESSION_LOCK.get() == (root.resolve(), os.getpid(), get_ident()):
+        yield root / DIRECTORY
+        return
     # The local Mac/Linux executor uses a kernel lock, released even on process death.
     require(os.name == "posix", "batch_platform_lock_unavailable")
     import fcntl
@@ -339,6 +364,9 @@ def execute(
     assert isinstance(key, str)
     require(key not in json.dumps(approval), "batch_unsafe_approval")
     with execution_lock(root) as ledger:
+        from donghak_stock_vision.backtest.dart_multi_batch_session import execution_guard
+
+        execution_guard(root, approval)
         view = inventory(root, plan)
         require(
             not any(s == "Blocked" for s in view["states"].values()),
