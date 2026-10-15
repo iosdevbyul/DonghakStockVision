@@ -6,14 +6,8 @@ from typing import Any
 
 from donghak_stock_vision.data.learning import AnalysisError, digest, event_contract, timestamp
 from donghak_stock_vision.models.service import load_model
-from donghak_stock_vision.storage.analysis import AnalysisStore
+from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore as ReadOnlyAnalysisStore
 from donghak_stock_vision.strategy.contracts import DecisionInput
-
-
-class ReadOnlyAnalysisStore(AnalysisStore):
-    def __init__(self, path: Path) -> None:
-        self.connection = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
-        self.connection.execute("PRAGMA query_only=ON")
 
 
 def assemble(

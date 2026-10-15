@@ -18,7 +18,7 @@ from donghak_stock_vision.backtest.historical_service import (
 from donghak_stock_vision.backtest_cli import ReadOnlyMarketStore
 from donghak_stock_vision.cli import main
 from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy
-from donghak_stock_vision.storage.analysis import AnalysisStore
+from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
 from tests.backtest.test_historical_execution import ControlledResearch, historical_runner
 from tests.backtest.test_performance import valuation_policy
 
@@ -64,6 +64,11 @@ def setup_request(
     }
     if research_calendar is not None:
         c["research_calendar"] = research_calendar.to_dict()
+        c["decision_dates"] = [
+            day
+            for day in c["decision_dates"]
+            if not research_calendar.excludes(date.fromisoformat(day))
+        ]
     patch.setattr(builder, "SignalService", ControlledResearch)
     return HistoricalBacktestRequest(
         date(2026, 1, 9),
@@ -76,12 +81,15 @@ def setup_request(
 
 
 def execute(request: HistoricalBacktestRequest, path: Path) -> HistoricalBacktestResult:
-    market, analysis = ReadOnlyMarketStore(path / "market.db"), AnalysisStore(path / "analysis.db")
+    market = ReadOnlyMarketStore(path / "market.db")
+    analysis = ReadOnlyAnalysisStore(path / "analysis.db")
+    output = AnalysisStore(path / "run.db")
     try:
-        return run_historical_backtest(request, market, analysis)
+        return run_historical_backtest(request, market, analysis, run_output=output)
     finally:
         market.close()
         analysis.close()
+        output.close()
 
 
 def change(request: HistoricalBacktestRequest, **kwargs: Any) -> HistoricalBacktestRequest:
@@ -253,6 +261,8 @@ def test_cli_json_text_and_validation(
         str(tmp_path / "market.db"),
         "--analysis-db",
         str(tmp_path / "analysis.db"),
+        "--run-output-db",
+        str(tmp_path / "cli-run.db"),
         "--model-id",
         r.model_id,
         "--config",
@@ -269,6 +279,7 @@ def test_cli_json_text_and_validation(
     assert main(args + ["--format", "json"]) == 0
     d = json.loads(capsys.readouterr().out)
     assert d["performance"]["final_equity"] == "10170.55"
+    args[args.index(str(tmp_path / "cli-run.db"))] = str(tmp_path / "cli-text.db")
     assert main(args) == 0
     assert "Total return: 1.7055%" in capsys.readouterr().out
     args[args.index("10000")] = "NaN"
@@ -340,3 +351,101 @@ def test_hold_after_acquisition_and_execution_policy_hash(
     second = execute(change(request, execution_policy=ep), tmp_path).document.to_dict()
     assert first["run_hash"] != second["run_hash"]
     assert first["performance_hash"] != second["performance_hash"]
+
+
+def test_bounded_schedule_keeps_fill_tape_and_source_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = setup_request(tmp_path, monkeypatch)
+    before = {name: (tmp_path / name).read_bytes() for name in ("market.db", "analysis.db")}
+    result = execute(request, tmp_path).document.to_dict()
+    frozen = result["historical_input"]
+    assert [p["trading_date"] for p in frozen["decision_points"]] == ["2026-01-09", "2026-01-13"]
+    assert len(frozen["analyses"]) == 2
+    assert len(frozen["tape"]["events"]) == 4
+    assert result["performance"]["fill_count"] == 2
+    assert {name: (tmp_path / name).read_bytes() for name in before} == before
+    with sqlite3.connect(tmp_path / "run.db") as db:
+        assert db.execute(
+            "SELECT kind,count(*) FROM analysis_artifacts GROUP BY kind"
+        ).fetchall() == [("signal", 2)]
+        assert db.execute("SELECT count(*) FROM analysis_executions").fetchone()[0] == 2
+    observed = execute(change(request, decision_dates=[]), tmp_path).document.to_dict()
+    assert observed["historical_input"]["analyses"] == []
+    assert len(observed["historical_input"]["tape"]["events"]) == 4
+    assert observed["performance"]["fill_count"] == 0
+
+
+@pytest.mark.parametrize(
+    "dates",
+    [
+        ["2026-01-13", "2026-01-09"],
+        ["2026-01-09", "2026-01-09"],
+        ["2026-01-08"],
+        ["20260109"],
+        ["not-a-date"],
+        [None],
+        True,
+        "daily",
+    ],
+)
+def test_invalid_explicit_schedule(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dates: Any
+) -> None:
+    request = setup_request(tmp_path, monkeypatch)
+    with pytest.raises(ValueError):
+        change(request, decision_dates=dates)
+
+
+def test_missing_requested_session_is_explicit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = setup_request(tmp_path, monkeypatch)
+    result = execute(change(request, decision_dates=["2026-01-10"]), tmp_path).document.to_dict()
+    assert result["unavailable"][0]["reason"] == "missing_decision_bar"
+    assert result["historical_input"]["analyses"] == []
+    assert len(result["historical_input"]["tape"]["events"]) == 4
+
+
+def test_excluded_explicit_schedule_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = setup_request(
+        tmp_path, monkeypatch, research_calendar=ResearchCalendarPolicy((date(2026, 1, 13),))
+    )
+    with pytest.raises(ValueError, match="known_incomplete_trading_date"):
+        change(request, decision_dates=["2026-01-13"])
+
+
+def test_cli_requires_new_separate_output_without_source_writes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    request = setup_request(tmp_path, monkeypatch)
+    config = tmp_path / "run-config.json"
+    config.write_text(request.config.payload_json)
+    before = {name: (tmp_path / name).read_bytes() for name in ("market.db", "analysis.db")}
+    args = [
+        "backtest",
+        "--market-db",
+        str(tmp_path / "market.db"),
+        "--analysis-db",
+        str(tmp_path / "analysis.db"),
+        "--model-id",
+        request.model_id,
+        "--config",
+        str(config),
+        "--start",
+        "2026-01-09",
+        "--end",
+        "2026-01-14",
+        "--initial-cash",
+        "10000",
+        "--ticker",
+        "005930",
+    ]
+    assert main(args) == 2
+    assert "historical_db_model_config_required" in caplog.text
+    for name in before:
+        assert main(args + ["--run-output-db", str(tmp_path / name)]) == 2
+        assert "run_output_already_exists" in caplog.text
+    assert {name: (tmp_path / name).read_bytes() for name in before} == before

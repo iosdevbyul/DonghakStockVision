@@ -86,3 +86,47 @@ class AnalysisStore:
             (kind,),
         ).fetchall()
         return [(row[0], self.get(kind, row[0])) for row in ids]
+
+
+class ReadOnlyAnalysisStore(AnalysisStore):
+    """Read existing artifacts without schema creation or audit writes."""
+
+    def __init__(self, path: Path) -> None:
+        self.connection = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+        self.connection.execute("PRAGMA query_only=ON")
+
+
+class ResearchRunStore(AnalysisStore):
+    """Borrow source reads and a separate signal/audit sink; never copy source artifacts.
+
+    The caller owns both stores. Model, dataset and snapshot reads (including their
+    original created_at) always go to source; generated signals always go to output.
+    """
+
+    def __init__(self, source: AnalysisStore, output: AnalysisStore) -> None:
+        if source.connection is output.connection:
+            raise AnalysisError("run_output_must_be_separate")
+        source_file = source.connection.execute("PRAGMA database_list").fetchone()[2]
+        output_file = output.connection.execute("PRAGMA database_list").fetchone()[2]
+        if source_file and output_file and Path(source_file).samefile(output_file):
+            raise AnalysisError("run_output_must_be_separate")
+        self.source = source
+        self.output = output
+        self.connection = output.connection
+
+    def close(self) -> None:
+        """Stores are borrowed; the caller closes them."""
+
+    def get(self, kind: str, artifact_id: str) -> dict[str, Any]:
+        return (self.output if kind == "signal" else self.source).get(kind, artifact_id)
+
+    def created_at(self, kind: str, artifact_id: str) -> datetime:
+        return (self.output if kind == "signal" else self.source).created_at(kind, artifact_id)
+
+    def all(self, kind: str) -> list[tuple[str, dict[str, Any]]]:
+        return (self.output if kind == "signal" else self.source).all(kind)
+
+    def put_many(self, records: list[tuple[str, dict[str, Any]]]) -> list[str]:
+        if any(kind != "signal" for kind, _ in records):
+            raise AnalysisError("run_output_signal_only")
+        return self.output.put_many(records)

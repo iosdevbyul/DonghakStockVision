@@ -10,9 +10,9 @@ from donghak_stock_vision.backtest.contracts import ExecutionPolicy, RunManifest
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.historical import build_historical_input
 from donghak_stock_vision.backtest.validation import require
+from donghak_stock_vision.backtest_cli import ReadOnlyMarketStore
 from donghak_stock_vision.data.research_calendar import calendar_policy
-from donghak_stock_vision.storage.analysis import AnalysisStore
-from donghak_stock_vision.storage.sqlite import SQLiteStore
+from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
 
 
 def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -22,6 +22,7 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     p.add_argument("--market-db", type=Path, required=True)
     p.add_argument("--analysis-db", type=Path)
     p.add_argument("--model-id")
+    p.add_argument("--run-output-db", type=Path, help="new separate signal/audit SQLite")
     p.add_argument("--start", type=date.fromisoformat, required=True)
     p.add_argument("--end", type=date.fromisoformat, required=True)
     p.add_argument("--tickers", nargs="+", required=True)
@@ -42,10 +43,19 @@ def run(args: argparse.Namespace) -> int:
     )
     if args.analysis_db is not None:
         require(args.analysis_db.is_file(), "analysis_db_missing")
+        require(args.run_output_db is not None, "run_output_required")
+        require(not args.run_output_db.exists(), "run_output_already_exists")
+    else:
+        require(args.run_output_db is None, "run_output_without_source")
     config = FrozenJSON(args.config.read_text(encoding="utf-8")).to_dict()
-    market = SQLiteStore(args.market_db)
-    analysis = AnalysisStore(args.analysis_db) if args.analysis_db is not None else None
+    market = ReadOnlyMarketStore(args.market_db)
+    analysis = ReadOnlyAnalysisStore(args.analysis_db) if args.analysis_db is not None else None
+    output = None
     try:
+        if args.run_output_db is not None:
+            with args.run_output_db.open("xb"):
+                pass
+            output = AnalysisStore(args.run_output_db)
         result = build_historical_input(
             market,
             start=args.start,
@@ -59,9 +69,11 @@ def run(args: argparse.Namespace) -> int:
             analysis_store=analysis,
             model_id=args.model_id,
             research_calendar=calendar_policy(config),
+            decision_dates=config.get("decision_dates", "all_available"),
+            run_output=output,
         )
-        with args.output.open("x", encoding="utf-8") as output:
-            output.write(result.document.payload_json)
+        with args.output.open("x", encoding="utf-8") as bundle_file:
+            bundle_file.write(result.document.payload_json)
         d = result.document.to_dict()
         print(
             FrozenJSON.freeze(
@@ -81,3 +93,5 @@ def run(args: argparse.Namespace) -> int:
         market.close()
         if analysis is not None:
             analysis.close()
+        if output is not None:
+            output.close()

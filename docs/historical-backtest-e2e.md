@@ -9,6 +9,7 @@ OOS 검증 또는 투자 성능 보증이 아니다. 모델 학습·전략·비�
 dsv backtest \
   --market-db /absolute/path/market.sqlite3 \
   --analysis-db /absolute/path/analysis.sqlite3 \
+  --run-output-db /absolute/path/new-run.sqlite3 \
   --model-id "$MODEL_VERSION" \
   --config /absolute/path/historical-run.json \
   --start 2025-01-01 --end 2025-06-30 \
@@ -54,7 +55,7 @@ DB와 모델 snapshot의 내용 검증은 builder가 수행한다. 별도 dry-ru
 ## 공개 API와 책임
 
 `backtest.historical_service.HistoricalBacktestRequest`와
-`run_historical_backtest(request, market_store, analysis_store)`를 사용한다.
+`run_historical_backtest(request, market_store, analysis_store, run_output=output_store)`를 사용한다.
 반환 `HistoricalBacktestResult`는 불변 `FrozenJSON` document와 identifier/report를 제공한다.
 
 1. Phase 1 `MarketDataStore.read()`로 정제된 일봉을 읽는다. CLI의 시장 SQLite 연결은
@@ -73,9 +74,46 @@ DB와 모델 snapshot의 내용 검증은 builder가 수행한다. 별도 dry-ru
 6. Performance는 동일 frozen historical bundle과 run 참조를 재검증한다. 계산 공식은
    그대로 두고 명시적으로 검증된 historical source를 허용하는 경로만 추가한다.
 
-분석 DB는 기존 공개 SignalService가 signal artifact와 실행 감사 이력을 **기록한다**.
-시장 DB는 읽기 전용이다. 분석 DB까지 수정하지 않아야 한다면 별도의 분석 DB 복사본을
-명시적으로 사용해야 한다. 결과 JSON을 보관하면 이후 DB 수정과 무관하게 모든 동결 증거가 남는다.
+원본 시장/분석 DB는 CLI에서 모두 읽기 전용(`mode=ro`, `query_only=ON`)으로 연다.
+`--run-output-db`는 필수이며 **새 파일**이어야 한다. 기존 파일·별칭·원본 경로를
+출력으로 지정하면 거부한다. 자동 기본 경로나 원본 DB 복사는 없다.
+`ResearchRunStore(source, output)`은 모델·dataset·snapshot과 원래 created_at을
+source에서 검증해 읽고, 새 signal과 analysis_executions 감사 행만 output에 기록한다.
+source에 과거 signal이 있어도 이번 실행 신호를 대체하지 않는다. 모델/정책 등록은 없다.
+Python API 호출자도 별도의 output store를 명시해야 하며 양쪽 store의 수명은 호출자가 관리한다.
+결과 JSON에는 모든 frozen evidence와 기존 order/reservation/fill/history/performance 참조가 남는다.
+run-output DB는 신호/추론 감사 저장소이며 결과 JSON을 대신하는 거래 원장은 아니다.
+보고서는 `--format json` 출력도 별도로 보관해야 한다.
+
+## 분석 날짜 제한
+
+`build_historical_input(..., decision_dates="all_available", run_output=output_store)`가
+서비스의 `decision_dates`를 **추론 전에** 적용한다. 기본 all_available은 기존 모든
+관측일 분석을 유지한다. 명시 배열은 canonical `YYYY-MM-DD` 문자열을 오름차순으로
+한 번씩만 포함해야 한다. 잘못된 타입/날짜, 중복, 역순, 기간 밖 날짜와 알려진 불완전
+연구 세션은 거부한다. 빈 배열은 분석 없이 관찰만 한다.
+요청했지만 bar가 없는 날짜는 `missing_decision_bar` unavailable 항목으로 남기며
+주말·휴일 또는 이웃 거래일로 추정하지 않는다. 종목 전체가 비어 있으면 기존
+`missing_historical_data` 결과를 유지한다.
+
+이 제한은 signal 생성/분석 공개 지점만 줄인다. tape의 모든 시장 사건, 이후 체결과
+평가에 필요한 일봉, 학습 snapshot의 이전 warmup, 실제 source cutoff와 사건 순서는
+유지한다. 거래일별 BUY/SELL을 지정하거나 미래 가격으로 날짜를 고르는 기능이 아니다.
+
+## 실제 계산과 증거 수준
+
+`tests/backtest/test_public_inference.py`는 명시적 fake/synthetic 데이터에서 기존
+TrainingService로 실제 선형 모델을 학습하고 공개 SignalService로 trailing feature와
+점수를 계산한다. 가짜 점수·ControlledResearch·운영 등록 없이 기존 synthetic Runner,
+Ledger, verified history 및 Performance로 왕복/재진입을 검증한다. 고정된 mechanics
+정책과 날짜는 수익성 평가 정책이 아니며 결과에는 synthetic_test_only가 유지된다.
+실데이터 전용 historical builder/service의 real gate는 이 테스트 때문에 완화하지 않는다.
+기존 ControlledResearch 테스트는 별도의 storage/체결 계약 검증으로 유지한다.
+
+로컬 실모델은 fingerprint가 맞아도 reviewed research quality와 전체 명시 정책/config가
+필요하다. 학습 snapshot의 quality가 null인 모델만 있다는 이유로 quality를 발명하지 않는다.
+전제조건이 없으면 real-artifact 검사는 blocked이며 실제 재생·수익률 주장을 하지 않는다.
+재생이 허용되는 경우에도 source 파일 hash를 전후 대조하고 별도 run output만 사용한다.
 
 ## 시간과 평가
 

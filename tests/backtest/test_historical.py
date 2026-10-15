@@ -129,9 +129,13 @@ def test_invalid_requests(tmp_path: Path, change: dict[str, Any]) -> None:
 def test_missing_model_is_explicit(tmp_path: Path) -> None:
     store, k = setup_inputs(tmp_path / "market.db")
     analysis = AnalysisStore(tmp_path / "analysis.db")
-    a = build_historical_input(store, **k, analysis_store=analysis, model_id="0" * 64)
+    output = AnalysisStore(tmp_path / "run.db")
+    a = build_historical_input(
+        store, **k, analysis_store=analysis, run_output=output, model_id="0" * 64
+    )
     assert {p["reason"] for p in a.document.to_dict()["decision_points"]} == {"missing_model"}
     analysis.close()
+    output.close()
     store.close()
 
 
@@ -141,6 +145,7 @@ def test_public_phase2_insufficient_history_and_repeat(tmp_path: Path) -> None:
 
     store, k = setup_inputs(tmp_path / "market.db")
     analysis = AnalysisStore(tmp_path / "analysis.db")
+    output = AnalysisStore(tmp_path / "run.db")
     snap = capture(
         store,
         k["tickers"],
@@ -178,8 +183,8 @@ def test_public_phase2_insufficient_history_and_repeat(tmp_path: Path) -> None:
         },
     }
     mid = analysis.put("model", model)
-    a = build_historical_input(store, **k, analysis_store=analysis, model_id=mid)
-    b = build_historical_input(store, **k, analysis_store=analysis, model_id=mid)
+    a = build_historical_input(store, **k, analysis_store=analysis, run_output=output, model_id=mid)
+    b = build_historical_input(store, **k, analysis_store=analysis, run_output=output, model_id=mid)
     assert a.identifier == b.identifier
     assert len(a.analyses) == 6
     from donghak_stock_vision.backtest.historical import HistoricalBacktestInput
@@ -205,7 +210,7 @@ def test_public_phase2_insufficient_history_and_repeat(tmp_path: Path) -> None:
         RawPage(b"changed", changed.collected_at, row.trading_date),
     )
     store.save([changed], [rid])
-    c = build_historical_input(store, **k, analysis_store=analysis, model_id=mid)
+    c = build_historical_input(store, **k, analysis_store=analysis, run_output=output, model_id=mid)
     assert c.identifier != a.identifier
     assert all(
         p["reason"] == "model_snapshot_market_mismatch"
@@ -213,6 +218,7 @@ def test_public_phase2_insufficient_history_and_repeat(tmp_path: Path) -> None:
     )
     assert len(a.analyses) == 6
     analysis.close()
+    output.close()
     store.close()
 
 

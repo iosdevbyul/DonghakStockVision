@@ -119,6 +119,7 @@ def test_policy_mismatch_blocks_all_analysis(
         ReadOnlyMarketStore(tmp_path / "market.db"),
         AnalysisStore(tmp_path / "analysis.db"),
     )
+    output = AnalysisStore(tmp_path / "mismatch-output.db")
     try:
         frozen = build_historical_input(
             market,
@@ -131,6 +132,7 @@ def test_policy_mismatch_blocks_all_analysis(
             policy=r.tape.policy,
             availability_assumption=ASSUMPTION,
             analysis_store=analysis,
+            run_output=output,
             model_id=old["requested_model_id"],
             research_calendar=ResearchCalendarPolicy((date(2026, 1, 12),)),
         )
@@ -142,6 +144,7 @@ def test_policy_mismatch_blocks_all_analysis(
     finally:
         market.close()
         analysis.close()
+        output.close()
 
 
 def test_excluded_valuation_call_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
