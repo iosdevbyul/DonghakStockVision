@@ -163,3 +163,11 @@ equity curve, performance hash 및 보고서를 생성한다. 입력/정책 변�
 초기 원가와 mark 차이, 결측/미래 mark, 부분 청산, 비용 중복 차감 방지,
 MDD·반올림·불완전 coverage, 이력 변조, CLI 및 결정적 replay를 검증한다.
 독립 wheel에서도 준비된 합성 frozen 입력으로 전체 CLI 흐름을 실행한다.
+
+## Detailed factual reporting
+
+The single-ticker service now adds a versioned [decision/trading projection](historical-trading-report.md).
+Existing Performance values and hashes remain unchanged; detailed JSON and text
+are additional views of the same validated run, fills and history. No new P&L or
+execution formula is introduced. `format_report(performance)` remains the aggregate
+formatter; an optional details argument appends the factual timeline.

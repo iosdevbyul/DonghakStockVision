@@ -175,3 +175,11 @@ python -m build
 CLI를 실행하며 BUY→SELL→BUY, Ledger/Performance/Report와 반복 hash 일치를 확인한다.
 실제 DB smoke는 존재하는 데이터와 모델을 읽기 전용으로 점검할 수 있을 때만 수행한다.
 네트워크 수집, KRX 호출, model mismatch 우회는 하지 않는다.
+
+## Detailed report v1
+
+`detailed_report` / `detailed_report_hash`를 기존 JSON 결과에 추가하고 text에는
+결정 타임라인·취득/매도·보유 기간·미체결 상태·계좌 관찰을 덧붙인다.
+기존 run/performance 객체와 계산식은 유지한다. 예정 기회의 cutoff와 실제 결정·접수·체결·
+가용 시각을 구분하며 없는 사실은 null/unavailable로 남긴다.
+계약과 검증 API는 [Historical trading report v1](historical-trading-report.md)을 참고한다.

@@ -12,9 +12,10 @@ from donghak_stock_vision.backtest.execution import settings
 from donghak_stock_vision.backtest.historical import build_historical_input, decision_schedule
 from donghak_stock_vision.backtest.historical_execution import MODE, market_context, validate_input
 from donghak_stock_vision.backtest.ledger import LedgerCommand, LedgerPolicy, initialize
-from donghak_stock_vision.backtest.performance import calculate_performance, policy_values
+from donghak_stock_vision.backtest.performance import policy_values
 from donghak_stock_vision.backtest.report import format_report
 from donghak_stock_vision.backtest.runner import BacktestRunner
+from donghak_stock_vision.backtest.trading_report import report_backtest
 from donghak_stock_vision.backtest.validation import fields, money, require, text
 from donghak_stock_vision.data.research_calendar import calendar_policy
 from donghak_stock_vision.data.schema import SEOUL, validate_range, validate_ticker
@@ -220,7 +221,7 @@ def run_historical_backtest(
             "decision_steps": steps,
         }
     )
-    run = BacktestRunner(
+    runner = BacktestRunner(
         tape,
         frozen.analyses,
         initial,
@@ -228,10 +229,9 @@ def run_historical_backtest(
         FrozenJSON.freeze(c["execution_policy"]),
         config,
         frozen.document,
-    ).run()
-    performance = calculate_performance(
-        run, tape, FrozenJSON.freeze(c["valuation_policy"]), historical_input=frozen.document
     )
+    detailed = report_backtest(runner, FrozenJSON.freeze(c["valuation_policy"]))
+    run, performance = detailed.run, detailed.performance
     limitations = sorted(
         set(source["limitations"] + performance.to_dict()["limitations"])
         - {"real_runner_unsupported"}
@@ -258,7 +258,7 @@ def run_historical_backtest(
         f"Execution policy: {MODE}\nTickers: "
         + ", ".join(request.tickers)
         + f"\nStatus: {status}\n"
-        + format_report(performance)
+        + format_report(performance, detailed.details)
         + "Input limitations:\n"
         + "".join(f"  {x}\n" for x in limitations)
         + "Unavailable analysis/market inputs:\n"
@@ -279,6 +279,8 @@ def run_historical_backtest(
                 "run_hash": run.identifier,
                 "performance": performance.to_dict(),
                 "performance_hash": performance.identifier,
+                "detailed_report": detailed.details.to_dict(),
+                "detailed_report_hash": detailed.details.identifier,
                 "report": report,
                 "unavailable": unavailable,
                 "blocked": blocked,
