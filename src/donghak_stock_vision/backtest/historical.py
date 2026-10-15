@@ -14,7 +14,7 @@ from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy, 
 from donghak_stock_vision.data.schema import SEOUL, DailyBar, validate_range, validate_ticker
 from donghak_stock_vision.models.service import load_model
 from donghak_stock_vision.signals.service import SignalService
-from donghak_stock_vision.storage.analysis import AnalysisStore
+from donghak_stock_vision.storage.analysis import AnalysisStore, ResearchRunStore
 from donghak_stock_vision.storage.base import MarketDataStore
 
 ASSUMPTION = "after_trading_date_seoul_midnight"
@@ -30,6 +30,27 @@ LIMITATIONS = [
     "concurrent_reservation_unsupported",
     "missing_sessions_not_calendar_verified",
 ]
+
+
+def decision_schedule(
+    value: Any, start: date, end: date, calendar: ResearchCalendarPolicy | None = None
+) -> list[str] | None:
+    """None means all available. Explicit dates are sorted, unique ISO Seoul dates.
+
+    Empty schedules observe only. Missing market dates are recorded unavailable,
+    never inferred to be holidays or silently replaced by a neighboring date.
+    """
+    if value == "all_available":
+        return None
+    require(type(value) is list, "decision_schedule_required")
+    require(all(type(day) is str for day in value), "invalid_decision_date")
+    require(value == sorted(set(value)), "decision_dates_not_canonical")
+    for day in value:
+        parsed = date.fromisoformat(day)
+        require(parsed.isoformat() == day, "invalid_decision_date")
+        require(start <= parsed <= end, "decision_outside_period")
+        require(calendar is None or not calendar.excludes(parsed), "known_incomplete_trading_date")
+    return list(value)
 
 
 @dataclass(frozen=True)
@@ -78,6 +99,8 @@ def build_historical_input(
     analysis_store: AnalysisStore | None = None,
     model_id: str | None = None,
     research_calendar: ResearchCalendarPolicy | None = None,
+    decision_dates: str | list[str] = "all_available",
+    run_output: AnalysisStore | None = None,
 ) -> HistoricalBacktestInput:
     """Dates are inclusive Seoul trading dates, not UTC publication timestamps.
 
@@ -85,6 +108,11 @@ def build_historical_input(
     used on Phase 1; a caller needing cross-ticker atomicity must freeze its source.
     """
     validate_range(start, end)
+    schedule = decision_schedule(decision_dates, start, end, research_calendar)
+    require(analysis_store is None or run_output is not None, "run_output_required")
+    require(analysis_store is not None or run_output is None, "run_output_without_source")
+    if analysis_store is not None and run_output is not None:
+        analysis_store = ResearchRunStore(analysis_store, run_output)
     if research_calendar is not None:
         require(
             not research_calendar.excludes(start) and not research_calendar.excludes(end),
@@ -180,6 +208,8 @@ def build_historical_input(
                 "field_times": {k: stamp for k in s["fields"]},
             }
         )
+        if schedule is not None and s["trading_date"] not in schedule:
+            continue
         point: dict[str, Any] = {
             "ticker": s["ticker"],
             "trading_date": s["trading_date"],
@@ -216,6 +246,22 @@ def build_historical_input(
             except (AnalysisError, ValueError) as exc:
                 point["reason"] = str(exc)
         points.append(point)
+    if schedule is not None:
+        for day in schedule:
+            for ticker in present:
+                if not any(p["ticker"] == ticker and p["trading_date"] == day for p in points):
+                    points.append(
+                        {
+                            "ticker": ticker,
+                            "trading_date": day,
+                            "available_at": release(day),
+                            "sequence": None,
+                            "status": "blocked",
+                            "reason": "missing_decision_bar",
+                            "analysis_id": None,
+                        }
+                    )
+        points.sort(key=lambda p: (p["trading_date"], p["ticker"]))
     plan = FrozenJSON.freeze(
         {**provenance, "releases": releases, "analysis_releases": analysis_releases}
     )

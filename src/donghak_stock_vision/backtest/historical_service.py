@@ -9,7 +9,7 @@ from donghak_stock_vision.backtest.contracts import ExecutionPolicy, RunManifest
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.decision_bridge import policy_values as admission_values
 from donghak_stock_vision.backtest.execution import settings
-from donghak_stock_vision.backtest.historical import build_historical_input
+from donghak_stock_vision.backtest.historical import build_historical_input, decision_schedule
 from donghak_stock_vision.backtest.historical_execution import MODE, market_context, validate_input
 from donghak_stock_vision.backtest.ledger import LedgerCommand, LedgerPolicy, initialize
 from donghak_stock_vision.backtest.performance import calculate_performance, policy_values
@@ -91,14 +91,7 @@ class HistoricalBacktestRequest:
                 money(amount, positive=side == "BUY" and key == "max_notional_krw")
             if side == "SELL":
                 require(all(money(x) == "0" for x in values.values()), "sell_cash_reservation")
-        dates = c["decision_dates"]
-        require(dates == "all_available" or isinstance(dates, list), "decision_schedule_required")
-        if isinstance(dates, list):
-            require(dates == sorted(set(dates)), "decision_dates_not_canonical")
-            for day in dates:
-                require(
-                    self.start <= date.fromisoformat(day) <= self.end, "decision_outside_period"
-                )
+        decision_schedule(c["decision_dates"], self.start, self.end, calendar_policy(c))
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -125,12 +118,16 @@ class HistoricalBacktestResult:
 
 
 def run_historical_backtest(
-    request: HistoricalBacktestRequest, market: MarketDataStore, analysis: AnalysisStore
+    request: HistoricalBacktestRequest,
+    market: MarketDataStore,
+    analysis: AnalysisStore,
+    *,
+    run_output: AnalysisStore,
 ) -> HistoricalBacktestResult:
     """Freeze once with public SignalService.research through the existing builder.
 
-    Phase 2 may persist signal artifacts/audit to the supplied analysis store. The
-    market store is read only. All subsequent operations consume frozen values.
+    Phase 2 reads existing artifacts from analysis and writes signals/audit only
+    to the explicit separate run_output. Subsequent operations consume frozen values.
     """
     c = request.config.to_dict()
     m = c["manifest"]
@@ -151,6 +148,8 @@ def run_historical_backtest(
         analysis_store=analysis,
         model_id=request.model_id,
         research_calendar=calendar_policy(c),
+        decision_dates=c["decision_dates"],
+        run_output=run_output,
     )
     tape = frozen.tape
     validate_input(tape, frozen.document)

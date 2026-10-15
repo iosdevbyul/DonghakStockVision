@@ -14,7 +14,7 @@ from donghak_stock_vision.backtest.historical_service import (
 )
 from donghak_stock_vision.backtest.service import run_backtest
 from donghak_stock_vision.backtest.validation import require
-from donghak_stock_vision.storage.analysis import AnalysisStore
+from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.sqlite import SQLiteStore
 
 
@@ -32,6 +32,7 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     source.add_argument("--input", type=Path, help="frozen synthetic research JSON")
     source.add_argument("--market-db", type=Path, help="historical daily SQLite source (read only)")
     command.add_argument("--analysis-db", type=Path, help="Phase 2 artifact/audit SQLite")
+    command.add_argument("--run-output-db", type=Path, help="separate signal/audit SQLite output")
     command.add_argument("--model-id", help="existing Phase 2 research model")
     command.add_argument("--config", type=Path, help="explicit historical policies/config JSON")
     command.add_argument(
@@ -55,7 +56,10 @@ def run(args: argparse.Namespace) -> int:
     if args.market_db is not None:
         return run_historical(args)
     require(
-        args.analysis_db is None and args.model_id is None and args.config is None,
+        args.analysis_db is None
+        and args.model_id is None
+        and args.config is None
+        and args.run_output_db is None,
         "historical_options_require_market_db",
     )
     document = FrozenJSON(args.input.read_text(encoding="utf-8"))
@@ -87,11 +91,15 @@ def run(args: argparse.Namespace) -> int:
 
 def run_historical(args: argparse.Namespace) -> int:
     require(
-        args.analysis_db is not None and args.model_id is not None and args.config is not None,
+        args.analysis_db is not None
+        and args.model_id is not None
+        and args.config is not None
+        and args.run_output_db is not None,
         "historical_db_model_config_required",
     )
     require(args.market_db.is_file(), "market_db_missing")
     require(args.analysis_db.is_file(), "analysis_db_missing")
+    require(not args.run_output_db.exists(), "run_output_already_exists")
     try:
         request = HistoricalBacktestRequest(
             date.fromisoformat(args.start),
@@ -103,9 +111,16 @@ def run_historical(args: argparse.Namespace) -> int:
         )
         market = ReadOnlyMarketStore(args.market_db)
         try:
-            analysis = AnalysisStore(args.analysis_db)
+            analysis = ReadOnlyAnalysisStore(args.analysis_db)
             try:
-                result = run_historical_backtest(request, market, analysis)
+                # Exclusive creation also rejects aliases of existing source files.
+                with args.run_output_db.open("xb"):
+                    pass
+                output = AnalysisStore(args.run_output_db)
+                try:
+                    result = run_historical_backtest(request, market, analysis, run_output=output)
+                finally:
+                    output.close()
             finally:
                 analysis.close()
         finally:

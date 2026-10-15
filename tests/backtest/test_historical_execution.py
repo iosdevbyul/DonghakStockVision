@@ -178,6 +178,7 @@ def historical_runner(
         if held
         else [],
     )
+    output = AnalysisStore(path / "builder-output.db")
     with monkeypatch.context() as patch:
         patch.setattr(builder, "SignalService", ControlledResearch)
         frozen = build_historical_input(
@@ -191,11 +192,13 @@ def historical_runner(
             policy=policy(),
             availability_assumption=ASSUMPTION,
             analysis_store=analysis,
+            run_output=output,
             model_id=mid,
             research_calendar=research_calendar,
         )
     market.close()
     analysis.close()
+    output.close()
     tape = frozen.tape
     initial = initialize(
         tape.manifest,

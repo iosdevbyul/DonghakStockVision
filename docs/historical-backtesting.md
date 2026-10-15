@@ -82,8 +82,9 @@ insufficient_history, missing_model, snapshot 불일치 등은 명시적 blocked
 분석 artifact를 생성해도 scored/유효한 매매 신호임을 보장하지 않는다.
 
 AnalysisStore의 공개 put은 최초 artifact와 실행 감사 이력을 저장한다.
-반복 builder 실행은 경제 입력을 바꾸지 않지만 분석 DB의 실행 감사 행은 추가될 수 있다.
-시장 DB 값은 변경하지 않는다.
+분석을 생성할 때는 별도 `run_output` store가 필수다. `ResearchRunStore`가 원본 artifact와
+원래 created_at을 읽고 새 signal/감사 행만 output에 기록한다. 원본 시장/분석 DB는
+변경하지 않는다. `decision_dates`는 분석 생성 전에 적용하며 전체 tape와 warmup은 보존한다.
 
 ## 결정성과 identity
 
@@ -103,6 +104,7 @@ PIT 모드는 허용하지 않으며 감사 시각 제외가 PIT 가용성 승�
 ```bash
 dsv backtest-input --market-db market.sqlite3 \
   --analysis-db analysis.sqlite3 --model-id MODEL_CONTENT_ID \
+  --run-output-db new-run.sqlite3 \
   --start 2025-01-01 --end 2025-06-30 --tickers 005930 000660 \
   --config historical-config.json --output historical-input.json
 ```
@@ -111,7 +113,9 @@ config 필수 키는 `manifest`, `policy`, `quality`, `captured_at`, `availabili
 manifest/policy는 기존 PR-A JSON 계약이며 initial_account에 초기 현금을 명시한다.
 실제 DB 경로와 모델을 자동으로 찾거나 만들지 않는다. analysis-db/model-id 둘 다 생략하면
 시장 데이터만 동결하고 모든 분석 지점을 unavailable로 표시한다.
-출력 파일은 새 파일만 허용해 사용자 파일을 덮어쓰지 않는다.
+분석을 요청하면 `--run-output-db`가 필수이고 새 파일만 허용한다. 시장과 원본 분석 DB는
+읽기 전용으로 연다. config에는 선택적으로 `decision_dates`를 지정할 수 있다.
+출력 bundle 파일도 새 파일만 허용해 사용자 파일을 덮어쓰지 않는다.
 완료 시 mode, semantic input_hash, limitations, execution_status=blocked를 출력한다.
 이 파일을 `dsv backtest --input ...`으로 실행하면 `real_runner_unsupported`로 거부한다.
 
