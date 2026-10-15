@@ -228,8 +228,10 @@ def test_active_writer_blocks_consistent_snapshot(root: Path) -> None:
     with (root / batch.DIRECTORY / "execution.lock").open("rb") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         response = client_for(root).get(PREFIX + "runs")
-        assert response.json()["evidenceStatus"] == "invalid"
+        assert response.json()["evidenceStatus"] == "unavailable"
         assert response.json()["items"] == []
+
+        assert response.json()["diagnostic"] == "dart_evidence_busy"
 
 
 def test_collection_audit_is_partial_pinned_and_read_only(tmp_path: Path) -> None:
@@ -354,3 +356,12 @@ def test_optional_root_lookup_error_is_sanitized(
     assert response.status_code == 200
     assert response.json()["evidenceStatus"] == "invalid"
     assert "secret" not in response.text
+
+
+def test_busy_source_never_fabricates_validation_incident(root: Path) -> None:
+    import fcntl
+
+    with (root / batch.DIRECTORY / "execution.lock").open("rb") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        alerts = client_for(root).get(PREFIX + "alerts").json()["items"]
+        assert not any(a["category"] == "validation_failure" for a in alerts)
