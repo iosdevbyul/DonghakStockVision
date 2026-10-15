@@ -308,15 +308,18 @@ class OperationsReader:
             EOFError,
             BadZipFile,
             ZlibError,
-        ):
+        ) as error:
             # Never return exception text, approval contents, file names or paths.
+            busy = isinstance(error, ValueError) and error.args == (
+                "orchestrator_execution_active",
+            )
             payload = RunsPayload(
                 items=(),
                 total=0,
                 offset=offset,
                 limit=limit,
-                evidenceStatus="invalid",
-                diagnostic="dart_evidence_validation_failed",
+                evidenceStatus="unavailable" if busy else "invalid",
+                diagnostic="dart_evidence_busy" if busy else "dart_evidence_validation_failed",
             )
 
             return payload, None, None

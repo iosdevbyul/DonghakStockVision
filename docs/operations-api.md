@@ -113,7 +113,8 @@ fields in an HTTP response. Reload requires an explicit application restart.
 
 DART readers reuse the existing non-writing shared kernel lock and validate inventory
 and all parent records in one evidence capture per response. An active exclusive writer
-returns invalid/unavailable projections rather than partially successful records.
+returns unavailable projections with `dart_evidence_busy`, not a recorded validation
+failure or partially successful record. Evidence corruption remains invalid.
 Readers do not fix missing receipts or bindings. External writers bypassing the kernel
 lock are outside the existing evidence contract. Validation replays all local ZIPs and
 may be expensive as the archive grows; no unvalidated cache is introduced.
