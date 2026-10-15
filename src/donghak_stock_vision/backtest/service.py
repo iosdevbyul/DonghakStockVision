@@ -5,9 +5,10 @@ from typing import Any
 from donghak_stock_vision.backtest.availability import FrozenAnalysis
 from donghak_stock_vision.backtest.data import FrozenJSON, FrozenTape
 from donghak_stock_vision.backtest.ledger import checkpoint, restore
-from donghak_stock_vision.backtest.performance import calculate_performance, policy_values
+from donghak_stock_vision.backtest.performance import policy_values
 from donghak_stock_vision.backtest.report import format_report
 from donghak_stock_vision.backtest.runner import BacktestRunner
+from donghak_stock_vision.backtest.trading_report import ReportedBacktest, report_backtest
 from donghak_stock_vision.backtest.validation import fields, money, require
 from donghak_stock_vision.strategy.contracts import DecisionPolicy
 
@@ -30,9 +31,9 @@ def freeze_request(runner: BacktestRunner, valuation_policy: FrozenJSON) -> Froz
     )
 
 
-def run_backtest(
+def run_backtest_with_report(
     document: FrozenJSON, *, start: str, end: str, initial_cash: str, tickers: list[str]
-) -> tuple[FrozenJSON, FrozenJSON, str]:
+) -> ReportedBacktest:
     require(document.to_dict().get("kind") != "historical_input_v1", "real_runner_unsupported")
     d = fields(
         document.to_dict(),
@@ -57,6 +58,13 @@ def run_backtest(
         FrozenJSON.freeze(d["execution_policy"]),
         FrozenJSON.freeze(config),
     )
-    result = runner.run()
-    performance = calculate_performance(result, tape, FrozenJSON.freeze(d["valuation_policy"]))
-    return result, performance, format_report(performance)
+    return report_backtest(runner, FrozenJSON.freeze(d["valuation_policy"]))
+
+
+def run_backtest(
+    document: FrozenJSON, *, start: str, end: str, initial_cash: str, tickers: list[str]
+) -> tuple[FrozenJSON, FrozenJSON, str]:
+    result = run_backtest_with_report(
+        document, start=start, end=end, initial_cash=initial_cash, tickers=tickers
+    )
+    return result.run, result.performance, format_report(result.performance, result.details)

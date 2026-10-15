@@ -12,7 +12,8 @@ from donghak_stock_vision.backtest.historical_service import (
     HistoricalBacktestRequest,
     run_historical_backtest,
 )
-from donghak_stock_vision.backtest.service import run_backtest
+from donghak_stock_vision.backtest.report import format_report
+from donghak_stock_vision.backtest.service import run_backtest_with_report
 from donghak_stock_vision.backtest.validation import require
 from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.sqlite import SQLiteStore
@@ -64,7 +65,7 @@ def run(args: argparse.Namespace) -> int:
     )
     document = FrozenJSON(args.input.read_text(encoding="utf-8"))
     try:
-        result, performance, report = run_backtest(
+        detailed = run_backtest_with_report(
             document,
             start=args.start,
             end=args.end,
@@ -73,6 +74,7 @@ def run(args: argparse.Namespace) -> int:
         )
     except (KeyError, TypeError) as error:
         raise ValueError("invalid_frozen_backtest_input") from error
+    result, performance = detailed.run, detailed.performance
     if args.format == "json":
         print(
             FrozenJSON.freeze(
@@ -81,11 +83,13 @@ def run(args: argparse.Namespace) -> int:
                     "run_hash": result.identifier,
                     "performance": performance.to_dict(),
                     "performance_hash": performance.identifier,
+                    "detailed_report": detailed.details.to_dict(),
+                    "detailed_report_hash": detailed.details.identifier,
                 }
             ).payload_json
         )
     else:
-        print(report, end="")
+        print(format_report(performance, detailed.details), end="")
     return 0
 
 
