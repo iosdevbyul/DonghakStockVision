@@ -105,3 +105,11 @@ approved temporal availability/strategy/backtest contracts. Latest-only market
 storage cannot reconstruct historical revisions or establish PIT/OOS execution
 or liquidity evidence. Feature and label definitions are unchanged. Tests use
 explicit estimator doubles and temporary SQLite, never production OOS predictions.
+
+## Historical trading adapter
+
+The explicit, versioned adapter and bounded programmatic historical provider are
+now documented in [HGB historical trading](hgb-historical-trading.md). Public
+integrated evidence additionally preserves verified experiment records. Genuine
+synthetic HGB scoring/trading tests complement the earlier estimator-double
+boundary tests; neither establishes real performance or operational eligibility.

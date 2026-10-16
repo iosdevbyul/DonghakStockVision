@@ -8,6 +8,7 @@ from typing import Any, cast
 from donghak_stock_vision.backtest.availability import FrozenAnalysis
 from donghak_stock_vision.backtest.contracts import ExecutionPolicy, MarketEvent, RunManifest
 from donghak_stock_vision.backtest.data import PROVENANCE, FrozenJSON, FrozenTape, capture_market
+from donghak_stock_vision.backtest.hgb_provider import HGBHistoricalProvider
 from donghak_stock_vision.backtest.validation import instant, require, utc
 from donghak_stock_vision.data.learning import AnalysisError
 from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy, calendar_policy
@@ -101,6 +102,7 @@ def build_historical_input(
     research_calendar: ResearchCalendarPolicy | None = None,
     decision_dates: str | list[str] = "all_available",
     run_output: AnalysisStore | None = None,
+    hgb_provider: HGBHistoricalProvider | None = None,
 ) -> HistoricalBacktestInput:
     """Dates are inclusive Seoul trading dates, not UTC publication timestamps.
 
@@ -110,7 +112,19 @@ def build_historical_input(
     validate_range(start, end)
     schedule = decision_schedule(decision_dates, start, end, research_calendar)
     require(analysis_store is None or run_output is not None, "run_output_required")
-    require(analysis_store is not None or run_output is None, "run_output_without_source")
+    if hgb_provider is not None:
+        require(run_output is not None, "run_output_required")
+        require(model_id == hgb_provider.model_id, "hgb_model_policy_mismatch")
+        require(type(decision_dates) is list, "bounded_hgb_decision_dates_required")
+        require(len(tickers) == 1, "concurrent_multi_ticker_execution_unsupported")
+        if hasattr(market, "connection"):
+            # Borrow the existing same-file guard; never write through this wrapper.
+            ResearchRunStore(market, run_output)  # type: ignore[arg-type]
+
+    require(
+        analysis_store is not None or run_output is None or hgb_provider is not None,
+        "run_output_without_source",
+    )
     if analysis_store is not None and run_output is not None:
         analysis_store = ResearchRunStore(analysis_store, run_output)
     if research_calendar is not None:
@@ -133,7 +147,10 @@ def build_historical_input(
     require(m["information_mode"] == "historical_research", "pit_history_unavailable")
     require(m["data_origin"] == "real", "real_historical_input_required")
     require(m["execution_mode"] == "backtest", "backtest_required")
-    require((analysis_store is None) == (model_id is None), "analysis_store_and_model_required")
+    require(
+        hgb_provider is not None or (analysis_store is None) == (model_id is None),
+        "analysis_store_and_model_required",
+    )
     cutoff = instant(captured_at)
     require(utc(cutoff).astimezone(SEOUL).date() > end, "capture_before_period_end")
     # Materialize each requested series once, then use the existing public adapter.
@@ -180,7 +197,8 @@ def build_historical_input(
     ids: list[tuple[str, str]] = []
     model = snapshot = None
     error = "analysis_artifact_unavailable"
-    if analysis_store is not None and model_id is not None:
+    hgb_bundles: list[dict[str, Any]] = []
+    if hgb_provider is None and analysis_store is not None and model_id is not None:
         try:
             model = load_model(analysis_store, model_id, "historical_research")
             snapshot = analysis_store.get("snapshot", model["snapshot_id"])
@@ -243,6 +261,36 @@ def build_historical_input(
                     status="available" if result["input_status"] == "ok" else "blocked",
                     reason=result["input_status"],
                 )
+            except (AnalysisError, ValueError) as exc:
+                point["reason"] = str(exc)
+        if hgb_provider is not None:
+            try:
+                bundle = hgb_provider.capture(
+                    copy,
+                    ticker=s["ticker"],
+                    as_of=utc(stamp),
+                    history_start=start,
+                    source_cutoff=utc(cutoff),
+                    quality=quality.to_dict(),
+                    calendar=research_calendar,
+                )
+                aid, sid = bundle["analysis_id"], bundle["snapshot_id"]
+                hgb_bundles.append(bundle)
+                ids.append((aid, sid))
+                analysis_releases.append(
+                    {
+                        "model_id": model_id,
+                        "snapshot_id": sid,
+                        "analysis_id": aid,
+                        "available_at": stamp,
+                        "sequence": seq,
+                    }
+                )
+                point.update(
+                    analysis_id=aid, status="available", reason=bundle["signal"]["input_status"]
+                )
+                assert run_output is not None
+                run_output.put("hgb_analysis", bundle)
             except (AnalysisError, ValueError) as exc:
                 point["reason"] = str(exc)
         points.append(point)
@@ -326,14 +374,23 @@ def build_historical_input(
         )
     tape = FrozenTape(manifest, selected_policy, tuple(events), sources, plan, quality)
     analyses = (
-        [
-            FrozenAnalysis.capture(
-                analysis_store, manifest, plan, model_id=model_id, snapshot_id=sid, analysis_id=aid
-            ).bundle.to_dict()
-            for aid, sid in ids
-        ]
-        if analysis_store is not None and model_id
-        else []
+        hgb_bundles
+        if hgb_provider is not None
+        else (
+            [
+                FrozenAnalysis.capture(
+                    analysis_store,
+                    manifest,
+                    plan,
+                    model_id=model_id,
+                    snapshot_id=sid,
+                    analysis_id=aid,
+                ).bundle.to_dict()
+                for aid, sid in ids
+            ]
+            if analysis_store is not None and model_id
+            else []
+        )
     )
     return HistoricalBacktestInput(
         FrozenJSON.freeze(

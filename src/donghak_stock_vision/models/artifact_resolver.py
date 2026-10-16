@@ -15,6 +15,7 @@ class VerifiedHGB:
     artifact: HGBArtifact
     checkpoint: bytes
     calendar_json: str
+    provenance_json: str
 
     def load(self) -> HGBInference:
         return HGBInference(
@@ -141,7 +142,18 @@ class TrustedHGBResolver:
                 if hashlib.sha256(checkpoint).hexdigest() != artifact.checkpoint_sha256:
                     raise AnalysisError("checkpoint_mismatch")
                 verified.append(
-                    VerifiedHGB(artifact, checkpoint, canonical(lock["research_calendar"]))
+                    VerifiedHGB(
+                        artifact,
+                        checkpoint,
+                        canonical(lock["research_calendar"]),
+                        canonical(
+                            {
+                                "lock": {**lock, "lock_id": lock_id},
+                                "qualification": {**qualification, "report_id": qualification_id},
+                                "plan": plan,
+                            }
+                        ),
+                    )
                 )
             return verified[0], verified[1]
         except (KeyError, TypeError, ValueError, AttributeError) as error:

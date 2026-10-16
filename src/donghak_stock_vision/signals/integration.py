@@ -127,6 +127,7 @@ class IntegratedResearchSignal:
     down_artifact: HGBArtifact
     snapshot_json: str
     anchor_date: date
+    provenance_json: str
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -136,6 +137,7 @@ class IntegratedResearchSignal:
             "snapshot": json.loads(self.snapshot_json),
             "anchor_date": self.anchor_date.isoformat(),
             "feature_version": FEATURE_VERSION,
+            "experiment_provenance": json.loads(self.provenance_json),
         }
 
     @property
@@ -175,5 +177,10 @@ class HGBResearchSignalService:
                 down=down.load(),
             )
         return IntegratedResearchSignal(
-            candidate, up.artifact, down.artifact, resolved.snapshot_json, request.anchor_date
+            candidate,
+            up.artifact,
+            down.artifact,
+            resolved.snapshot_json,
+            request.anchor_date,
+            up.provenance_json,
         )
