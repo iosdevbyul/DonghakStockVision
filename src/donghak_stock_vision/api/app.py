@@ -28,6 +28,11 @@ from donghak_stock_vision.api.operations import (
     RunsPayload,
 )
 from donghak_stock_vision.api.screener import ScreenerSnapshot, published_screener
+from donghak_stock_vision.api.security_metadata import (
+    MetadataEnvelope,
+    SecurityMetadataDetail,
+    SecurityMetadataReader,
+)
 from donghak_stock_vision.api.service import ResearchAPIReader
 from donghak_stock_vision.api.stock_analysis import (
     AnalysisPublicationReader,
@@ -41,11 +46,14 @@ def create_app(
     *,
     analysis_reader: AnalysisPublicationReader | None = None,
     operations_reader: OperationsReader | None = None,
+    security_metadata_reader: SecurityMetadataReader | None = None,
     allowed_origins: Sequence[str] = (
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ),
 ) -> FastAPI:
+    if security_metadata_reader is not None:
+        security_metadata_reader.validate_research_reader(reader)
     app = FastAPI(
         title="DonghakStockVision Research API",
         version="1.0.0",
@@ -129,6 +137,27 @@ def create_app(
         source: Annotated[ResearchAPIReader, Depends(require_reader)],
     ) -> tuple[StockSummary, ...]:
         return source.stocks()
+
+    def require_metadata() -> SecurityMetadataReader:
+        if security_metadata_reader is None:
+            raise HTTPException(status_code=503, detail="security metadata is not configured")
+        return security_metadata_reader
+
+    @app.get("/api/v1/security-metadata", response_model=MetadataEnvelope)
+    def security_metadata(
+        source: Annotated[SecurityMetadataReader, Depends(require_metadata)],
+    ) -> MetadataEnvelope:
+        return source.envelope
+
+    @app.get("/api/v1/security-metadata/{ticker}", response_model=SecurityMetadataDetail)
+    def security_metadata_detail(
+        ticker: Annotated[str, Path(pattern=r"^[0-9A-Z]{6}$")],
+        source: Annotated[SecurityMetadataReader, Depends(require_metadata)],
+    ) -> SecurityMetadataDetail:
+        item = source.detail(ticker)
+        if item is None:
+            raise HTTPException(status_code=404, detail="security metadata not found")
+        return item
 
     @app.get("/api/v1/analysis/screener", response_model=ScreenerSnapshot)
     def screener() -> ScreenerSnapshot:

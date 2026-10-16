@@ -18,6 +18,11 @@ def parser() -> argparse.ArgumentParser:
         "--market-db", type=Path, help="optional immutable market database for OHLCV"
     )
     result.add_argument("--market-db-sha256", help="approved market database SHA-256")
+    result.add_argument("--security-metadata", type=Path, help="optional display metadata envelope")
+    result.add_argument(
+        "--security-metadata-fingerprint", help="expected metadata artifact fingerprint"
+    )
+    result.add_argument("--metadata-evidence-root", type=Path, default=Path("."))
     result.add_argument(
         "--analysis-publication", type=Path, help="reviewed per-security analysis JSON"
     )
@@ -56,6 +61,10 @@ def main(argv: list[str] | None = None) -> None:
 
     if bool(args.market_db) != bool(args.market_db_sha256):
         parser().error("--market-db and --market-db-sha256 must be specified together")
+    if bool(args.security_metadata) != bool(args.security_metadata_fingerprint):
+        parser().error(
+            "--security-metadata and --security-metadata-fingerprint must be specified together"
+        )
     ohlcv_reader = None
     if args.market_db:
         from donghak_stock_vision.api.ohlcv import OhlcvMarketReader
@@ -67,12 +76,26 @@ def main(argv: list[str] | None = None) -> None:
 
         analysis_reader = AnalysisPublicationReader.from_path(args.analysis_publication)
     reader = SnapshotReader.from_path(snapshot_path)
+    metadata_reader = None
+    if args.security_metadata:
+        from donghak_stock_vision.api.security_metadata import SecurityMetadataReader
+        from donghak_stock_vision.api.snapshot import ResearchAPISnapshot
+
+        metadata_reader = SecurityMetadataReader.from_path(
+            args.security_metadata,
+            expected_fingerprint=args.security_metadata_fingerprint,
+            root=args.metadata_evidence_root,
+            research=ResearchAPISnapshot.model_validate_json(
+                snapshot_path.read_text(encoding="utf-8")
+            ),
+        )
     from donghak_stock_vision.api.operations import OperationsReader
 
     app = create_app(
         reader,
         ohlcv_reader=ohlcv_reader,
         analysis_reader=analysis_reader,
+        security_metadata_reader=metadata_reader,
         operations_reader=OperationsReader(
             args.operations_root,
             reader,

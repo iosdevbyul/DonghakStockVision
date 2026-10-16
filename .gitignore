@@ -41,3 +41,8 @@ htmlcov/
 # Preserve official baseline evidence source responses
 !docs/evidence/baseline-official/raw/
 !docs/evidence/baseline-official/raw/**
+
+# Preserve the exact archived public DART response required for metadata replay.
+!docs/evidence/baseline-dart/raw/
+docs/evidence/baseline-dart/raw/*
+!docs/evidence/baseline-dart/raw/corpCode.zip
