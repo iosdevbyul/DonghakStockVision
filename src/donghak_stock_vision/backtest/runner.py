@@ -222,6 +222,7 @@ class BacktestRunner:
                     "decision_as_of": clock.cutoff,
                     "analysis_id": step["analysis_id"],
                 },
+                **({"hgb_evidence": b["hgb_evidence"]} if "hgb_evidence" in b else {}),
                 "analysis": b["signal"],
                 "price_basis": step["market"]["adjustment"],
                 "account": account,
@@ -229,6 +230,11 @@ class BacktestRunner:
                 "market": step["market"],
                 "provenance": {
                     "source": "frozen_analysis",
+                    **(
+                        {"evidence_observed_at": b["created_at"]["signal"]}
+                        if "hgb_evidence" in b
+                        else {}
+                    ),
                     "bundle_hash": analysis.bundle.identifier,
                     "analysis_id": b["analysis_id"],
                     "model_id": b["model_id"],

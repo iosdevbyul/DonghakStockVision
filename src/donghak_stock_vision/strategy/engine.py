@@ -159,6 +159,13 @@ def _research(b: dict[str, Any], p: dict[str, Any], result: dict[str, Any]) -> N
     if b.get("assembly_error"):
         raise Blocked(b["assembly_error"])
     a = need(b, "analysis")
+    if "research_contract" in a and a["research_contract"] != "hgb_historical_analysis_v1":
+        raise Blocked("unsupported_research_contract")
+    if a.get("research_contract") == "hgb_historical_analysis_v1":
+        from donghak_stock_vision.signals.hgb_trading import projection
+
+        if projection(need(b, "hgb_evidence")) != a:
+            raise Blocked("hgb_projection_mismatch")
     direction = analysis_context(a, p, request)
     checks["analysis"] = "passed"
     checks["snapshots"] = "checking"

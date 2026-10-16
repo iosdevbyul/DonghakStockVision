@@ -280,6 +280,17 @@ def _project(runner: BacktestRunner, run: FrozenJSON, performance: FrozenJSON) -
                 "opportunity_time_basis": "runner_event_cutoff",
                 "decision_cutoff": d["decision_as_of"] if d else None,
                 "analysis_id": step["analysis_id"],
+                **(
+                    {
+                        "hgb_provenance": signal["hgb_provenance"],
+                        "feature_values": signal["feature_values"],
+                        "evidence_observed_at": item["input"]["provenance"]["evidence_observed_at"]
+                        if item
+                        else None,
+                    }
+                    if "hgb_provenance" in signal
+                    else {}
+                ),
                 "model_id": signal.get("model_version"),
                 "snapshot_id": signal.get("snapshot_id"),
                 "analysis_anchor_at": signal.get("anchor_at"),
@@ -336,7 +347,11 @@ def _project(runner: BacktestRunner, run: FrozenJSON, performance: FrozenJSON) -
                 "order_id": oid,
                 "submitted_at": opened.get("submitted_at") if opened else None,
                 "executions": executions.get(oid, []) if oid else [],
-                "unavailable": {"feature_contributions": "not_present_in_public_signal"}
+                "unavailable": {
+                    "feature_contributions": "hgb_attribution_not_provided"
+                    if "hgb_provenance" in signal
+                    else "not_present_in_public_signal"
+                }
                 if costs.get("contributions") is None
                 else {},
                 "source": {

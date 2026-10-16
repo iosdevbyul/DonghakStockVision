@@ -22,6 +22,9 @@ class FrozenAnalysis:
 
     def __post_init__(self) -> None:
         m, b = self.manifest.to_dict(), self.bundle.to_dict()
+        if b.get("contract") == "hgb_historical_analysis_v1":
+            self._validate_hgb()
+            return
         fields(
             b,
             "model_id snapshot_id analysis_id model snapshot training_snapshot dataset signal "
@@ -92,6 +95,55 @@ class FrozenAnalysis:
             require(r[key] == b[key], "analysis_release_identity_mismatch")
         integer(r["sequence"])
         require(utc(s["anchor_at"]) <= utc(r["available_at"]), "analysis_release_before_anchor")
+
+    def _validate_hgb(self) -> None:
+        from donghak_stock_vision.signals.hgb_trading import projection
+
+        b, m = self.bundle.to_dict(), self.manifest.to_dict()
+        require(m["information_mode"] == "historical_research", "hgb_research_only")
+        require(projection(b["hgb_evidence"]) == b["signal"], "hgb_projection_mismatch")
+        require(b["snapshot"] == b["hgb_evidence"]["snapshot"], "hgb_snapshot_mismatch")
+        for kind, identity in (("signal", "analysis_id"), ("snapshot", "snapshot_id")):
+            require(digest(b[kind]) == b[identity], "artifact_checksum_mismatch")
+        require(b["model_id"] == b["signal"]["model_version"], "hgb_model_pair_mismatch")
+        for key in PROVENANCE:
+            require(
+                b["signal"]["mode" if key == "information_mode" else key] == m[key],
+                "artifact_provenance_mismatch",
+            )
+            require(self.release_plan.to_dict()[key] == m[key], "plan_provenance_mismatch")
+        for key, identity in (
+            ("models", "model_id"),
+            ("analyses", "analysis_id"),
+            ("market_snapshots", "snapshot_id"),
+        ):
+            require(
+                any(r["artifact_id"] == b[identity] == r["content_hash"] for r in m[key]),
+                "undeclared_artifact",
+            )
+        require(
+            self.release_plan.identifier == m["availability_assumption_id"], "assumption_mismatch"
+        )
+        selected = [
+            r
+            for r in self.release_plan.to_dict()["analysis_releases"]
+            if r["analysis_id"] == b["analysis_id"]
+        ]
+        require(len(selected) == 1, "analysis_release_evidence_missing")
+        r = selected[0]
+        for key in ("model_id", "snapshot_id", "analysis_id"):
+            require(r[key] == b[key], "analysis_release_identity_mismatch")
+        integer(r["sequence"])
+        require(
+            utc(b["signal"]["anchor_at"]) <= utc(r["available_at"]),
+            "analysis_release_before_anchor",
+        )
+        # Actual evidence observation is separate from the explicit retrospective release.
+        require(
+            utc(b["created_at"]["signal"]) >= utc(b["snapshot"]["cutoff"]),
+            "hgb_observation_before_source_cutoff",
+        )
+        require(b["created_at"]["model"] is None, "hgb_model_timestamp_unavailable")
 
     @classmethod
     def capture(

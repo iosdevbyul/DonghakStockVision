@@ -106,7 +106,7 @@ def validate_input(tape: FrozenTape, document: FrozenJSON | None) -> HistoricalB
             source["kind"] == "latest_daily" and source["data_origin"] == "real",
             "historical_source_required",
         )
-    # FrozenAnalysis validates all checksums and the unchanged same-training-snapshot rule.
+    # FrozenAnalysis validates checksums and the provider-specific training/input contract.
     for artifact in frozen.analyses:
         bundle = artifact.bundle.to_dict()
         require(
@@ -128,6 +128,14 @@ def validate_input(tape: FrozenTape, document: FrozenJSON | None) -> HistoricalB
                 for r in bundle["snapshot"]["rows"].get(ticker, [])
                 if d["start"] <= r["trading_date"] <= d["end"]
             ]
+            if bundle.get("contract") == "hgb_historical_analysis_v1":
+                # HGB uses a bounded inference window, separate from training.
+                require(
+                    bundle["snapshot"]["quality"] == tape.quality.to_dict(),
+                    "historical_quality_mismatch",
+                )
+                anchor = bundle["signal"]["last_trading_date"]
+                originals = [r for r in originals if r["trading_date"] <= anchor][-12:]
             require(originals == snapshot_rows, "historical_snapshot_market_mismatch")
     return frozen
 

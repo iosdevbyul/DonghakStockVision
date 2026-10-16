@@ -9,6 +9,7 @@ from donghak_stock_vision.backtest.contracts import ExecutionPolicy, RunManifest
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.decision_bridge import policy_values as admission_values
 from donghak_stock_vision.backtest.execution import settings
+from donghak_stock_vision.backtest.hgb_provider import HGBHistoricalProvider
 from donghak_stock_vision.backtest.historical import build_historical_input, decision_schedule
 from donghak_stock_vision.backtest.historical_execution import MODE, market_context, validate_input
 from donghak_stock_vision.backtest.ledger import LedgerCommand, LedgerPolicy, initialize
@@ -121,9 +122,10 @@ class HistoricalBacktestResult:
 def run_historical_backtest(
     request: HistoricalBacktestRequest,
     market: MarketDataStore,
-    analysis: AnalysisStore,
+    analysis: AnalysisStore | None,
     *,
     run_output: AnalysisStore,
+    hgb_provider: HGBHistoricalProvider | None = None,
 ) -> HistoricalBacktestResult:
     """Freeze once with public SignalService.research through the existing builder.
 
@@ -151,6 +153,7 @@ def run_historical_backtest(
         research_calendar=calendar_policy(c),
         decision_dates=c["decision_dates"],
         run_output=run_output,
+        hgb_provider=hgb_provider,
     )
     tape = frozen.tape
     validate_input(tape, frozen.document)

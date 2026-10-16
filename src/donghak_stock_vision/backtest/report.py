@@ -93,6 +93,22 @@ def detailed_lines(details: FrozenJSON) -> list[str]:
             f"    analysis={item['analysis_id']} model={item['model_id']} "
             f"snapshot={item['snapshot_id']}"
         )
+        if item.get("hgb_provenance"):
+            provenance = item["hgb_provenance"]
+            rows.append(
+                f"    HGB contract={provenance['contract']} pair={provenance['model_pair']}"
+            )
+            for side, model in provenance["models"].items():
+                rows.append(
+                    f"    {side} checkpoint={model['checkpoint_sha256']} "
+                    f"lock={model['experiment_lock_id']} qualification={model['qualification_id']} "
+                    f"training_snapshot={model['source_snapshot_id']}"
+                )
+            rows.append(
+                f"    Evidence observed_at={item['evidence_observed_at']} "
+                f"source_cutoff={provenance['source_cutoff']}"
+            )
+            rows.append(f"    Feature values: {item['feature_values']}")
         rows.extend("    " + reason["text"] for reason in item["reasons"])
         if item["conditions"]:
             rows.extend(
