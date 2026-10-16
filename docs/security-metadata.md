@@ -79,6 +79,14 @@ preferred-share type, or borrowed parent corporation reference is insufficient.
 A future reviewed official adapter requires its own evidence/temporal contract;
 this change does not grant a general approval to external data supplied in JSON.
 
+The already archived public `baseline-dart/raw/corpCode.zip` is included in Git
+and source distributions so clean checkouts can replay the same evidence offline.
+The ignore exception covers only this response, not other local raw acquisitions.
+Its original SHA-256 remains
+`5ed56ec1c726ed4359fbfe042828228cd3ff4655c3bf0b4fa1bf0170e470721e`,
+as declared by the existing mapping and retrieval record. It was not recollected,
+recompressed or replaced to fix CI.
+
 Evidence hashes establish integrity relative to supplied local evidence, not
 independent official authenticity or new quality approvals. Original DART/KIND
 artifacts and approvals are never rewritten. Current-source DART mapping
