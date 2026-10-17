@@ -25,6 +25,8 @@ from donghak_stock_vision.backtest.ledger import (
     LedgerState,
     apply,
     checkpoint,
+    compare_account,
+    reservation_prefix,
     restore,
 )
 from donghak_stock_vision.backtest.shared_evidence import legacy_dict
@@ -269,6 +271,55 @@ def accept_candidate(
         return FrozenJSON.freeze({**failure(error).to_dict(), **metadata(tape)}), ledger
 
 
+def acceptance_binding(
+    a: dict[str, Any],
+    ledger: LedgerState,
+    tape: FrozenTape,
+    p: dict[str, Any],
+    reserved: LedgerState,
+) -> VirtualOrder:
+    """Verify the original admission/order/policy bindings for fills and releases."""
+    order = VirtualOrder.from_dict(a["accepted_order"])
+    require(order.identifier == a["order_id"], "accepted_order_hash_mismatch")
+    require(
+        reserved.to_dict()["orders"][order.identifier]["original"] == order.to_dict(),
+        "reservation_mismatch",
+    )
+    reservation_event = reserved.events[-1].document.to_dict()
+    require(
+        reservation_event["event_id"]
+        == acceptance_key(
+            FrozenJSON.freeze(a["admission"]),
+            p,
+            VirtualClock(**a["decision_clock"]),
+            VirtualClock(**a["candidate_clock"]),
+            VirtualClock(**a["acceptance_clock"]),
+        )
+        and reservation_event["order_id"] == order.identifier,
+        "acceptance_policy_binding_mismatch",
+    )
+    original_candidate = VirtualOrder.from_dict(a["admission"]["candidate"])
+    require(original_candidate.identifier == a["candidate_id"], "candidate_hash_mismatch")
+    projected = original_candidate.to_dict()
+    projected.update(
+        status="open",
+        accepted_at=a["acceptance_clock"]["cutoff"],
+        policy_id=ledger.policy.identifier,
+    )
+    require(VirtualOrder.from_dict(projected) == order, "candidate_order_binding_mismatch")
+    require(
+        utc(a["decision_clock"]["cutoff"]) == utc(a["admission"]["decision_at"])
+        and utc(a["candidate_clock"]["cutoff"]) == utc(a["admission"]["admission_at"]),
+        "candidate_clock_mismatch",
+    )
+    require(
+        tape.view(VirtualClock(**a["decision_clock"])).identifier
+        == a["admission"]["market_view_hash"],
+        "decision_view_mismatch",
+    )
+    return order
+
+
 def execute(
     acceptance: FrozenJSON,
     ledger: LedgerState,
@@ -279,6 +330,7 @@ def execute(
     expected_revision: int,
     ledger_sequence: int,
     quantity: int,
+    account_transition: FrozenJSON | None = None,
 ) -> tuple[FrozenJSON, LedgerState]:
     """Full fill at one explicitly selected future public event; no runner or I/O."""
     try:
@@ -310,48 +362,25 @@ def execute(
             reserved.manifest == ledger.manifest and reserved.tape_hash == tape.identifier,
             "reservation_run_mismatch",
         )
-        require(
-            integer(expected_revision) == reserved.to_dict()["revision"],
-            "account_revision_mismatch",
-        )
-        order = VirtualOrder.from_dict(a["accepted_order"])
-        require(order.identifier == a["order_id"], "accepted_order_hash_mismatch")
-        require(
-            reserved.to_dict()["orders"][order.identifier]["original"] == order.to_dict(),
-            "reservation_mismatch",
-        )
-        reservation_event = reserved.events[-1].document.to_dict()
-        require(
-            reservation_event["event_id"]
-            == acceptance_key(
-                FrozenJSON.freeze(a["admission"]),
-                p,
-                VirtualClock(**a["decision_clock"]),
-                VirtualClock(**a["candidate_clock"]),
-                VirtualClock(**a["acceptance_clock"]),
+        if account_transition is None:
+            require(
+                integer(expected_revision) == reserved.to_dict()["revision"],
+                "account_revision_mismatch",
             )
-            and reservation_event["order_id"] == order.identifier,
-            "acceptance_policy_binding_mismatch",
-        )
-        original_candidate = VirtualOrder.from_dict(a["admission"]["candidate"])
-        require(original_candidate.identifier == a["candidate_id"], "candidate_hash_mismatch")
-        projected = original_candidate.to_dict()
-        projected.update(
-            status="open",
-            accepted_at=a["acceptance_clock"]["cutoff"],
-            policy_id=ledger.policy.identifier,
-        )
-        require(VirtualOrder.from_dict(projected) == order, "candidate_order_binding_mismatch")
-        require(
-            utc(a["decision_clock"]["cutoff"]) == utc(a["admission"]["decision_at"])
-            and utc(a["candidate_clock"]["cutoff"]) == utc(a["admission"]["admission_at"]),
-            "candidate_clock_mismatch",
-        )
-        require(
-            tape.view(VirtualClock(**a["decision_clock"])).identifier
-            == a["admission"]["market_view_hash"],
-            "decision_view_mismatch",
-        )
+        else:
+            transition = fields(
+                account_transition.to_dict(), "version expected_revision expected_ledger_hash"
+            )
+            require(
+                transition["version"] == "shared_account_execution_v1",
+                "unsupported_account_transition",
+            )
+            require(
+                expected_revision == transition["expected_revision"], "account_revision_mismatch"
+            )
+            compare_account(ledger, expected_revision, transition["expected_ledger_hash"])
+            reservation_prefix(ledger, reserved, a["order_id"])
+        order = acceptance_binding(a, ledger, tape, p, reserved)
         o, e = order.to_dict(), event.to_dict()
         n = integer(quantity, positive=True)
         require(n == o["quantity"], "partial_fill_unsupported")
@@ -455,11 +484,16 @@ def execute(
         previous = [x for x in ledger.events if x.document.to_dict()["event_id"] == fill_id]
         if previous:
             require(previous == [cmd], "fill_identifier_conflict")
-        else:
+        elif account_transition is None:
             require(ledger.identifier == reserved.identifier, "account_revision_mismatch")
         updated = apply(ledger, cmd, cutoff=clock.cutoff)
         return result(
             "filled",
+            **(
+                {"account_transition": account_transition.to_dict()}
+                if account_transition is not None
+                else {}
+            ),
             fill_id=fill_id,
             fill_hash=fill.identifier,
             fill=fill.to_dict(),

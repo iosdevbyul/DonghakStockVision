@@ -96,7 +96,12 @@ def verify_trade(
         tape,
         events[0],
         VirtualClock.at(f["fill_known_at"], x["market_sequence"]),
-        expected_revision=reserved.to_dict()["revision"],
+        expected_revision=before.to_dict()["revision"]
+        if "account_transition" in x
+        else reserved.to_dict()["revision"],
+        account_transition=FrozenJSON.freeze(x["account_transition"])
+        if "account_transition" in x
+        else None,
         ledger_sequence=f["sequence"],
         quantity=f["quantity"],
     )

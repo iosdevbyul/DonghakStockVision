@@ -474,6 +474,36 @@ def apply(state: LedgerState, event: LedgerCommand, *, cutoff: str) -> LedgerSta
     )
 
 
+def compare_account(state: LedgerState, expected_revision: int, expected_hash: str) -> None:
+    """Explicit CAS boundary for shared-account commands; no stale rebasing."""
+    require(integer(expected_revision) == state.to_dict()["revision"], "account_revision_mismatch")
+    sha(expected_hash)
+    require(expected_hash == state.identifier, "account_state_mismatch")
+    require(restore(checkpoint(state)) == state, "ledger_integrity_failure")
+
+
+def reservation_prefix(state: LedgerState, reserved: LedgerState, order_id: str) -> None:
+    """Permit other orders' transitions, never a fork or a changed target reservation."""
+    require(
+        state.manifest == reserved.manifest
+        and state.tape_hash == reserved.tape_hash
+        and state.policy == reserved.policy,
+        "reservation_run_mismatch",
+    )
+    require(
+        state.events[: len(reserved.events)] == reserved.events, "reservation_ancestry_mismatch"
+    )
+    require(
+        state.to_dict()["orders"].get(order_id) == reserved.to_dict()["orders"].get(order_id)
+        and order_id in reserved.to_dict()["orders"]
+        and not any(
+            e.document.to_dict()["order_id"] == order_id
+            for e in state.events[len(reserved.events) :]
+        ),
+        "reservation_changed",
+    )
+
+
 def checkpoint(state: LedgerState) -> FrozenJSON:
     return FrozenJSON.freeze(
         {
