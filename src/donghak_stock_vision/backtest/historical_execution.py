@@ -41,7 +41,8 @@ def validate_input(tape: FrozenTape, document: FrozenJSON | None) -> HistoricalB
     frozen = HistoricalBacktestInput(document)
     d, m = document.to_dict(), tape.manifest.to_dict()
     require(
-        d["kind"] == "historical_input_v1" and d["mode"] == "historical_research",
+        d["kind"] in {"historical_input_v1", "historical_input_v2"}
+        and d["mode"] == "historical_research",
         "historical_input_required",
     )
     require(
@@ -50,6 +51,11 @@ def validate_input(tape: FrozenTape, document: FrozenJSON | None) -> HistoricalB
         and m["usage_restriction"] == "research_only"
         and m["execution_mode"] == "backtest",
         "historical_research_only",
+    )
+    require(
+        (d["kind"] == "historical_input_v1" and d["version"] == 1 and "evidence_table" not in d)
+        or (d["kind"] == "historical_input_v2" and d["version"] == 2 and "evidence_table" in d),
+        "historical_evidence_version_mismatch",
     )
     require(frozen.tape == tape, "historical_tape_mismatch")
     require(

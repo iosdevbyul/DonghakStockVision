@@ -3,12 +3,14 @@
 import json
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from functools import cached_property
 from typing import Any, cast
 
 from donghak_stock_vision.backtest.availability import FrozenAnalysis
 from donghak_stock_vision.backtest.contracts import ExecutionPolicy, MarketEvent, RunManifest
 from donghak_stock_vision.backtest.data import PROVENANCE, FrozenJSON, FrozenTape, capture_market
 from donghak_stock_vision.backtest.hgb_provider import HGBHistoricalProvider
+from donghak_stock_vision.backtest.shared_evidence import EvidenceBuilder, is_shared
 from donghak_stock_vision.backtest.validation import instant, require, utc
 from donghak_stock_vision.data.learning import AnalysisError
 from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy, calendar_policy
@@ -60,18 +62,17 @@ class HistoricalBacktestInput:
 
     @property
     def identifier(self) -> str:
-        value = self.document.to_dict()
-        for artifact in value["analyses"]:
-            artifact["created_at"].pop("signal", None)
-        return FrozenJSON.freeze(value).identifier
+        return self.document.historical_identifier
 
-    @property
+    @cached_property
     def tape(self) -> FrozenTape:
         return FrozenTape.from_json(FrozenJSON.freeze(self.document.to_dict()["tape"]).payload_json)
 
-    @property
+    @cached_property
     def analyses(self) -> tuple[FrozenAnalysis, ...]:
         tape = self.tape
+        if is_shared(self.document.to_dict()):
+            return self.document.shared_evidence.analyses(tape.manifest, tape.release_plan)
         return tuple(
             FrozenAnalysis(tape.manifest, tape.release_plan, FrozenJSON.freeze(b))
             for b in self.document.to_dict()["analyses"]
@@ -103,6 +104,7 @@ def build_historical_input(
     decision_dates: str | list[str] = "all_available",
     run_output: AnalysisStore | None = None,
     hgb_provider: HGBHistoricalProvider | None = None,
+    shared_evidence: bool = False,
 ) -> HistoricalBacktestInput:
     """Dates are inclusive Seoul trading dates, not UTC publication timestamps.
 
@@ -198,6 +200,7 @@ def build_historical_input(
     model = snapshot = None
     error = "analysis_artifact_unavailable"
     hgb_bundles: list[dict[str, Any]] = []
+    builder = EvidenceBuilder()
     if hgb_provider is None and analysis_store is not None and model_id is not None:
         try:
             model = load_model(analysis_store, model_id, "historical_research")
@@ -275,7 +278,10 @@ def build_historical_input(
                     calendar=research_calendar,
                 )
                 aid, sid = bundle["analysis_id"], bundle["snapshot_id"]
-                hgb_bundles.append(bundle)
+                if shared_evidence:
+                    builder.add(bundle)
+                else:
+                    hgb_bundles.append(bundle)
                 ids.append((aid, sid))
                 analysis_releases.append(
                     {
@@ -373,30 +379,29 @@ def build_historical_input(
             )
         )
     tape = FrozenTape(manifest, selected_policy, tuple(events), sources, plan, quality)
-    analyses = (
-        hgb_bundles
-        if hgb_provider is not None
-        else (
-            [
-                FrozenAnalysis.capture(
-                    analysis_store,
-                    manifest,
-                    plan,
-                    model_id=model_id,
-                    snapshot_id=sid,
-                    analysis_id=aid,
-                ).bundle.to_dict()
-                for aid, sid in ids
-            ]
-            if analysis_store is not None and model_id
-            else []
-        )
-    )
+    analyses = hgb_bundles
+    if hgb_provider is None and analysis_store is not None and model_id:
+        analyses = []
+        for aid, sid in ids:
+            frozen = FrozenAnalysis.capture(
+                analysis_store, manifest, plan, model_id=model_id, snapshot_id=sid, analysis_id=aid
+            )
+            if shared_evidence:
+                builder.add(frozen.bundle.to_dict())
+            else:
+                analyses.append(frozen.bundle.to_dict())
+    if shared_evidence:
+        analyses = builder.records
     return HistoricalBacktestInput(
         FrozenJSON.freeze(
             {
-                "version": 1,
-                "kind": "historical_input_v1",
+                "version": 2 if shared_evidence else 1,
+                "kind": "historical_input_v2" if shared_evidence else "historical_input_v1",
+                **(
+                    {"evidence_table": builder.table(manifest.identifier)}
+                    if shared_evidence
+                    else {}
+                ),
                 "start": start.isoformat(),
                 "end": end.isoformat(),
                 "tickers": universe,

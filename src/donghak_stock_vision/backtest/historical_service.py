@@ -126,6 +126,7 @@ def run_historical_backtest(
     *,
     run_output: AnalysisStore,
     hgb_provider: HGBHistoricalProvider | None = None,
+    shared_evidence: bool = True,
 ) -> HistoricalBacktestResult:
     """Freeze once with public SignalService.research through the existing builder.
 
@@ -154,6 +155,7 @@ def run_historical_backtest(
         decision_dates=c["decision_dates"],
         run_output=run_output,
         hgb_provider=hgb_provider,
+        shared_evidence=shared_evidence,
     )
     tape = frozen.tape
     validate_input(tape, frozen.document)
@@ -278,6 +280,11 @@ def run_historical_backtest(
                 "request": request.to_dict(),
                 "historical_input": source,
                 "historical_input_hash": frozen.identifier,
+                **(
+                    {"historical_input_transport_hash": frozen.document.identifier}
+                    if shared_evidence
+                    else {}
+                ),
                 "run": r,
                 "run_hash": run.identifier,
                 "performance": performance.to_dict(),

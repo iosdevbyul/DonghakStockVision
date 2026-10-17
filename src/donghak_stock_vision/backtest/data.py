@@ -4,7 +4,8 @@ import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any
+from functools import cached_property
+from typing import TYPE_CHECKING, Any
 
 from donghak_stock_vision.backtest.clock import VirtualClock
 from donghak_stock_vision.backtest.contracts import ExecutionPolicy, MarketEvent, RunManifest
@@ -24,6 +25,9 @@ from donghak_stock_vision.data.research_calendar import calendar_policy, exclude
 from donghak_stock_vision.data.schema import DailyBar, validate_range, validate_ticker
 from donghak_stock_vision.data.snapshot import covered, validate_quality
 from donghak_stock_vision.storage.base import MarketDataStore
+
+if TYPE_CHECKING:
+    from donghak_stock_vision.backtest.shared_evidence import SharedEvidence
 
 PROVENANCE = ("information_mode", "data_origin", "usage_restriction")
 MARKET_FIELDS = {"open", "high", "low", "close", "price", "volume", "trading_value"}
@@ -58,6 +62,26 @@ class FrozenJSON:
     @property
     def identifier(self) -> str:
         return digest(self.to_dict())
+
+    @cached_property
+    def shared_evidence(self) -> "SharedEvidence":
+        from donghak_stock_vision.backtest.shared_evidence import SharedEvidence
+
+        value = self.to_dict()
+        require(value.get("version") == 2, "shared_input_required")
+        return SharedEvidence(value["evidence_table"], value["analyses"])
+
+    @cached_property
+    def legacy_identifier(self) -> str:
+        from donghak_stock_vision.backtest.shared_evidence import legacy_identifier
+
+        return legacy_identifier(self)
+
+    @cached_property
+    def historical_identifier(self) -> str:
+        from donghak_stock_vision.backtest.shared_evidence import legacy_identifier
+
+        return legacy_identifier(self, normalize_audit=True)
 
 
 @dataclass(frozen=True)

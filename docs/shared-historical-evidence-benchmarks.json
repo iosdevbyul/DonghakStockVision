@@ -1,0 +1,274 @@
+{
+  "scope": "offline synthetic evidence-only serialization/loading and complete FrozenAnalysis validation; not a 100-date trading run",
+  "python": "3.12.14",
+  "platform": "Darwin x86_64",
+  "packages": {
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1"
+  },
+  "synthetic_seed": 42,
+  "memory": "tracemalloc Python allocations, fixture setup excluded, profiling capped at 50 decisions; null means unmeasured",
+  "timing": "single wall-clock measurements on a shared development host; not latency guarantees",
+  "initial_fixture_baseline": {
+    "decisions": 5,
+    "distinct_models": 1,
+    "distinct_snapshots": 1,
+    "frozen_bytes": 4291364,
+    "report_bytes": 39062,
+    "execution_and_fixture_seconds": 124.1964498180896,
+    "tracemalloc_peak_bytes": 140725981
+  },
+  "measurements": [
+    {
+      "family": "linear",
+      "decision_dates": 1,
+      "distinct_model_references": 1,
+      "distinct_model_artifacts": 1,
+      "distinct_snapshots": 1,
+      "legacy": {
+        "evidence_bytes": 847524,
+        "artifact_count": 0,
+        "record_count": 1,
+        "serialize_seconds": 0.04714018409140408,
+        "deserialize_seconds": 0.09274567000102252,
+        "validate_seconds": 0.10591956099960953,
+        "python_peak_load_validate_bytes": 10759260,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      },
+      "shared": {
+        "evidence_bytes": 728707,
+        "artifact_count": 6,
+        "record_count": 1,
+        "serialize_seconds": 0.07025501097086817,
+        "deserialize_seconds": 0.028111592982895672,
+        "validate_seconds": 0.1353733380092308,
+        "python_peak_load_validate_bytes": 11005888,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      }
+    },
+    {
+      "family": "linear",
+      "decision_dates": 10,
+      "distinct_model_references": 1,
+      "distinct_model_artifacts": 1,
+      "distinct_snapshots": 1,
+      "legacy": {
+        "evidence_bytes": 8474357,
+        "artifact_count": 0,
+        "record_count": 10,
+        "serialize_seconds": 0.4701620200648904,
+        "deserialize_seconds": 0.39646782795898616,
+        "validate_seconds": 1.0928404369624332,
+        "python_peak_load_validate_bytes": 65514049,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      },
+      "shared": {
+        "evidence_bytes": 776847,
+        "artifact_count": 24,
+        "record_count": 10,
+        "serialize_seconds": 0.3901586619904265,
+        "deserialize_seconds": 0.02891414100304246,
+        "validate_seconds": 0.7041776459664106,
+        "python_peak_load_validate_bytes": 11428320,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      }
+    },
+    {
+      "family": "linear",
+      "decision_dates": 50,
+      "distinct_model_references": 1,
+      "distinct_model_artifacts": 1,
+      "distinct_snapshots": 1,
+      "legacy": {
+        "evidence_bytes": 42370543,
+        "artifact_count": 0,
+        "record_count": 50,
+        "serialize_seconds": 2.644192384905182,
+        "deserialize_seconds": 1.8596223229542375,
+        "validate_seconds": 5.535929005010985,
+        "python_peak_load_validate_bytes": 308860121,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      },
+      "shared": {
+        "evidence_bytes": 989953,
+        "artifact_count": 104,
+        "record_count": 50,
+        "serialize_seconds": 1.6705949840834364,
+        "deserialize_seconds": 0.035083641996607184,
+        "validate_seconds": 3.2362652049632743,
+        "python_peak_load_validate_bytes": 13295578,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      }
+    },
+    {
+      "family": "linear",
+      "decision_dates": 100,
+      "distinct_model_references": 1,
+      "distinct_model_artifacts": 1,
+      "distinct_snapshots": 1,
+      "legacy": {
+        "evidence_bytes": 84742995,
+        "artifact_count": 0,
+        "record_count": 100,
+        "serialize_seconds": 5.606654106057249,
+        "deserialize_seconds": 3.621772665064782,
+        "validate_seconds": 11.324630264076404,
+        "python_peak_load_validate_bytes": null,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      },
+      "shared": {
+        "evidence_bytes": 1258555,
+        "artifact_count": 204,
+        "record_count": 100,
+        "serialize_seconds": 3.3572206910466775,
+        "deserialize_seconds": 0.05158741201739758,
+        "validate_seconds": 6.262642503948882,
+        "python_peak_load_validate_bytes": null,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      }
+    },
+    {
+      "family": "hgb",
+      "decision_dates": 1,
+      "distinct_model_references": 1,
+      "distinct_model_artifacts": 2,
+      "distinct_snapshots": 1,
+      "legacy": {
+        "evidence_bytes": 25988,
+        "artifact_count": 0,
+        "record_count": 1,
+        "serialize_seconds": 0.0012565560173243284,
+        "deserialize_seconds": 0.0007696349639445543,
+        "validate_seconds": 0.005430452059954405,
+        "python_peak_load_validate_bytes": 506700,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      },
+      "shared": {
+        "evidence_bytes": 22249,
+        "artifact_count": 13,
+        "record_count": 1,
+        "serialize_seconds": 0.0027937169652432203,
+        "deserialize_seconds": 0.0007101868977770209,
+        "validate_seconds": 0.007625776925124228,
+        "python_peak_load_validate_bytes": 366046,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      }
+    },
+    {
+      "family": "hgb",
+      "decision_dates": 10,
+      "distinct_model_references": 1,
+      "distinct_model_artifacts": 2,
+      "distinct_snapshots": 10,
+      "legacy": {
+        "evidence_bytes": 259582,
+        "artifact_count": 0,
+        "record_count": 10,
+        "serialize_seconds": 0.010952383046969771,
+        "deserialize_seconds": 0.006469537038356066,
+        "validate_seconds": 0.04760271101258695,
+        "python_peak_load_validate_bytes": 2318069,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      },
+      "shared": {
+        "evidence_bytes": 125418,
+        "artifact_count": 58,
+        "record_count": 10,
+        "serialize_seconds": 0.018141087028197944,
+        "deserialize_seconds": 0.003125447081401944,
+        "validate_seconds": 0.054782193969003856,
+        "python_peak_load_validate_bytes": 1315004,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      }
+    },
+    {
+      "family": "hgb",
+      "decision_dates": 50,
+      "distinct_model_references": 1,
+      "distinct_model_artifacts": 2,
+      "distinct_snapshots": 50,
+      "legacy": {
+        "evidence_bytes": 1297652,
+        "artifact_count": 0,
+        "record_count": 50,
+        "serialize_seconds": 0.052862892975099385,
+        "deserialize_seconds": 0.03387959999963641,
+        "validate_seconds": 0.2801382400793955,
+        "python_peak_load_validate_bytes": 10336249,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      },
+      "shared": {
+        "evidence_bytes": 583816,
+        "artifact_count": 258,
+        "record_count": 50,
+        "serialize_seconds": 0.09346574102528393,
+        "deserialize_seconds": 0.016033231979236007,
+        "validate_seconds": 0.3452992879319936,
+        "python_peak_load_validate_bytes": 5477166,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      }
+    },
+    {
+      "family": "hgb",
+      "decision_dates": 100,
+      "distinct_model_references": 1,
+      "distinct_model_artifacts": 2,
+      "distinct_snapshots": 100,
+      "legacy": {
+        "evidence_bytes": 2595548,
+        "artifact_count": 0,
+        "record_count": 100,
+        "serialize_seconds": 0.11614038597326726,
+        "deserialize_seconds": 0.08495491708163172,
+        "validate_seconds": 0.6604606530163437,
+        "python_peak_load_validate_bytes": null,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      },
+      "shared": {
+        "evidence_bytes": 1157104,
+        "artifact_count": 508,
+        "record_count": 100,
+        "serialize_seconds": 0.19000145804602653,
+        "deserialize_seconds": 0.04520491498988122,
+        "validate_seconds": 0.8631031590048224,
+        "python_peak_load_validate_bytes": null,
+        "memory_scope": "Python allocations only; profiling capped at 50 decisions"
+      }
+    }
+  ],
+  "complete_replay_measurements": [
+    {
+      "family": "linear",
+      "decision_dates": 5,
+      "scope": "fresh JSON load through complete synthetic Runner, Ledger/history, Performance and report; imports/fixture/inference excluded; single shared-host wall measurement",
+      "legacy": {
+        "complete_replay_seconds": 14.757807614980265,
+        "frozen_request_bytes": 4291364,
+        "detailed_report_bytes": 39062
+      },
+      "shared": {
+        "complete_replay_seconds": 15.333667333004996,
+        "frozen_request_bytes": 804239,
+        "detailed_report_bytes": 39062
+      },
+      "exact_run_performance_report_equal": true
+    },
+    {
+      "family": "hgb",
+      "decision_dates": 5,
+      "scope": "fresh JSON load through complete synthetic Runner, Ledger/history, Performance and report; imports/fixture/inference excluded; single shared-host wall measurement",
+      "legacy": {
+        "complete_replay_seconds": 3.7538572740741074,
+        "frozen_request_bytes": 187236,
+        "detailed_report_bytes": 52948
+      },
+      "shared": {
+        "complete_replay_seconds": 4.07657916599419,
+        "frozen_request_bytes": 125518,
+        "detailed_report_bytes": 52948
+      },
+      "exact_run_performance_report_equal": true
+    }
+  ]
+}
