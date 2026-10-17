@@ -313,7 +313,7 @@ def calculate_performance(
         validate_input(tape, historical_input)
         assert historical_input is not None
         require(
-            run.get("historical_input_hash") == historical_input.identifier,
+            run.get("historical_input_hash") == historical_input.legacy_identifier,
             "performance_historical_input_mismatch",
         )
         require(run.get("execution_assumption") == MODE, "historical_execution_required")

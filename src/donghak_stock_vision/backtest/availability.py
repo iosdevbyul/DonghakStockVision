@@ -1,11 +1,13 @@
 """Freeze public Phase 2 artifacts; reject unavailable PIT evidence, never infer."""
 
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any
 
 from donghak_stock_vision.backtest.clock import VirtualClock
 from donghak_stock_vision.backtest.contracts import RunManifest
 from donghak_stock_vision.backtest.data import PROVENANCE, FrozenJSON, PublicView
+from donghak_stock_vision.backtest.shared_evidence import SharedAnalysis
 from donghak_stock_vision.backtest.validation import fields, instant, integer, require, utc
 from donghak_stock_vision.data.learning import digest, event_contract
 from donghak_stock_vision.models.service import load_model
@@ -18,9 +20,15 @@ class FrozenAnalysis:
 
     manifest: RunManifest
     release_plan: FrozenJSON
-    bundle: FrozenJSON
+    bundle: FrozenJSON | SharedAnalysis
+
+    @cached_property
+    def analysis_id(self) -> str:
+        return str(self.bundle.to_dict()["analysis_id"])
 
     def __post_init__(self) -> None:
+        if isinstance(self.bundle, SharedAnalysis):
+            require(self.bundle.evidence.run_id == self.manifest.identifier, "shared_run_mismatch")
         m, b = self.manifest.to_dict(), self.bundle.to_dict()
         if b.get("contract") == "hgb_historical_analysis_v1":
             self._validate_hgb()

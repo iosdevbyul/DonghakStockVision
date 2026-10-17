@@ -78,7 +78,7 @@ class BacktestRunner:
         require(self.execution_policy is not None, "execution_policy_missing")
         validate_policy(self.decision_policy.to_dict())
         settings(self.execution_policy)
-        ids = [a.bundle.to_dict()["analysis_id"] for a in self.analyses]
+        ids = [a.analysis_id for a in self.analyses]
         require(len(ids) == len(set(ids)), "duplicate_analysis")
         for a in self.analyses:
             require(
@@ -296,7 +296,7 @@ class BacktestRunner:
                     packet["execution"] = output.to_dict()
                     records[accepted["order_id"]] = FrozenJSON.freeze(packet)
                 del pending[ticker]
-        artifacts = {a.bundle.to_dict()["analysis_id"]: a for a in self.analyses}
+        artifacts = {a.analysis_id: a for a in self.analyses}
         steps = [s for s in c["decision_steps"] if s["sequence"] == clock.sequence]
         steps.sort(key=lambda s: c["tickers"].index(s["ticker"]))
         for step in steps:
@@ -469,6 +469,6 @@ class BacktestRunner:
             from donghak_stock_vision.backtest.historical_execution import metadata
 
             payload.update(
-                **metadata(self.tape), historical_input_hash=self.historical_input.identifier
+                **metadata(self.tape), historical_input_hash=self.historical_input.legacy_identifier
             )
         return FrozenJSON.freeze(payload)

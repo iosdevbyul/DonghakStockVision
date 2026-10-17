@@ -195,7 +195,7 @@ def validate_report(
 
 def _project(runner: BacktestRunner, run: FrozenJSON, performance: FrozenJSON) -> FrozenJSON:
     run_hash, performance_hash = run.identifier, performance.identifier
-    historical_hash = runner.historical_input.identifier if runner.historical_input else None
+    historical_hash = runner.historical_input.legacy_identifier if runner.historical_input else None
     r, p, config = run.to_dict(), performance.to_dict(), runner.config.to_dict()
     require(len(config["tickers"]) == 1, "single_ticker_detailed_report_required")
     policy = r["decision_policy"]

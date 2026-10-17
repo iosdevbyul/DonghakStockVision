@@ -27,6 +27,7 @@ from donghak_stock_vision.backtest.ledger import (
     checkpoint,
     restore,
 )
+from donghak_stock_vision.backtest.shared_evidence import legacy_dict
 from donghak_stock_vision.backtest.validation import fields, integer, money, require, text, utc
 from donghak_stock_vision.data.learning import digest
 
@@ -259,7 +260,7 @@ def accept_candidate(
             acceptance_clock={"cutoff": clock.cutoff, "sequence": clock.sequence},
             reservation_checkpoint=checkpoint(reserved).to_dict(),
             **(
-                {"historical_input": historical_input.to_dict(), **metadata(tape)}
+                {"historical_input": legacy_dict(historical_input), **metadata(tape)}
                 if historical_input is not None
                 else {}
             ),
