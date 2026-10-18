@@ -38,8 +38,21 @@ def metadata(tape: FrozenTape) -> dict[str, Any]:
 def validate_input(tape: FrozenTape, document: FrozenJSON | None) -> HistoricalBacktestInput:
     require(document is not None, "historical_input_evidence_missing")
     assert document is not None
+    frozen: HistoricalBacktestInput = document.historical_evidence
+    require(frozen.tape == tape, "historical_tape_mismatch")
+    return frozen
+
+
+def _validate_input(tape: FrozenTape, document: FrozenJSON | None) -> HistoricalBacktestInput:
+    require(document is not None, "historical_input_evidence_missing")
+    assert document is not None
     frozen = HistoricalBacktestInput(document)
     d, m = document.to_dict(), tape.manifest.to_dict()
+    synthetic_portfolio = (
+        d.get("portfolio_contract") == "five_ticker_historical_input_v1"
+        and m["data_origin"] == "synthetic"
+        and m["usage_restriction"] == "synthetic_test_only"
+    )
     require(
         d["kind"] in {"historical_input_v1", "historical_input_v2"}
         and d["mode"] == "historical_research",
@@ -47,8 +60,10 @@ def validate_input(tape: FrozenTape, document: FrozenJSON | None) -> HistoricalB
     )
     require(
         m["information_mode"] == "historical_research"
-        and m["data_origin"] == "real"
-        and m["usage_restriction"] == "research_only"
+        and (
+            (m["data_origin"] == "real" and m["usage_restriction"] == "research_only")
+            or synthetic_portfolio
+        )
         and m["execution_mode"] == "backtest",
         "historical_research_only",
     )
@@ -77,6 +92,12 @@ def validate_input(tape: FrozenTape, document: FrozenJSON | None) -> HistoricalB
         utc(tape.quality.to_dict()["verified_at"]) <= utc(d["source_metadata"]["captured_at"]),
         "historical_quality_after_capture",
     )
+    scoped = d.get("portfolio_contract") == "five_ticker_historical_input_v1"
+    if "portfolio_contract" in d:
+        require(
+            scoped and len(d["tickers"]) == 5 and d["version"] == 2,
+            "invalid_portfolio_input_contract",
+        )
     prior: dict[str, str] = {}
     for event, release in zip(tape.events, tape.release_plan.to_dict()["releases"], strict=True):
         e = event.to_dict()
@@ -109,7 +130,7 @@ def validate_input(tape: FrozenTape, document: FrozenJSON | None) -> HistoricalB
             s.to_dict() for s in tape.sources if s.identifier == e["source"]["content_hash"]
         )
         require(
-            source["kind"] == "latest_daily" and source["data_origin"] == "real",
+            source["kind"] == "latest_daily" and source["data_origin"] == m["data_origin"],
             "historical_source_required",
         )
     # FrozenAnalysis validates checksums and the provider-specific training/input contract.
@@ -124,7 +145,13 @@ def validate_input(tape: FrozenTape, document: FrozenJSON | None) -> HistoricalB
             calendar_policy(bundle["snapshot"]) == calendar_policy(tape.quality.to_dict()),
             "research_calendar_mismatch",
         )
-        for ticker in d["tickers"]:
+        hgb = bundle.get("contract") == "hgb_historical_analysis_v1"
+        if hgb:
+            require(
+                set(bundle["snapshot"]["rows"]) == {bundle["signal"]["ticker"]},
+                "hgb_window_ticker_mismatch",
+            )
+        for ticker in [bundle["signal"]["ticker"]] if hgb or scoped else d["tickers"]:
             originals = sorted(
                 (s.to_dict()["original"] for s in tape.sources if s.to_dict()["ticker"] == ticker),
                 key=lambda r: r["trading_date"],

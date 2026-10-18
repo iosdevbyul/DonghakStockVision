@@ -21,6 +21,7 @@ def verify_trade(
     tape: FrozenTape,
     prefixes: dict[str, LedgerState],
     last_exits: dict[str, dict[str, Any]],
+    historical_context: FrozenJSON | None = None,
 ) -> dict[str, Any]:
     fields(
         packet,
@@ -61,9 +62,18 @@ def verify_trade(
         and after.to_dict()["fills"][fill.identifier] == f,
         "history_fill_reference_missing",
     )
-    analysis = FrozenAnalysis(
-        tape.manifest, tape.release_plan, FrozenJSON.freeze(packet["analysis_bundle"])
-    )
+    if historical_context is not None:
+        from donghak_stock_vision.backtest.historical_execution import validate_input
+
+        frozen = validate_input(tape, historical_context)
+        candidates = [v for v in frozen.analyses if v.analysis_id == b["request"]["analysis_id"]]
+        require(len(candidates) == 1, "history_analysis_reference_missing")
+        analysis = candidates[0]
+        require(analysis.bundle.to_dict() == packet["analysis_bundle"], "history_analysis_conflict")
+    else:
+        analysis = FrozenAnalysis(
+            tape.manifest, tape.release_plan, FrozenJSON.freeze(packet["analysis_bundle"])
+        )
     cursor = VirtualClock(**a["decision_clock"])
     require(analysis.view(cursor).to_dict()["status"] != "blocked", "history_future_analysis")
     require(
@@ -104,6 +114,7 @@ def verify_trade(
         else None,
         ledger_sequence=f["sequence"],
         quantity=f["quantity"],
+        historical_context=historical_context,
     )
     require(replay.to_dict() == x and replay_state == after, "history_execution_conflict")
     return {
@@ -128,6 +139,7 @@ def build_position_history(
     evidence: tuple[FrozenJSON, ...],
     *,
     cutoff: str,
+    historical_context: FrozenJSON | None = None,
 ) -> FrozenJSON:
     """Complete verified history or an explicit validation error; never infer missing exits."""
     require(
@@ -185,7 +197,9 @@ def build_position_history(
             continue
         key = fill.to_dict()["cost_charge_id"]
         require(key in packets, "history_fill_evidence_missing")
-        ref = verify_trade(packets[key].to_dict(), before, state, tape, prefixes, exits)
+        ref = verify_trade(
+            packets[key].to_dict(), before, state, tape, prefixes, exits, historical_context
+        )
         used.add(key)
         seen_fills.add(fill.identifier)
         ticker = ref["ticker"]
@@ -251,6 +265,7 @@ def validate_position_history(
     tape: FrozenTape,
     *,
     cutoff: str,
+    historical_context: FrozenJSON | None = None,
 ) -> dict[str, Any]:
     h = history.to_dict()
     require(h["run_id"] == ledger.manifest.identifier, "history_run_mismatch")
@@ -260,7 +275,11 @@ def validate_position_history(
         "history_revision_mismatch",
     )
     verified = build_position_history(
-        ledger, tape, tuple(FrozenJSON.freeze(p) for p in h["evidence"]), cutoff=cutoff
+        ledger,
+        tape,
+        tuple(FrozenJSON.freeze(p) for p in h["evidence"]),
+        cutoff=cutoff,
+        historical_context=historical_context,
     )
     require(verified == history, "history_projection_conflict")
     return h

@@ -29,6 +29,10 @@ DB 경로에서는 start/end를 **서울 거래일 YYYY-MM-DD, 양 끝 포함**�
 중복 ticker는 정렬·중복 제거한다. builder는 여러 ticker를 지원하지만 이번 실행 서비스는
 동시 예약 revision 제약 때문에 단일 ticker만 허용한다. 자동 종목 선택은 없다.
 
+정확히 다섯 종목과 하나의 공유계좌를 사용하는 별도 Python 서비스는
+[five-ticker historical trading](five-ticker-historical-trading.md)을 참조한다.
+위 단일 종목 CLI와 기존 결과 계약은 유지한다.
+
 ## 필수 config
 
 `historical-run.json`의 최상위 필드는 아래와 정확히 일치해야 한다. 모든 거래 수치는

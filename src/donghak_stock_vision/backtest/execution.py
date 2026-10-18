@@ -163,6 +163,7 @@ def accept_candidate(
     *,
     ledger_sequence: int,
     historical_input: FrozenJSON | None = None,
+    shared_evidence_transport: bool = False,
 ) -> tuple[FrozenJSON, LedgerState]:
     """Explicit candidate -> open order -> ledger reservation, without any fill.
 
@@ -171,6 +172,14 @@ def accept_candidate(
     """
     try:
         p = settings(policy)
+        if shared_evidence_transport:
+            require(
+                historical_input is not None
+                and historical_input.to_dict().get("portfolio_contract")
+                == "five_ticker_historical_input_v1"
+                and historical_input.to_dict().get("version") == 2,
+                "shared_portfolio_evidence_required",
+            )
         synthetic(ledger, tape, p, historical_input)
         a = admission.to_dict()
         require(
@@ -262,7 +271,17 @@ def accept_candidate(
             acceptance_clock={"cutoff": clock.cutoff, "sequence": clock.sequence},
             reservation_checkpoint=checkpoint(reserved).to_dict(),
             **(
-                {"historical_input": legacy_dict(historical_input), **metadata(tape)}
+                {
+                    "historical_input": historical_input.to_dict()
+                    if shared_evidence_transport
+                    else legacy_dict(historical_input),
+                    **metadata(tape),
+                    **(
+                        {"historical_evidence_transport": "shared_historical_evidence_v1"}
+                        if shared_evidence_transport
+                        else {}
+                    ),
+                }
                 if historical_input is not None
                 else {}
             ),
@@ -331,6 +350,7 @@ def execute(
     ledger_sequence: int,
     quantity: int,
     account_transition: FrozenJSON | None = None,
+    historical_context: FrozenJSON | None = None,
 ) -> tuple[FrozenJSON, LedgerState]:
     """Full fill at one explicitly selected future public event; no runner or I/O."""
     try:
@@ -344,14 +364,28 @@ def execute(
         )
         p = settings(FrozenJSON.freeze(a["execution_policy"]))
         require(digest(p) == a["execution_policy_hash"], "execution_policy_hash_mismatch")
-        synthetic(
-            ledger,
-            tape,
-            p,
-            FrozenJSON.freeze(a["historical_input"]) if "historical_input" in a else None,
-        )
+        if historical_context is not None:
+            require(
+                a.get("historical_input") == historical_context.to_dict(),
+                "historical_context_mismatch",
+            )
+            historical_document: FrozenJSON | None = historical_context
+        else:
+            historical_document = (
+                FrozenJSON.freeze(a["historical_input"]) if "historical_input" in a else None
+            )
+        if "historical_evidence_transport" in a:
+            require(
+                a["historical_evidence_transport"] == "shared_historical_evidence_v1"
+                and historical_document is not None
+                and historical_document.to_dict().get("portfolio_contract")
+                == "five_ticker_historical_input_v1"
+                and historical_document.to_dict().get("version") == 2,
+                "shared_portfolio_evidence_required",
+            )
+        synthetic(ledger, tape, p, historical_document)
         if p["liquidity"] == MODE:
-            evidence = validate_input(tape, FrozenJSON.freeze(a["historical_input"]))
+            evidence = validate_input(tape, historical_document)
             require(
                 a["admission"].get("historical_policy_hash") == digest(p)
                 and a["admission"].get("historical_input_hash") == evidence.identifier,

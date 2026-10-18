@@ -27,6 +27,7 @@ from donghak_stock_vision.data.snapshot import covered, validate_quality
 from donghak_stock_vision.storage.base import MarketDataStore
 
 if TYPE_CHECKING:
+    from donghak_stock_vision.backtest.historical import HistoricalBacktestInput
     from donghak_stock_vision.backtest.shared_evidence import SharedEvidence
 
 PROVENANCE = ("information_mode", "data_origin", "usage_restriction")
@@ -76,6 +77,14 @@ class FrozenJSON:
         from donghak_stock_vision.backtest.shared_evidence import legacy_identifier
 
         return legacy_identifier(self)
+
+    @cached_property
+    def historical_evidence(self) -> "HistoricalBacktestInput":
+        """Owner-bound full validation; new JSON always has a new validation boundary."""
+        from donghak_stock_vision.backtest.historical import HistoricalBacktestInput
+        from donghak_stock_vision.backtest.historical_execution import _validate_input
+
+        return _validate_input(HistoricalBacktestInput(self).tape, self)
 
     @cached_property
     def historical_identifier(self) -> str:
