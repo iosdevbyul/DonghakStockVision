@@ -1,0 +1,107 @@
+{
+  "python": "3.12.14",
+  "platform": "macOS-26.7.1-x86_64-i386-64bit",
+  "runs": [
+    {
+      "family": "linear",
+      "securities": 5,
+      "decision_dates": 2,
+      "analysis_records": 10,
+      "virtual_orders": 0,
+      "fills": 0,
+      "frozen_bytes": 1632175,
+      "report_bytes": 93801,
+      "acquisition_and_replay_seconds": 23.643392894999124,
+      "python_peak_bytes": null,
+      "memory_note": "unmeasured; expanded receipts and Python/native allocations are not bounded by a measured peak",
+      "replay_seconds": 21.982289273990318,
+      "replay_exact": true,
+      "run_hash": "9609dc03cbbfd8ef18fada20589f8f09706e619aa753e927fc6cf64164b9f567",
+      "report_hash": "a786a12fdf31818a7c15932fc1fe716391bcbe7dd3a95f2f1931d37ce6bf48b0",
+      "scope": "synthetic_fixture",
+      "signal_scopes": [
+        "public_model_inference"
+      ],
+      "result_bytes": 1979366
+    },
+    {
+      "family": "hgb",
+      "securities": 5,
+      "decision_dates": 2,
+      "analysis_records": 10,
+      "virtual_orders": 0,
+      "fills": 0,
+      "frozen_bytes": 535726,
+      "report_bytes": 88291,
+      "acquisition_and_replay_seconds": 12.975517653976567,
+      "python_peak_bytes": null,
+      "memory_note": "unmeasured; expanded receipts and Python/native allocations are not bounded by a measured peak",
+      "replay_seconds": 12.141945603885688,
+      "replay_exact": true,
+      "run_hash": "aa08471ba28310608c5555681ac25be7c5adbe5db51cbabc6b9bb9d750fdce70",
+      "report_hash": "6895174b48c6f47d44865f68ada03d5702cc078680a0910f608dff8faf82f700",
+      "scope": "synthetic_fixture",
+      "signal_scopes": [
+        "public_model_inference"
+      ],
+      "result_bytes": 1046446
+    },
+    {
+      "family": "linear",
+      "scope": "synthetic_fixture",
+      "signal_scopes": [
+        "controlled_mechanics_test_double"
+      ],
+      "securities": 5,
+      "decision_dates": 1,
+      "analysis_records": 5,
+      "virtual_orders": 3,
+      "fills": 0,
+      "frozen_bytes": 1212452,
+      "report_bytes": 56672,
+      "result_bytes": 8623105,
+      "replay_seconds": 12.02966010500677,
+      "replay_exact": true,
+      "run_hash": "a836064c7a9542f4f75c0e60074baeeb687551d27984ba18e076f6e126734caa",
+      "report_hash": "ce39fd583fe4f47e51dcd1af79cd0ba832163741de82b858d031409255fcf494",
+      "python_peak_bytes": null,
+      "memory_note": "unmeasured; no Python/native peak or RSS guarantee"
+    },
+    {
+      "family": "linear",
+      "scope": "synthetic_fixture",
+      "signal_scopes": [
+        "controlled_mechanics_test_double"
+      ],
+      "securities": 5,
+      "decision_dates": 2,
+      "analysis_records": 10,
+      "virtual_orders": 3,
+      "fills": 3,
+      "frozen_bytes": 1256890,
+      "report_bytes": 104399,
+      "result_bytes": 12525245,
+      "replay_seconds": 32.0015553139383,
+      "replay_exact": true,
+      "run_hash": "974be9c2cdc66ca129712df1ad81f590fcd3c926209dd69631650fa886b00e9d",
+      "report_hash": "67dad9becd78d01e62e6c1dd135ba7f44e74a54eaebecc1545eea81d51f7fb1d",
+      "python_peak_bytes": null,
+      "memory_note": "unmeasured; no Python/native peak or RSS guarantee"
+    }
+  ],
+  "procedure": "tests/backtest/test_portfolio.py genuine fixtures; tests/backtest/portfolio_benchmark.py for offline replay; fixture training excluded from acquisition_and_replay_seconds",
+  "timing_note": "Single wall-clock observations on a shared host with other tests running; no throughput guarantee.",
+  "larger_mechanics_observation": {
+    "securities": 5,
+    "decision_dates": 4,
+    "analysis_records": 20,
+    "virtual_orders": 20,
+    "fills": 20,
+    "completed_episodes": 10,
+    "reentries": 5,
+    "result_bytes": 84618984,
+    "pure_replay_seconds": null,
+    "python_peak_bytes": null,
+    "note": "Integration scenario, separate pure replay time/peak unmeasured; controlled mechanics, not model performance"
+  }
+}

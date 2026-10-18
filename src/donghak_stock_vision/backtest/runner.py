@@ -1,9 +1,10 @@
 """Finite, in-memory historical orchestration. No strategy, pricing, or performance model."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Context, Decimal, localcontext
 from typing import Any
 
+from donghak_stock_vision.backtest.account import release_pending, transition
 from donghak_stock_vision.backtest.availability import FrozenAnalysis
 from donghak_stock_vision.backtest.clock import VirtualClock
 from donghak_stock_vision.backtest.contracts import MarketEvent
@@ -11,6 +12,8 @@ from donghak_stock_vision.backtest.data import FrozenJSON, FrozenTape
 from donghak_stock_vision.backtest.decision_bridge import DecisionBundle, admit, policy_values
 from donghak_stock_vision.backtest.execution import accept_candidate, execute, settings
 from donghak_stock_vision.backtest.ledger import LedgerState, checkpoint, restore
+from donghak_stock_vision.backtest.performance import policy_values as valuation_values
+from donghak_stock_vision.backtest.performance import valuation
 from donghak_stock_vision.backtest.position_history import build_position_history
 from donghak_stock_vision.backtest.validation import fields, integer, require, utc
 from donghak_stock_vision.data.learning import digest
@@ -28,6 +31,9 @@ class BacktestRunner:
     execution_policy: FrozenJSON
     config: FrozenJSON
     historical_input: FrozenJSON | None = None
+    _history_cache: tuple[LedgerState, tuple[FrozenJSON, ...], FrozenJSON] | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "analyses", tuple(self.analyses))
@@ -36,19 +42,54 @@ class BacktestRunner:
         c = fields(
             self.config.to_dict(),
             "run_id start_at end_at tickers event_clock decision_steps"
-            + (" history_mode" if "history_mode" in self.config.to_dict() else ""),
+            + (" history_mode" if "history_mode" in self.config.to_dict() else "")
+            + (
+                " account_mode release_steps valuation_policy"
+                if "account_mode" in self.config.to_dict()
+                else ""
+            ),
         )
         require(c.get("history_mode") in {None, "verified_execution"}, "unsupported_history_mode")
+        shared = c.get("account_mode") == "five_ticker_shared_v1"
+        require(
+            c.get("account_mode") in {None, "five_ticker_shared_v1"}, "unsupported_account_mode"
+        )
+        if shared:
+            require(
+                len(c["tickers"]) == len(set(c["tickers"])) == 5,
+                "exactly_five_unique_tickers_required",
+            )
+            require(c.get("history_mode") == "verified_execution", "verified_history_required")
+            valuation_values(FrozenJSON.freeze(c["valuation_policy"]))
+            require(isinstance(c["release_steps"], list), "release_steps_required")
+            for release in c["release_steps"]:
+                fields(release, "sequence ticker status")
+                require(
+                    release["ticker"] in c["tickers"]
+                    and release["status"] in {"cancelled", "expired", "rejected"},
+                    "invalid_release_step",
+                )
+                matches = [
+                    e.to_dict()
+                    for e in self.tape.events
+                    if e.to_dict()["sequence"] == release["sequence"]
+                ]
+                require(len(matches) == 1, "release_event_missing")
+            require(
+                len({(r["sequence"], r["ticker"]) for r in c["release_steps"]})
+                == len(c["release_steps"]),
+                "duplicate_release_step",
+            )
         m = self.tape.manifest.to_dict()
         require(m["information_mode"] == "historical_research", "pit_runner_unsupported")
-        if m["data_origin"] != "synthetic":
+        if m["data_origin"] != "synthetic" or (shared and self.historical_input is not None):
             from donghak_stock_vision.backtest.historical_execution import MODE, validate_input
 
             require(settings(self.execution_policy)["liquidity"] == MODE, "real_runner_unsupported")
             evidence = validate_input(self.tape, self.historical_input)
             require(self.analyses == evidence.analyses, "historical_analysis_evidence_mismatch")
             require(
-                c["tickers"] == evidence.document.to_dict()["tickers"],
+                sorted(c["tickers"]) == evidence.document.to_dict()["tickers"],
                 "historical_universe_mismatch",
             )
 
@@ -117,6 +158,26 @@ class BacktestRunner:
         c["start_at"], c["end_at"] = start.isoformat(), end.isoformat()
         c["decision_steps"].sort(key=lambda s: (s["sequence"], c["tickers"].index(s["ticker"])))
         return c
+
+    def position_history(
+        self, state: LedgerState, evidence: tuple[FrozenJSON, ...], *, cutoff: str
+    ) -> FrozenJSON:
+        """One verified immutable result per runner; new state/evidence revalidates fully."""
+        require(utc(state.to_dict()["known_at"]) <= utc(cutoff), "history_future_state")
+        shared = self.config.to_dict().get("account_mode") == "five_ticker_shared_v1"
+        cached = self._history_cache
+        if shared and cached is not None and cached[0] == state and cached[1] == evidence:
+            return cached[2]
+        proof = build_position_history(
+            state,
+            self.tape,
+            evidence,
+            cutoff=cutoff,
+            historical_context=self.historical_input if shared else None,
+        )
+        if shared:
+            object.__setattr__(self, "_history_cache", (state, evidence, proof))
+        return proof
 
     def project(
         self,
@@ -258,6 +319,7 @@ class BacktestRunner:
         records = dict(records or {})
         verified_history = c.get("history_mode") == "verified_execution"
         e = event.to_dict()
+        shared = c.get("account_mode") == "five_ticker_shared_v1"
         report: dict[str, Any] = {
             "sequence": clock.sequence,
             "cutoff": clock.cutoff,
@@ -269,6 +331,29 @@ class BacktestRunner:
             "executions": [],
             "blocked": [],
         }
+        if shared:
+            report["releases"] = []
+            for release in c["release_steps"]:
+                if release["sequence"] != clock.sequence:
+                    continue
+                ticker = release["ticker"]
+                if ticker not in pending:
+                    report["blocked"].append(
+                        {"ticker": ticker, "reason": "release_without_pending_order"}
+                    )
+                    continue
+                output, state = release_pending(
+                    pending[ticker],
+                    state,
+                    self.tape,
+                    clock,
+                    expected_revision=state.to_dict()["revision"],
+                    expected_ledger_hash=state.identifier,
+                    status=release["status"],
+                )
+                report["releases"].append(output.to_dict())
+                if output.to_dict()["status"] == "released":
+                    del pending[ticker]
         for ticker in c["tickers"]:
             if ticker not in pending or ticker != e["ticker"]:
                 continue
@@ -284,10 +369,18 @@ class BacktestRunner:
                 self.tape,
                 event,
                 clock,
-                expected_revision=accepted["reservation_checkpoint"]["state"]["revision"],
+                expected_revision=state.to_dict()["revision"]
+                if shared
+                else accepted["reservation_checkpoint"]["state"]["revision"],
+                account_transition=transition(state.to_dict()["revision"], state.identifier)
+                if shared
+                else None,
+                historical_context=self.historical_input if shared else None,
                 ledger_sequence=state.to_dict()["last_sequence"] + 1,
                 quantity=accepted["accepted_order"]["quantity"],
             )
+            if shared and output.to_dict()["status"] != "filled":
+                output = FrozenJSON.freeze({**output.to_dict(), "order_id": accepted["order_id"]})
             report["executions"].append(output.to_dict())
             state = updated
             if output.to_dict()["status"] == "filled":
@@ -306,16 +399,34 @@ class BacktestRunner:
                 report["blocked"].append({"ticker": step["ticker"], "reason": public["reason"]})
                 continue
             proof = (
-                build_position_history(
+                self.position_history(
                     state,
-                    self.tape,
                     tuple(v for v in records.values() if v.to_dict()["execution"]),
                     cutoff=clock.cutoff,
                 )
                 if verified_history
                 else None
             )
-            inputs = self.project(state, step, analysis, clock, proof)
+            if shared:
+                mark = valuation(
+                    state,
+                    self.tape,
+                    clock,
+                    valuation_values(FrozenJSON.freeze(c["valuation_policy"])),
+                    "event",
+                )
+                if not mark["complete"]:
+                    report["blocked"].append(
+                        {"ticker": step["ticker"], "reason": "valuation_evidence_unavailable"}
+                    )
+                    continue
+            try:
+                inputs = self.project(state, step, analysis, clock, proof)
+            except ValueError as error:
+                if not shared:
+                    raise
+                report["blocked"].append({"ticker": step["ticker"], "reason": str(error)})
+                continue
             bundle = DecisionBundle.calculate(inputs, self.decision_policy, state)
             report["decisions"].append(
                 {
@@ -344,7 +455,7 @@ class BacktestRunner:
                 continue
             # PR-E pins the whole reserved revision; simultaneous reservations would
             # invalidate each other's execution checkpoint. Do not weaken that contract.
-            if pending:
+            if pending and not shared:
                 report["blocked"].append(
                     {"ticker": step["ticker"], "reason": "concurrent_reservation_unsupported"}
                 )
@@ -362,6 +473,7 @@ class BacktestRunner:
                 ),
                 ledger_sequence=state.to_dict()["last_sequence"] + 1,
                 historical_input=self.historical_input,
+                shared_evidence_transport=shared,
             )
             report["admissions"].append(acceptance.to_dict())
             if acceptance.to_dict()["status"] == "accepted":
@@ -380,9 +492,8 @@ class BacktestRunner:
                 state, history = updated, updated_history
                 pending[step["ticker"]] = acceptance
         if verified_history:
-            proof = build_position_history(
+            proof = self.position_history(
                 state,
-                self.tape,
                 tuple(v for v in records.values() if v.to_dict()["execution"]),
                 cutoff=clock.cutoff,
             )
@@ -434,7 +545,9 @@ class BacktestRunner:
             "initial": self.initial.identifier,
             "decision_policy": self.decision_policy.identifier,
             "execution_policy": self.execution_policy.identifier,
-            "runner_version": "historical_runner_v1",
+            "runner_version": "five_ticker_shared_runner_v1"
+            if c.get("account_mode")
+            else "historical_runner_v1",
         }
         payload = {
             "run_id": c["run_id"],
@@ -456,10 +569,18 @@ class BacktestRunner:
             "final_checkpoint": checkpoint(state).to_dict(),
             "final_checkpoint_hash": checkpoint(state).identifier,
         }
+        if c.get("account_mode"):
+            payload["account_mode"] = c["account_mode"]
+            if (
+                self.historical_input is not None
+                and self.tape.manifest.to_dict()["data_origin"] == "synthetic"
+            ):
+                from donghak_stock_vision.backtest.historical_execution import LIMITATIONS, MODE
+
+                payload.update(execution_assumption=MODE, limitations=LIMITATIONS)
         if c.get("history_mode") == "verified_execution":
-            proof = build_position_history(
+            proof = self.position_history(
                 state,
-                self.tape,
                 tuple(v for v in records.values() if v.to_dict()["execution"]),
                 cutoff=c["end_at"],
             )

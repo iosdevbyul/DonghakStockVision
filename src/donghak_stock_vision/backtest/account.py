@@ -157,9 +157,13 @@ def account_view(
     evidence: tuple[FrozenJSON, ...],
     clock: VirtualClock,
     valuation_policy: FrozenJSON,
+    *,
+    historical_context: FrozenJSON | None = None,
 ) -> FrozenJSON:
     """Existing history + marks, with per-ticker realized deltas from ledger replay."""
-    history = build_position_history(ledger, tape, evidence, cutoff=clock.cutoff)
+    history = build_position_history(
+        ledger, tape, evidence, cutoff=clock.cutoff, historical_context=historical_context
+    )
     state = initialize(
         ledger.manifest,
         ledger.tape_hash,

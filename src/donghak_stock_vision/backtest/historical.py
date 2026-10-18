@@ -105,6 +105,7 @@ def build_historical_input(
     run_output: AnalysisStore | None = None,
     hgb_provider: HGBHistoricalProvider | None = None,
     shared_evidence: bool = False,
+    five_ticker: bool = False,
 ) -> HistoricalBacktestInput:
     """Dates are inclusive Seoul trading dates, not UTC publication timestamps.
 
@@ -118,7 +119,10 @@ def build_historical_input(
         require(run_output is not None, "run_output_required")
         require(model_id == hgb_provider.model_id, "hgb_model_policy_mismatch")
         require(type(decision_dates) is list, "bounded_hgb_decision_dates_required")
-        require(len(tickers) == 1, "concurrent_multi_ticker_execution_unsupported")
+        require(
+            len(tickers) == (5 if five_ticker else 1),
+            "concurrent_multi_ticker_execution_unsupported",
+        )
         if hasattr(market, "connection"):
             # Borrow the existing same-file guard; never write through this wrapper.
             ResearchRunStore(market, run_output)  # type: ignore[arg-type]
@@ -140,6 +144,9 @@ def build_historical_input(
         quality = FrozenJSON.freeze(q)
     else:
         require(calendar_policy(quality.to_dict()) is None, "explicit_research_calendar_required")
+    if five_ticker:
+        require(len(tickers) == len(set(tickers)) == 5, "exactly_five_unique_tickers_required")
+        require(shared_evidence, "shared_evidence_required")
     universe = sorted(set(tickers))
     require(bool(universe), "empty_universe")
     for ticker in universe:
@@ -147,7 +154,15 @@ def build_historical_input(
     require(availability_assumption == ASSUMPTION, "explicit_daily_availability_required")
     m = manifest_template.to_dict()
     require(m["information_mode"] == "historical_research", "pit_history_unavailable")
-    require(m["data_origin"] == "real", "real_historical_input_required")
+    require(
+        m["data_origin"] == "real"
+        or (
+            five_ticker
+            and m["data_origin"] == "synthetic"
+            and m["usage_restriction"] == "synthetic_test_only"
+        ),
+        "real_historical_input_required",
+    )
     require(m["execution_mode"] == "backtest", "backtest_required")
     require(
         hgb_provider is not None or (analysis_store is None) == (model_id is None),
@@ -172,7 +187,7 @@ def build_historical_input(
             start,
             end,
             information_mode="historical_research",
-            data_origin="real",
+            data_origin=m["data_origin"],
             captured_at=cutoff,
             quality=quality,
         )
@@ -199,13 +214,14 @@ def build_historical_input(
     ids: list[tuple[str, str]] = []
     model = snapshot = None
     error = "analysis_artifact_unavailable"
+    invalid_tickers: dict[str, str] = {}
     hgb_bundles: list[dict[str, Any]] = []
     builder = EvidenceBuilder()
     if hgb_provider is None and analysis_store is not None and model_id is not None:
         try:
             model = load_model(analysis_store, model_id, "historical_research")
             snapshot = analysis_store.get("snapshot", model["snapshot_id"])
-            require(model["data_origin"] == "real", "analysis_origin_mismatch")
+            require(model["data_origin"] == m["data_origin"], "analysis_origin_mismatch")
             require(calendar_policy(snapshot) == research_calendar, "research_calendar_mismatch")
             # research() must use the training snapshot. Never silently substitute DB revisions.
             for t in universe:
@@ -215,7 +231,10 @@ def build_historical_input(
                     for b in snapshot["rows"].get(t, [])
                     if start.isoformat() <= b["trading_date"] <= end.isoformat()
                 ]
-                require(expected == selected, "model_snapshot_market_mismatch")
+                if five_ticker and expected != selected:
+                    invalid_tickers[t] = "model_snapshot_market_mismatch"
+                else:
+                    require(expected == selected, "model_snapshot_market_mismatch")
         except (AnalysisError, ValueError) as exc:
             model = snapshot = None
             error = str(exc)
@@ -240,7 +259,15 @@ def build_historical_input(
             "reason": error,
             "analysis_id": None,
         }
-        if model is not None and snapshot is not None and analysis_store is not None and model_id:
+        if s["ticker"] in invalid_tickers:
+            point["reason"] = invalid_tickers[s["ticker"]]
+        if (
+            model is not None
+            and snapshot is not None
+            and analysis_store is not None
+            and model_id
+            and s["ticker"] not in invalid_tickers
+        ):
             try:
                 result = SignalService(analysis_store).research(
                     model_id,
@@ -276,6 +303,7 @@ def build_historical_input(
                     source_cutoff=utc(cutoff),
                     quality=quality.to_dict(),
                     calendar=research_calendar,
+                    synthetic=m["data_origin"] == "synthetic",
                 )
                 aid, sid = bundle["analysis_id"], bundle["snapshot_id"]
                 if shared_evidence:
@@ -406,6 +434,9 @@ def build_historical_input(
                 "end": end.isoformat(),
                 "tickers": universe,
                 "requested_model_id": model_id,
+                **(
+                    {"portfolio_contract": "five_ticker_historical_input_v1"} if five_ticker else {}
+                ),
                 "mode": "historical_research",
                 "tape": json.loads(tape.to_json()),
                 "analyses": analyses,

@@ -173,6 +173,18 @@ def verified_frames(
         len(events) == len(run["events"]) == run["processed_event_count"],
         "run_event_coverage_mismatch",
     )
+    acceptances = {
+        a["order_id"]: a
+        for report in run["events"]
+        for a in report.get("admissions", [])
+        if a["status"] == "accepted"
+    }
+    releases = {
+        x["ledger_command"]["event_id"]: x
+        for report in run["events"]
+        for x in report.get("releases", [])
+        if x["status"] == "released"
+    }
     frames = []
     previous: VirtualClock | None = None
     for event, report in zip(events, run["events"], strict=True):
@@ -186,6 +198,13 @@ def verified_frames(
         previous = clock
         commands = []
         if report["status"] == "processed":
+            for x in report.get("releases", []):
+                require(
+                    run.get("account_mode") == "five_ticker_shared_v1",
+                    "release_account_mode_required",
+                )
+                if x["status"] == "released":
+                    commands.append(LedgerCommand(FrozenJSON.freeze(x["ledger_command"])))
             for x in report["executions"]:
                 if x["status"] == "filled":
                     commands.append(LedgerCommand(FrozenJSON.freeze(x["ledger_command"])))
@@ -198,7 +217,24 @@ def verified_frames(
             require(report["status"] == "failed", "unknown_event_status")
         for command in sorted(commands, key=lambda e: e.document.to_dict()["sequence"]):
             require(command in final.events, "unverified_run_event")
-            state = apply(state, command, cutoff=clock.cutoff)
+            if command.document.to_dict()["kind"] == "release":
+                from donghak_stock_vision.backtest.account import release_pending
+
+                x = releases[command.document.to_dict()["event_id"]]
+                acceptance = FrozenJSON.freeze(acceptances[x["order_id"]])
+                verified, updated = release_pending(
+                    acceptance,
+                    state,
+                    tape,
+                    clock,
+                    expected_revision=state.to_dict()["revision"],
+                    expected_ledger_hash=state.identifier,
+                    status=x["release_status"],
+                )
+                require(verified.to_dict() == x, "release_receipt_conflict")
+                state = updated
+            else:
+                state = apply(state, command, cutoff=clock.cutoff)
         require(
             checkpoint(state).identifier == report["checkpoint_hash"], "event_checkpoint_mismatch"
         )
@@ -307,7 +343,12 @@ def calculate_performance(
     p = policy_values(valuation_policy)
     run = run_result.to_dict()
     historical = tape.manifest.to_dict()["data_origin"] == "real"
-    if historical:
+    daily = historical or (
+        historical_input is not None
+        and historical_input.to_dict().get("portfolio_contract")
+        == "five_ticker_historical_input_v1"
+    )
+    if daily:
         from donghak_stock_vision.backtest.historical_execution import MODE, validate_input
 
         validate_input(tape, historical_input)
@@ -351,7 +392,13 @@ def calculate_performance(
     if final.to_dict()["fills"]:
         require("position_history" in run, "verified_position_history_required")
         history = validate_position_history(
-            FrozenJSON.freeze(run["position_history"]), final, tape, cutoff=run["end_at"]
+            FrozenJSON.freeze(run["position_history"]),
+            final,
+            tape,
+            cutoff=run["end_at"],
+            historical_context=historical_input
+            if run.get("account_mode") == "five_ticker_shared_v1"
+            else None,
         )
         require(
             FrozenJSON.freeze(history).identifier == run["position_history_hash"],
@@ -435,7 +482,7 @@ def calculate_performance(
             "mdd_on_declared_observation_points_not_intraday",
             "no_external_cash_flows_or_forced_liquidation",
         ]
-        if historical:
+        if daily:
             limitations += run["limitations"] + ["daily_marks_listing_and_halt_status_unverified"]
         if not first["complete"]:
             limitations.append("initial_valuation_incomplete")

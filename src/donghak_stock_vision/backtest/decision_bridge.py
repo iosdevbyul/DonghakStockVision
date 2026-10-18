@@ -111,6 +111,7 @@ def account_binding(
     tape: FrozenTape,
     p: dict[str, Any],
     position_history: FrozenJSON | None = None,
+    historical_context: FrozenJSON | None = None,
 ) -> Decimal:
     b, s = bundle.inputs.to_dict(), ledger.to_dict()
     ticker = b["request"]["ticker"]
@@ -149,7 +150,11 @@ def account_binding(
     else:
         try:
             verified = validate_position_history(
-                position_history, ledger, tape, cutoff=b["request"]["decision_as_of"]
+                position_history,
+                ledger,
+                tape,
+                cutoff=b["request"]["decision_as_of"],
+                historical_context=historical_context,
             )
         except (ValueError, KeyError, TypeError) as error:
             raise AdmissionFailure(f"position_history_invalid:{error}") from error
@@ -284,7 +289,11 @@ def admit(
             else "analysis_not_public",
         )
         gate(m["information_mode"] == "historical_research", "pit_evidence_missing")
-        if m["data_origin"] != "synthetic":
+        if m["data_origin"] != "synthetic" or (
+            historical_input is not None
+            and historical_input.to_dict().get("portfolio_contract")
+            == "five_ticker_historical_input_v1"
+        ):
             from donghak_stock_vision.backtest.execution import settings
             from donghak_stock_vision.backtest.historical_execution import (
                 MODE,
@@ -354,7 +363,17 @@ def admit(
         )
         with localcontext(Context(prec=80)):
             price = account_binding(
-                bundle, ledger, market_view.to_dict()["items"], tape, p, position_history
+                bundle,
+                ledger,
+                market_view.to_dict()["items"],
+                tape,
+                p,
+                position_history,
+                historical_input
+                if historical_input is not None
+                and historical_input.to_dict().get("portfolio_contract")
+                == "five_ticker_historical_input_v1"
+                else None,
             )
             qty = integer(r["proposed_quantity"], positive=True)
             gate(qty <= p["max_order_quantity"], "order_quantity_limit", "rejected")
