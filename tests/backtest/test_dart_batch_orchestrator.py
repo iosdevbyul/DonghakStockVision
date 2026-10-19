@@ -3,7 +3,7 @@
 import io
 import json
 import zipfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +33,7 @@ def approved(root: Path, receipts: list[str], identifier: str) -> dict[str, Any]
     # Only test setup promotes fake fixtures, never the orchestrator or local real records.
     return {
         **orchestrator.draft_for(batch.plan_for(root).identifier, receipts, identifier),
-        "approved_at": datetime.now(UTC).isoformat(),
+        "approved_at": (datetime.now(UTC) - timedelta(seconds=1)).isoformat(),
         "access_confirmed": True,
         "quota_confirmed": True,
     }
