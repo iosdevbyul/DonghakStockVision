@@ -176,3 +176,6 @@ the user's request; local offline validation and builds remain required.
 Next recommended PR: `feat/shared-trading-receipts`, a separately versioned
 single-ticker receipt/archive reference format with exact legacy reconstruction.
 Do not begin concurrent orders or portfolio expansion as part of this work.
+
+For opt-in compact **run outputs**, see [trading receipt archives](shared-trading-receipts.md).
+This does not change the shared v2 input or default legacy result contracts.
