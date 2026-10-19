@@ -1,0 +1,186 @@
+[
+  {
+    "case": "three",
+    "bytes": 12525245,
+    "fills": 3,
+    "top_level_bytes": {
+      "detailed_report": 104399,
+      "detailed_report_hash": 66,
+      "frozen_input": 1256890,
+      "performance": 31157,
+      "performance_hash": 66,
+      "report": 953,
+      "run": 11131479,
+      "run_hash": 66,
+      "version": 34
+    },
+    "categories_inclusive_not_additive": {
+      "report_projection": {
+        "occurrences": 2,
+        "distinct_payloads": 2,
+        "inclusive_bytes": 135556
+      },
+      "checkpoint_account": {
+        "occurrences": 20,
+        "distinct_payloads": 16,
+        "inclusive_bytes": 312435
+      },
+      "admission_policy": {
+        "occurrences": 38,
+        "distinct_payloads": 11,
+        "inclusive_bytes": 29465
+      },
+      "historical_input": {
+        "occurrences": 7,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 8402800
+      },
+      "position_history": {
+        "occurrences": 1,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 7225206
+      },
+      "acceptance": {
+        "occurrences": 3,
+        "distinct_payloads": 3,
+        "inclusive_bytes": 3720467
+      },
+      "model_snapshot_bundle": {
+        "occurrences": 3,
+        "distinct_payloads": 3,
+        "inclusive_bytes": 3465951
+      }
+    },
+    "unique_per_event_evidence": {
+      "event_headers": {
+        "records": 70,
+        "distinct_payloads": 70,
+        "canonical_bytes": 23931
+      },
+      "execution_receipts": {
+        "records": 3,
+        "distinct_payloads": 3,
+        "canonical_bytes": 10014
+      },
+      "decision_records": {
+        "records": 10,
+        "distinct_payloads": 10,
+        "canonical_bytes": 71704
+      }
+    },
+    "analysis_bundle_static_components_inclusive": {
+      "model": {
+        "occurrences": 3,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 407166
+      },
+      "snapshot": {
+        "occurrences": 3,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 594843
+      },
+      "training_snapshot": {
+        "occurrences": 3,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 594843
+      },
+      "dataset": {
+        "occurrences": 3,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 1863510
+      }
+    }
+  },
+  {
+    "case": "twenty",
+    "bytes": 84618984,
+    "fills": 20,
+    "top_level_bytes": {
+      "detailed_report": 370854,
+      "detailed_report_hash": 66,
+      "frozen_input": 1451535,
+      "performance": 97106,
+      "performance_hash": 66,
+      "report": 1869,
+      "run": 82697253,
+      "run_hash": 66,
+      "version": 34
+    },
+    "categories_inclusive_not_additive": {
+      "report_projection": {
+        "occurrences": 2,
+        "distinct_payloads": 2,
+        "inclusive_bytes": 467960
+      },
+      "checkpoint_account": {
+        "occurrences": 64,
+        "distinct_payloads": 43,
+        "inclusive_bytes": 4297081
+      },
+      "admission_policy": {
+        "occurrences": 167,
+        "distinct_payloads": 43,
+        "inclusive_bytes": 157720
+      },
+      "historical_input": {
+        "occurrences": 41,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 55975537
+      },
+      "position_history": {
+        "occurrences": 1,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 52764833
+      },
+      "acceptance": {
+        "occurrences": 20,
+        "distinct_payloads": 20,
+        "inclusive_bytes": 29371905
+      },
+      "model_snapshot_bundle": {
+        "occurrences": 20,
+        "distinct_payloads": 20,
+        "inclusive_bytes": 23106310
+      }
+    },
+    "unique_per_event_evidence": {
+      "event_headers": {
+        "records": 115,
+        "distinct_payloads": 115,
+        "canonical_bytes": 39337
+      },
+      "execution_receipts": {
+        "records": 20,
+        "distinct_payloads": 20,
+        "canonical_bytes": 66983
+      },
+      "decision_records": {
+        "records": 20,
+        "distinct_payloads": 20,
+        "canonical_bytes": 168717
+      }
+    },
+    "analysis_bundle_static_components_inclusive": {
+      "model": {
+        "occurrences": 20,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 2714440
+      },
+      "snapshot": {
+        "occurrences": 20,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 3965620
+      },
+      "training_snapshot": {
+        "occurrences": 20,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 3965620
+      },
+      "dataset": {
+        "occurrences": 20,
+        "distinct_payloads": 1,
+        "inclusive_bytes": 12423400
+      }
+    }
+  }
+]

@@ -10,7 +10,11 @@ from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.decision_bridge import policy_values as admission_values
 from donghak_stock_vision.backtest.execution import settings
 from donghak_stock_vision.backtest.hgb_provider import HGBHistoricalProvider
-from donghak_stock_vision.backtest.historical import build_historical_input, decision_schedule
+from donghak_stock_vision.backtest.historical import (
+    HistoricalBacktestInput,
+    build_historical_input,
+    decision_schedule,
+)
 from donghak_stock_vision.backtest.historical_execution import MODE, market_context, validate_input
 from donghak_stock_vision.backtest.ledger import LedgerCommand, LedgerPolicy, initialize
 from donghak_stock_vision.backtest.performance import policy_values
@@ -157,6 +161,18 @@ def run_historical_backtest(
         hgb_provider=hgb_provider,
         shared_evidence=shared_evidence,
     )
+    return run_frozen_historical(request, frozen, shared_evidence=shared_evidence)
+
+
+def run_frozen_historical(
+    request: HistoricalBacktestRequest,
+    frozen: HistoricalBacktestInput,
+    *,
+    shared_evidence: bool = True,
+) -> HistoricalBacktestResult:
+    """Existing execution/projection over already captured inputs; no acquisition."""
+    c = request.config.to_dict()
+    start_at = datetime.combine(request.start, time(), SEOUL).isoformat()
     tape = frozen.tape
     validate_input(tape, frozen.document)
     source = frozen.document.to_dict()
