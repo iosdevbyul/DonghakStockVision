@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
@@ -36,7 +36,7 @@ def parent(root: Path, budget: int = 50) -> dict[str, Any]:
     result = session.prepare(root, budget)
     return {
         **batch.load(root / result["draft_path"]),
-        "approved_at": datetime.now(UTC).isoformat(),
+        "approved_at": (datetime.now(UTC) - timedelta(seconds=1)).isoformat(),
         "access_confirmed": True,
         "quota_confirmed": True,
     }
