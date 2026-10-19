@@ -9,7 +9,7 @@ permissions:
   contents: read
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, X64]
     strategy:
       matrix:
         python-version: ['3.12', '3.13', '3.14']
