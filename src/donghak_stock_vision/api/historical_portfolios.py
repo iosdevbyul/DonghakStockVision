@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from donghak_stock_vision.api.historical_portfolio_comparison import compare_views
 from donghak_stock_vision.api.historical_portfolio_projection import (
     PROJECTION,
     REPORT,
@@ -481,6 +482,22 @@ class PortfolioPublicationReader:
 
     def summary(self, report_id: str) -> dict[str, Any]:
         return self.response(self._view(report_id)["summary"])
+
+    def compare(self, report_ids: tuple[str, ...]) -> dict[str, Any]:
+        check(
+            2 <= len(report_ids) <= 5
+            and all(isinstance(value, str) and bool(ID.fullmatch(value)) for value in report_ids)
+            and len(set(report_ids)) == len(report_ids),
+            "invalid_comparison_request",
+            422,
+        )
+        # One approved index snapshot, at most five sequential integrity checks.
+        index = read_index(self.files, self.expected_index_hash)
+        views = [self._load(report_id, index) for report_id in report_ids]
+        result = self.response(compare_views(views))
+        # Never return a mixed result if publication/revocation changed mid-request.
+        read_index(self.files, self.expected_index_hash)
+        return result
 
     def ticker(
         self, report_id: str, ticker: str, offset: int = 0, limit: int = 10

@@ -5,8 +5,12 @@ from typing import Annotated, Any
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import ValidationError
+from starlette.concurrency import run_in_threadpool
 
 from donghak_stock_vision.api.historical_portfolio_models import (
+    PortfolioComparison,
+    PortfolioComparisonRequest,
     PortfolioPage,
     PortfolioSummary,
     PortfolioTicker,
@@ -61,6 +65,31 @@ def portfolio_router(reader: PortfolioPublicationReader | None) -> APIRouter:
     @router.get("", response_model=PortfolioPage)
     def collection(source: Source, offset: str = "0", limit: str = "10") -> dict[str, Any]:
         return call(source, "collection", *page(offset, limit))
+
+    @router.post(
+        "/compare",
+        response_model=PortfolioComparison,
+        openapi_extra={
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/json": {"schema": PortfolioComparisonRequest.model_json_schema()}
+                },
+            }
+        },
+    )
+    async def compare(request: Request, source: Source) -> dict[str, Any]:
+        # Bound chunked bodies too, before JSON parsing. No user storage selectors.
+        raw = bytearray()
+        async for chunk in request.stream():
+            if len(raw) + len(chunk) > 4096:
+                raise HTTPException(413, detail={"code": "oversized_request"})
+            raw.extend(chunk)
+        try:
+            selection = PortfolioComparisonRequest.model_validate_json(bytes(raw))
+        except ValidationError:
+            raise HTTPException(422, detail={"code": "invalid_comparison_request"}) from None
+        return await run_in_threadpool(call, source, "compare", selection.reportIds)
 
     @router.get("/{report_id}", response_model=PortfolioSummary)
     def summary(report_id: str, source: Source) -> dict[str, Any]:
