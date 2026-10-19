@@ -1,0 +1,71 @@
+{
+  "scope": "executed_synthetic_fixtures_not_real_market_research",
+  "transport": "actual_FastAPI_TestClient_after_actual_CLI_startup_initialization",
+  "server_socket": "uvicorn.run_captured_no_permanent_service",
+  "note": "Generated IDs preserve source artifact observations; fresh preparation can have different IDs. Each frozen result replay is exact.",
+  "runs": [
+    {
+      "acceptedOrderCount": 1,
+      "family": "mechanics",
+      "fillCount": 1,
+      "finalPortfolioEquity": "1489.18",
+      "getReplayCalls": 0,
+      "initialVirtualCash": "1500",
+      "replayCallsDuringPublication": 1,
+      "reportHash": "cccc465927d1dbca3c9088e4914aa359f87d341f95ec6a5d6d6bac0e334061f5",
+      "reportId": "cd8c3214f90a26ceb556cbb517ac0e1d107a499340202f90b865e6a06a638e8b",
+      "resultHash": "0623e68b3de17960225a41a87c5dd761743531deecb2df0fcda4dde835a473e9",
+      "sourceBytesUnchanged": true,
+      "tickers": [
+        "000075",
+        "00088K",
+        "00104K",
+        "005930",
+        "035420"
+      ],
+      "tradePageBytes": 7776
+    },
+    {
+      "acceptedOrderCount": 0,
+      "family": "linear",
+      "fillCount": 0,
+      "finalPortfolioEquity": "1500",
+      "getReplayCalls": 0,
+      "initialVirtualCash": "1500",
+      "replayCallsDuringPublication": 1,
+      "reportHash": "24b1179b4d335fa390ad273783c20aa41e86dc5ad211923aeced2da88dc5892e",
+      "reportId": "eb9a786172a5040264ec3410f03265379a31c10b250f1758cdad2067d786b8e0",
+      "resultHash": "26b20ba911cd350c60630bacc991212d5d62f11aa9b93f4c2d0506e67308bcd6",
+      "sourceBytesUnchanged": true,
+      "tickers": [
+        "000075",
+        "00088K",
+        "00104K",
+        "005930",
+        "035420"
+      ],
+      "tradePageBytes": 8387
+    },
+    {
+      "acceptedOrderCount": 0,
+      "family": "hgb",
+      "fillCount": 0,
+      "finalPortfolioEquity": "1500",
+      "getReplayCalls": 0,
+      "initialVirtualCash": "1500",
+      "replayCallsDuringPublication": 1,
+      "reportHash": "b8b071b1a8d5445124043ca7d12bd5303e3a4ee08fefd6724d5b27f47bb64e81",
+      "reportId": "989fccec15b6014d800561732a214da3f71fc72595c39904c1d1d84e17c7c279",
+      "resultHash": "e3e89e0d67e97483b0f782168e2868c0ff6076ff4b4d03d34cfa1d4f5b69f42b",
+      "sourceBytesUnchanged": true,
+      "tickers": [
+        "000075",
+        "00088K",
+        "00104K",
+        "005930",
+        "035420"
+      ],
+      "tradePageBytes": 7307
+    }
+  ]
+}

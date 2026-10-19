@@ -239,3 +239,11 @@ The one-publication fixture has three controlled mechanics fills. The two-public
 fixture contains two genuinely inferred linear runs with no fills. Both have five
 synthetic tickers. Different fixtures and concurrent work prevent interpreting this
 as a scaling or model-performance comparison. No full replay occurs in these queries.
+
+## Local end-to-end operator workflow
+
+See the [local preparation, publication, startup and GET runbook](historical-portfolio-local-runbook.md)
+for reproducible synthetic mechanics/linear/HGB demos, the existing publication
+CLI's bounded `encode`/`diagnose` commands, explicit external pin capture, exact curl
+requests, diagnostics, revocation and foreground shutdown. No HTTP schema or
+publication authorization boundary changes are introduced by that workflow.
