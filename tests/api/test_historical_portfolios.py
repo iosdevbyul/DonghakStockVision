@@ -443,6 +443,11 @@ def test_real_validated_unavailable_and_pending(
         assert summary["unrealizedPnl"] is None and summary["portfolioReturn"] is None
         assert summary["finalValuation"]["positions"][0]["reason"] == "stale_mark"
         assert summary["unavailable"]["unrealizedPnl"] == "valuation_evidence_unavailable"
+        from donghak_stock_vision.portfolio_publication_cli import diagnose
+
+        diagnostic = diagnose(root, pin, report_id)
+        assert diagnostic["portfolioValuationAvailable"] is False
+        assert {"valuation_evidence_unavailable", "stale_mark"} <= set(diagnostic["diagnostics"])
 
 
 @pytest.mark.parametrize("key", ["archiveLocator", "archiveVersion", "resultHash", "validation"])

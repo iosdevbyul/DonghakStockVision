@@ -75,11 +75,20 @@ def main(argv: list[str] | None = None) -> None:
     if args.portfolio_publications:
         if args.host not in {"127.0.0.1", "::1"}:
             parser().error("portfolio publications require a loopback bind")
-        from donghak_stock_vision.api.historical_portfolios import PortfolioPublicationReader
-
-        portfolio_reader = PortfolioPublicationReader(
-            args.portfolio_publications, args.portfolio_index_sha256
+        from donghak_stock_vision.api.historical_portfolios import (
+            PortfolioPublicationReader,
+            PublicationError,
         )
+
+        try:
+            portfolio_reader = PortfolioPublicationReader(
+                args.portfolio_publications, args.portfolio_index_sha256
+            )
+        except PublicationError as error:
+            raise SystemExit(
+                f"portfolio publication startup blocked: {error.code}; "
+                "review the offline publication output and run dsv-portfolio-publication diagnose"
+            ) from None
     ohlcv_reader = None
     if args.market_db:
         from donghak_stock_vision.api.ohlcv import OhlcvMarketReader
@@ -90,7 +99,14 @@ def main(argv: list[str] | None = None) -> None:
         from donghak_stock_vision.api.stock_analysis import AnalysisPublicationReader
 
         analysis_reader = AnalysisPublicationReader.from_path(args.analysis_publication)
-    reader = SnapshotReader.from_path(snapshot_path)
+    from donghak_stock_vision.api.snapshot import SnapshotValidationError
+
+    try:
+        reader = SnapshotReader.from_path(snapshot_path)
+    except SnapshotValidationError:
+        raise SystemExit(
+            "research snapshot unavailable or invalid; supply a validated --snapshot"
+        ) from None
     metadata_reader = None
     if args.security_metadata:
         from donghak_stock_vision.api.security_metadata import SecurityMetadataReader
