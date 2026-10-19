@@ -136,3 +136,14 @@ not calculate new model performance.
 
 Stock names are nullable and use only exact current English DART corporation names.
 Current identity does not prove full-period historical identity.
+
+## Optional historical portfolio archive resources
+
+[Verified five-ticker historical portfolio access](research-historical-portfolios.md)
+adds four opt-in, loopback-only GET resources under
+`/api/v1/research/historical-portfolios`. A separate offline operator command
+validates previously generated archives with full frozen replay before explicit
+registration; HTTP retrieval performs integrity checks and never runs that replay
+or fresh inference. Existing snapshot publication and Stock APIs retain their
+contracts. See the linked contract for the externally pinned index, revocation,
+resource limits, synthetic examples and local-only exposure requirements.

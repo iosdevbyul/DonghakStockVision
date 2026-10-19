@@ -1,0 +1,1078 @@
+{
+  "scope": "executed_synthetic_mechanics_not_model_profitability",
+  "list": {
+    "schemaVersion": "published_historical_portfolio_v1",
+    "researchOnly": true,
+    "operationalEligible": false,
+    "executable": false,
+    "pitVerified": false,
+    "oosVerified": false,
+    "investmentSuitabilityVerified": false,
+    "brokerageEligible": false,
+    "items": [
+      {
+        "researchOnly": true,
+        "operationalEligible": false,
+        "executable": false,
+        "pitVerified": false,
+        "oosVerified": false,
+        "investmentSuitabilityVerified": false,
+        "brokerageEligible": false,
+        "reportId": "dc6b627c37f06bd705b1978ade6ced066621bcecec176f89a06e3ba800604440",
+        "resultSchemaVersion": "five_ticker_historical_result_v1",
+        "reportSchemaVersion": "five_ticker_historical_report_v1",
+        "modelFamily": "linear",
+        "tickers": [
+          "000075",
+          "00088K",
+          "00104K",
+          "005930",
+          "035420"
+        ],
+        "period": {
+          "end": "2020-06-04",
+          "start": "2020-05-05"
+        },
+        "initialVirtualCash": "1500",
+        "publishedAt": "2026-10-19T07:52:20.680245+00:00",
+        "archiveVerification": "integrity_verified",
+        "reportVerification": "offline_authoritative_replay_passed",
+        "valuationCoverage": {
+          "complete_points": 117,
+          "open_positions": 1,
+          "total_points": 117,
+          "unvalued_positions": 0,
+          "valued_positions": 1
+        },
+        "portfolioValuationAvailable": true,
+        "evidenceScope": "synthetic_fixture"
+      }
+    ],
+    "total": 1,
+    "offset": 0,
+    "limit": 10
+  },
+  "summary": {
+    "schemaVersion": "published_historical_portfolio_v1",
+    "researchOnly": true,
+    "operationalEligible": false,
+    "executable": false,
+    "pitVerified": false,
+    "oosVerified": false,
+    "investmentSuitabilityVerified": false,
+    "brokerageEligible": false,
+    "reportId": "dc6b627c37f06bd705b1978ade6ced066621bcecec176f89a06e3ba800604440",
+    "publishedAt": "2026-10-19T07:52:20.680245+00:00",
+    "resultSchemaVersion": "five_ticker_historical_result_v1",
+    "reportSchemaVersion": "five_ticker_historical_report_v1",
+    "modelFamily": "linear",
+    "modelId": "e4c42055d2712944efcccae0780e44913602c2d7d9c3f1c50f64ca1692cea39d",
+    "modelReferences": {
+      "dataset_id": "d712f1e58d9647a0440ad54290b55e308d3131ba10351ea6115e485d7fea5c07",
+      "model_id": "e4c42055d2712944efcccae0780e44913602c2d7d9c3f1c50f64ca1692cea39d",
+      "training_snapshot_id": "1474079a40d630a37f8742352dada7cebe7a2d09cd0a191fd07196ddb6c383ce"
+    },
+    "tickers": [
+      "000075",
+      "00088K",
+      "00104K",
+      "005930",
+      "035420"
+    ],
+    "period": {
+      "end": "2020-06-04",
+      "start": "2020-05-05"
+    },
+    "initialVirtualCash": "1500",
+    "finalTotalCash": "759.73",
+    "availableCash": "759.73",
+    "reservedCash": "0",
+    "finalPortfolioEquity": "1859.73",
+    "realizedNetPnl": "170.55",
+    "unrealizedPnl": "189.18",
+    "portfolioReturn": "0.23982",
+    "decisionCount": 15,
+    "acceptedOrderCount": 3,
+    "fillCount": 3,
+    "completedPositionCount": 1,
+    "pendingOrderCount": 0,
+    "valuationCoverage": {
+      "complete_points": 117,
+      "open_positions": 1,
+      "total_points": 117,
+      "unvalued_positions": 0,
+      "valued_positions": 1
+    },
+    "portfolioValuationAvailable": true,
+    "finalValuation": {
+      "cash": "759.73",
+      "complete": true,
+      "coverage": {
+        "open_positions": 1,
+        "unvalued_positions": 0,
+        "valued_positions": 1
+      },
+      "known_position_value": "1100",
+      "known_unrealized_pnl": "189.18",
+      "positions": [
+        {
+          "cost_basis_krw": "910.82",
+          "mark": {
+            "available_at": "2020-06-04T15:00:00.000000+00:00",
+            "event_at": "2020-06-04T15:00:00.000000+00:00",
+            "field": "open",
+            "price": "110",
+            "sequence": 111
+          },
+          "market_value": "1100",
+          "quantity": 10,
+          "reason": null,
+          "reserved_quantity": 0,
+          "sellable_quantity": 10,
+          "status": "valued",
+          "ticker": "000075",
+          "unrealized_pnl": "189.18"
+        }
+      ],
+      "sequence": 115,
+      "stage": "account",
+      "timestamp": "2020-06-04T15:00:00.000000+00:00",
+      "total_equity": "1859.73",
+      "unrealized_pnl": "189.18"
+    },
+    "costs": {
+      "fees": "6.91",
+      "sell_taxes": "4.36",
+      "slippage_impact": "29",
+      "total_explicit_trading_costs": "11.27"
+    },
+    "provenance": {
+      "frozen_run_hash": "197af3f89328f4b98eb999adbba7c934df10cffc528336c0ad7a647713b80fc8",
+      "historical_input_hash": "c11df53e02d9313e08284e9956fa0f637005ec060500f8657807e0b99ff9ab2f",
+      "performance_hash": "0aa6d425d92a9adc442c46cd68cba09d09ece1eb9cee27b7cfad4d098bcd0034",
+      "position_history_hash": "38d5e4df43985a4ac0edd3aa603ba0ae244bffd281fad47ecdb378c45c74f694",
+      "request_hash": "94d01a60111c0d7d60624df5f682c9546f0229565df047baada7361b2af07470",
+      "run_hash": "2bb9ee1efd5b69d454d5956560805ca69be984e8538b9881b127416d846297c7"
+    },
+    "archiveTransportHash": "387984206c23a5cf79e75a3f6e3d9901d6611b8e3b94d85039dfdc097ea1072e",
+    "resultHash": "b35a37925293e2482c43b5c1567c5691ea25cda04c24494da0995a7b55a8cdd2",
+    "reportHash": "97965fb861cf3a3a529e4385f672afbd174b06e9a1a7c24098652058d5262eb2",
+    "runHash": "2bb9ee1efd5b69d454d5956560805ca69be984e8538b9881b127416d846297c7",
+    "performanceHash": "0aa6d425d92a9adc442c46cd68cba09d09ece1eb9cee27b7cfad4d098bcd0034",
+    "evidenceScope": "synthetic_fixture",
+    "dataOrigin": "synthetic",
+    "limitations": [
+      "calendar_durations_use_recorded_fill_times",
+      "conditional_scores_not_calibrated_probabilities",
+      "daily_event_time_is_publication_assumption_not_exchange_open",
+      "daily_marks_listing_and_halt_status_unverified",
+      "expanded_legacy_trade_receipts_can_dominate_memory",
+      "explicit_five_security_selection_not_historical_blind_selection",
+      "feature_contributions_not_economic_causation",
+      "fill_known_only_after_complete_daily_bar_publication",
+      "historical_daily_full_fill_assumption",
+      "mdd_on_declared_observation_points_not_intraday",
+      "model_training_cutoff_unverified",
+      "no_actual_orders",
+      "no_external_cash_flows_or_forced_liquidation",
+      "no_order_book_or_liquidity_verification",
+      "not_pit_or_oos",
+      "source_revision_history_unavailable",
+      "synthetic_historical_research_not_pit_or_oos"
+    ],
+    "unavailable": {},
+    "archiveVerification": "integrity_verified",
+    "reportVerification": "offline_authoritative_replay_passed"
+  },
+  "ticker": {
+    "schemaVersion": "published_historical_portfolio_v1",
+    "researchOnly": true,
+    "operationalEligible": false,
+    "executable": false,
+    "pitVerified": false,
+    "oosVerified": false,
+    "investmentSuitabilityVerified": false,
+    "brokerageEligible": false,
+    "reportId": "dc6b627c37f06bd705b1978ade6ced066621bcecec176f89a06e3ba800604440",
+    "ticker": "000075",
+    "modelId": "e4c42055d2712944efcccae0780e44913602c2d7d9c3f1c50f64ca1692cea39d",
+    "modelReferences": {
+      "dataset_id": "d712f1e58d9647a0440ad54290b55e308d3131ba10351ea6115e485d7fea5c07",
+      "model_id": "e4c42055d2712944efcccae0780e44913602c2d7d9c3f1c50f64ca1692cea39d",
+      "training_snapshot_id": "1474079a40d630a37f8742352dada7cebe7a2d09cd0a191fd07196ddb6c383ce"
+    },
+    "positions": [
+      {
+        "acquired_at": "2020-05-22T15:00:00.000000+00:00",
+        "acquisition": {
+          "analysis_id": "d02bde9c47bf7411f867d3a9090cfe11c910454ae10b9e6c828ccd34e62dc386",
+          "candidate_id": "54b2ef9d943d7f8babb77eac5f4949fdc085e49f90e80f4ee78ea64a5f3dfa0c",
+          "decision_id": "a3d000a90eceaacc6cfdaabf6bba62542576ba720a8a426c64265d6518dd9ce4",
+          "execution_id": "e118ef5825182cd3c2710b09713f77d36371f90598b11ab429c63c127777ca03",
+          "fill_at": "2020-05-22T15:00:00.000000+00:00",
+          "fill_id": "c6e846e6d60b0089f95ae95218031fd5ccdcdcb15d0419c85560209c40ba786e",
+          "kind": "confirmed_buy",
+          "known_at": "2020-05-22T15:00:00.000000+00:00",
+          "order_id": "05bf329bfc22b7d76389156da418fce1b97398fa0a09f8c5046ac9966a7a4889",
+          "quantity": 10,
+          "reservation_id": "c27a0560fa8d554f6446ff4f642c2dd43d7b7a05d947bca6963a25625705f971",
+          "side": "BUY",
+          "ticker": "000075"
+        },
+        "acquisition_fill": {
+          "benchmark_price_krw": "90",
+          "fee_krw": "1.82",
+          "fill_at": "2020-05-22T15:00:00.000000+00:00",
+          "fill_id": "c6e846e6d60b0089f95ae95218031fd5ccdcdcb15d0419c85560209c40ba786e",
+          "fill_known_at": "2020-05-22T15:00:00.000000+00:00",
+          "notional_krw": "909",
+          "order_id": "05bf329bfc22b7d76389156da418fce1b97398fa0a09f8c5046ac9966a7a4889",
+          "price_krw": "90.9",
+          "quantity": 10,
+          "sequence": 2,
+          "slippage_krw": "9",
+          "source_event_id": "f86be2d5d24f1d1b9fb5a937d25d2e888cd1bc326f3cf6cb74e3a271902ea7b2",
+          "tax_krw": "0",
+          "ticker": "000075",
+          "unavailable": {}
+        },
+        "exited_at": "2020-05-27T15:00:00.000000+00:00",
+        "holding_duration": {
+          "calendar_days": 5,
+          "elapsed_microseconds": 432000000000,
+          "reason": null
+        },
+        "position_id": "e3e2ef17adad4c73b2272ced9692c1b9da876ad34aad8d84487f589c613a11eb",
+        "previous_completed_position_id": null,
+        "quantity": 0,
+        "realized_net_pnl": "170.55",
+        "realized_source": "performance.trade_episodes",
+        "sales": [
+          {
+            "analysis_id": "dee0bc30fe256198dbb41ca3b114758c12c3969172c937511e40ca750b4ae4d0",
+            "candidate_id": "f537af936d94bb154029e991eaaf68e6bdd362894f8478a0a39538b39075678c",
+            "decision_id": "75d7223d8b55f7f53e6566095fc6b735c83462b67c6ab890cf0bde18c3765a6f",
+            "execution_id": "60ea69efe35b88abbb66b68aa9d9058ba0d859f052d6333eb3194907de5c22b5",
+            "fill": {
+              "benchmark_price_krw": "110",
+              "fee_krw": "3.27",
+              "fill_at": "2020-05-27T15:00:00.000000+00:00",
+              "fill_id": "9278726faedef33db4305bc912c4944758062d0a64235e3470b81bfde5b26f11",
+              "fill_known_at": "2020-05-27T15:00:00.000000+00:00",
+              "notional_krw": "1089",
+              "order_id": "247c5fdbb660e9916f0caaac043e4f7f1520cf2d3665c69b59b15ea57d5fa435",
+              "price_krw": "108.9",
+              "quantity": 10,
+              "sequence": 4,
+              "slippage_krw": "11",
+              "source_event_id": "26a4036c488e304e85483676d59bc39c364bbcc8983118c81437392aa4440d41",
+              "tax_krw": "4.36",
+              "ticker": "000075",
+              "unavailable": {}
+            },
+            "fill_at": "2020-05-27T15:00:00.000000+00:00",
+            "fill_id": "9278726faedef33db4305bc912c4944758062d0a64235e3470b81bfde5b26f11",
+            "known_at": "2020-05-27T15:00:00.000000+00:00",
+            "order_id": "247c5fdbb660e9916f0caaac043e4f7f1520cf2d3665c69b59b15ea57d5fa435",
+            "quantity": 10,
+            "reservation_id": "0fbd4e001e2f896e624bdf514473195dc5f9a3067ccba0138c3756aae13b9427",
+            "side": "SELL",
+            "ticker": "000075"
+          }
+        ],
+        "source": {
+          "history_hash": "38d5e4df43985a4ac0edd3aa603ba0ae244bffd281fad47ecdb378c45c74f694",
+          "performance_hash": "0aa6d425d92a9adc442c46cd68cba09d09ece1eb9cee27b7cfad4d098bcd0034"
+        },
+        "status": "confirmed_full_exit",
+        "ticker": "000075",
+        "valuation": null,
+        "verified_trading_sessions": {
+          "basis": "after_entry_through_exit",
+          "count": null,
+          "evidence_scope": "synthetic_virtual_calendar_contract",
+          "reason": "verified_session_evidence_unavailable",
+          "source": null
+        }
+      },
+      {
+        "acquired_at": "2020-06-02T15:00:00.000000+00:00",
+        "acquisition": {
+          "analysis_id": "0af57225b8d3bacbafca5a8715772a92b50e91c5cd43261e82052e6d2ff1d330",
+          "candidate_id": "125ba53c0c25a5e4b4e34aa4bbee151e69f307c95339225bef1b41778d638f32",
+          "decision_id": "2dedd2a1d240fc1c8d395842151c7ec2f13ca4d6f9b7081428464988bfb50627",
+          "execution_id": "de0efb5a37e30704cb2723110e375f030a6727dc5444d1c94e08aa84544f6c25",
+          "fill_at": "2020-06-02T15:00:00.000000+00:00",
+          "fill_id": "d1e2286a440967ff6b651b3bad7ca7f13ac3cde69f2b2c18d9eed99ae8dd8775",
+          "kind": "confirmed_buy",
+          "known_at": "2020-06-02T15:00:00.000000+00:00",
+          "order_id": "9a4aa1bdbabe1cbb36da537e485f7590b6cc023e8737fe9e22c919e956052879",
+          "quantity": 10,
+          "reservation_id": "fc24f2007e82eec2b121afc2e3840fb9c3900ae970e0f4ed02fcf58dde536b2e",
+          "side": "BUY",
+          "ticker": "000075"
+        },
+        "acquisition_fill": {
+          "benchmark_price_krw": "90",
+          "fee_krw": "1.82",
+          "fill_at": "2020-06-02T15:00:00.000000+00:00",
+          "fill_id": "d1e2286a440967ff6b651b3bad7ca7f13ac3cde69f2b2c18d9eed99ae8dd8775",
+          "fill_known_at": "2020-06-02T15:00:00.000000+00:00",
+          "notional_krw": "909",
+          "order_id": "9a4aa1bdbabe1cbb36da537e485f7590b6cc023e8737fe9e22c919e956052879",
+          "price_krw": "90.9",
+          "quantity": 10,
+          "sequence": 6,
+          "slippage_krw": "9",
+          "source_event_id": "5e045de15181e8a49715603e02d523ad37b586eb0beebcd5dc56e76ad6525799",
+          "tax_krw": "0",
+          "ticker": "000075",
+          "unavailable": {}
+        },
+        "exited_at": null,
+        "holding_duration": {
+          "calendar_days": null,
+          "elapsed_microseconds": null,
+          "reason": "exit_not_confirmed"
+        },
+        "position_id": "84cb5403385dbe281af8aa148e74962e7fa711dbe7f0752c79fd7dbe0acdef0b",
+        "previous_completed_position_id": "e3e2ef17adad4c73b2272ced9692c1b9da876ad34aad8d84487f589c613a11eb",
+        "quantity": 10,
+        "realized_net_pnl": "0.00",
+        "realized_source": "ledger_ticker_delta_less_completed_episodes",
+        "sales": [],
+        "source": {
+          "history_hash": "38d5e4df43985a4ac0edd3aa603ba0ae244bffd281fad47ecdb378c45c74f694",
+          "performance_hash": "0aa6d425d92a9adc442c46cd68cba09d09ece1eb9cee27b7cfad4d098bcd0034"
+        },
+        "status": "still_open",
+        "ticker": "000075",
+        "valuation": {
+          "cost_basis_krw": "910.82",
+          "mark": {
+            "available_at": "2020-06-04T15:00:00.000000+00:00",
+            "event_at": "2020-06-04T15:00:00.000000+00:00",
+            "field": "open",
+            "price": "110",
+            "sequence": 111
+          },
+          "market_value": "1100",
+          "quantity": 10,
+          "reason": null,
+          "reserved_quantity": 0,
+          "sellable_quantity": 10,
+          "status": "valued",
+          "ticker": "000075",
+          "unrealized_pnl": "189.18"
+        },
+        "verified_trading_sessions": {
+          "basis": "after_entry_through_exit",
+          "count": null,
+          "evidence_scope": "synthetic_virtual_calendar_contract",
+          "reason": "holding_timestamps_unavailable",
+          "source": null
+        }
+      }
+    ],
+    "realizedNetPnl": "170.55",
+    "valuation": {
+      "cost_basis_krw": "910.82",
+      "mark": {
+        "available_at": "2020-06-04T15:00:00.000000+00:00",
+        "event_at": "2020-06-04T15:00:00.000000+00:00",
+        "field": "open",
+        "price": "110",
+        "sequence": 111
+      },
+      "market_value": "1100",
+      "quantity": 10,
+      "reason": null,
+      "reserved_quantity": 0,
+      "sellable_quantity": 10,
+      "status": "valued",
+      "ticker": "000075",
+      "unrealized_pnl": "189.18"
+    },
+    "unavailable": {},
+    "timeline": [
+      {
+        "action": "BUY",
+        "admission": {
+          "admission_at": "2020-05-21T15:00:00.000000+00:00",
+          "budget_krw": "1000",
+          "order_id": "54b2ef9d943d7f8babb77eac5f4949fdc085e49f90e80f4ee78ea64a5f3dfa0c",
+          "reason": "research_candidate",
+          "status": "admitted"
+        },
+        "analysis_anchor_at": "2020-05-21T16:00:00+09:00",
+        "analysis_available_at": "2020-05-21T15:00:00.000000+00:00",
+        "analysis_id": "d02bde9c47bf7411f867d3a9090cfe11c910454ae10b9e6c828ccd34e62dc386",
+        "analysis_observed_at": "2026-10-19T07:49:43.514731+00:00",
+        "checks": {
+          "analysis": "passed",
+          "policy": "passed",
+          "sizing_risk_cost": "passed",
+          "snapshots": "passed"
+        },
+        "conditions": {
+          "entry": {
+            "code": "entry_condition",
+            "text": "The applicable up score met the configured BUY threshold."
+          },
+          "exit": {
+            "code": "no_position",
+            "text": "There is no long position to sell."
+          }
+        },
+        "context": "prior_decline",
+        "decision_at": "2020-05-21T15:00:00+00:00",
+        "decision_id": "a3d000a90eceaacc6cfdaabf6bba62542576ba720a8a426c64265d6518dd9ce4",
+        "executions": [
+          {
+            "exchange_execution_at": null,
+            "exchange_time_unavailable_reason": "daily_bar_has_no_verified_exchange_execution_timestamp",
+            "fill": {
+              "benchmark_price_krw": "90",
+              "fee_krw": "1.82",
+              "fill_at": "2020-05-22T15:00:00.000000+00:00",
+              "fill_id": "c6e846e6d60b0089f95ae95218031fd5ccdcdcb15d0419c85560209c40ba786e",
+              "fill_known_at": "2020-05-22T15:00:00.000000+00:00",
+              "notional_krw": "909",
+              "order_id": "05bf329bfc22b7d76389156da418fce1b97398fa0a09f8c5046ac9966a7a4889",
+              "price_krw": "90.9",
+              "quantity": 10,
+              "sequence": 2,
+              "slippage_krw": "9",
+              "source_event_id": "f86be2d5d24f1d1b9fb5a937d25d2e888cd1bc326f3cf6cb74e3a271902ea7b2",
+              "tax_krw": "0",
+              "ticker": "000075",
+              "unavailable": {}
+            },
+            "reason": null,
+            "source_event": {
+              "available_at": "2020-05-22T15:00:00.000000+00:00",
+              "event_at": "2020-05-22T15:00:00.000000+00:00",
+              "sequence": 66,
+              "source_received_at": "2024-01-31T00:00:00.000000+00:00",
+              "trading_date": "2020-05-22"
+            },
+            "source_hash": "6851f233aa2da0ae33503eb2e6e4e77787a686c31077751e9feded34327d1b67",
+            "status": "filled"
+          }
+        ],
+        "feature_contributions": null,
+        "feature_values": null,
+        "hgb_pair": null,
+        "hgb_provenance_hash": null,
+        "linear_intercept": null,
+        "model_created_at": "2026-10-19T07:49:43.335514+00:00",
+        "model_family": "linear",
+        "model_id": "e4c42055d2712944efcccae0780e44913602c2d7d9c3f1c50f64ca1692cea39d",
+        "opportunity_at": "2020-05-21T15:00:00.000000+00:00",
+        "opportunity_id": "4414f52bb8f3b43a9ea059eec4945a6083d22854ac2b387e73fdaad0d7349992",
+        "order_id": "05bf329bfc22b7d76389156da418fce1b97398fa0a09f8c5046ac9966a7a4889",
+        "reasons": [
+          {
+            "code": "entry_condition",
+            "text": "The applicable up score met the configured BUY threshold."
+          }
+        ],
+        "releases": [],
+        "requested_quantity": 10,
+        "reservation": {
+          "accepted_at": "2020-05-21T15:00:00.000000+00:00",
+          "order_id": "05bf329bfc22b7d76389156da418fce1b97398fa0a09f8c5046ac9966a7a4889",
+          "reason": null,
+          "source_hash": "3c8e68370f1cf59e0204bc4b7408c826b4400cbfa9e0bea759c36dbd96bdb217",
+          "status": "accepted"
+        },
+        "score": 0.8,
+        "score_semantics": "conditional_uncalibrated_score",
+        "selected_rule": "entry_condition",
+        "signalEvidence": {
+          "decisionId": "a3d000a90eceaacc6cfdaabf6bba62542576ba720a8a426c64265d6518dd9ce4",
+          "sourceHash": "d02bde9c47bf7411f867d3a9090cfe11c910454ae10b9e6c828ccd34e62dc386",
+          "unavailable": {
+            "down_score": "source_field_unavailable"
+          },
+          "values": {
+            "down_score": null,
+            "down_status": "context_mismatch",
+            "input_status": "ok",
+            "signal_state": "neutral",
+            "up_score": 0.8,
+            "up_status": "scored"
+          }
+        },
+        "signal_evidence_scope": "controlled_mechanics_test_double",
+        "signal_status": null,
+        "snapshot_id": "1474079a40d630a37f8742352dada7cebe7a2d09cd0a191fd07196ddb6c383ce",
+        "source": {
+          "historical_input_hash": "c11df53e02d9313e08284e9956fa0f637005ec060500f8657807e0b99ff9ab2f",
+          "point_hash": "ad6ed2c0017d75a6f8c1a9db3fe98f0b0bad88bc677f422f87cb177bcff2e917",
+          "run_hash": "2bb9ee1efd5b69d454d5956560805ca69be984e8538b9881b127416d846297c7"
+        },
+        "source_observed_at": "2024-01-31T00:00:00+00:00",
+        "source_sequence": 61,
+        "thresholds": {
+          "buy": "0.7",
+          "sell": "0.6"
+        },
+        "ticker": "000075",
+        "trading_date": "2020-05-21",
+        "unavailable": {
+          "feature_contributions": "not_present_in_public_signal",
+          "feature_values": "source_field_unavailable",
+          "hgb_pair": "source_field_unavailable",
+          "hgb_provenance_hash": "source_field_unavailable",
+          "linear_intercept": "source_field_unavailable",
+          "signal_status": "aggregate_signal_status_not_recorded"
+        }
+      },
+      {
+        "action": "SELL",
+        "admission": {
+          "admission_at": "2020-05-26T15:00:00.000000+00:00",
+          "budget_krw": "0",
+          "order_id": "f537af936d94bb154029e991eaaf68e6bdd362894f8478a0a39538b39075678c",
+          "reason": "research_candidate",
+          "status": "admitted"
+        },
+        "analysis_anchor_at": "2020-05-26T16:00:00+09:00",
+        "analysis_available_at": "2020-05-26T15:00:00.000000+00:00",
+        "analysis_id": "dee0bc30fe256198dbb41ca3b114758c12c3969172c937511e40ca750b4ae4d0",
+        "analysis_observed_at": "2026-10-19T07:49:43.610617+00:00",
+        "checks": {
+          "analysis": "passed",
+          "policy": "passed",
+          "sizing_risk_cost": "passed",
+          "snapshots": "passed"
+        },
+        "conditions": {
+          "entry": {
+            "code": "existing_position",
+            "text": "A long position already exists; additional purchases are unsupported."
+          },
+          "exit": {
+            "code": "exit_condition",
+            "text": "The applicable down score met the configured SELL threshold."
+          }
+        },
+        "context": "prior_rise",
+        "decision_at": "2020-05-26T15:00:00+00:00",
+        "decision_id": "75d7223d8b55f7f53e6566095fc6b735c83462b67c6ab890cf0bde18c3765a6f",
+        "executions": [
+          {
+            "exchange_execution_at": null,
+            "exchange_time_unavailable_reason": "daily_bar_has_no_verified_exchange_execution_timestamp",
+            "fill": {
+              "benchmark_price_krw": "110",
+              "fee_krw": "3.27",
+              "fill_at": "2020-05-27T15:00:00.000000+00:00",
+              "fill_id": "9278726faedef33db4305bc912c4944758062d0a64235e3470b81bfde5b26f11",
+              "fill_known_at": "2020-05-27T15:00:00.000000+00:00",
+              "notional_krw": "1089",
+              "order_id": "247c5fdbb660e9916f0caaac043e4f7f1520cf2d3665c69b59b15ea57d5fa435",
+              "price_krw": "108.9",
+              "quantity": 10,
+              "sequence": 4,
+              "slippage_krw": "11",
+              "source_event_id": "26a4036c488e304e85483676d59bc39c364bbcc8983118c81437392aa4440d41",
+              "tax_krw": "4.36",
+              "ticker": "000075",
+              "unavailable": {}
+            },
+            "reason": null,
+            "source_event": {
+              "available_at": "2020-05-27T15:00:00.000000+00:00",
+              "event_at": "2020-05-27T15:00:00.000000+00:00",
+              "sequence": 81,
+              "source_received_at": "2024-01-31T00:00:00.000000+00:00",
+              "trading_date": "2020-05-27"
+            },
+            "source_hash": "1e4aa6ad9556f86b58777f2616cbf4f7e1ff19b2c51eb9d361444500c72a7787",
+            "status": "filled"
+          }
+        ],
+        "feature_contributions": null,
+        "feature_values": null,
+        "hgb_pair": null,
+        "hgb_provenance_hash": null,
+        "linear_intercept": null,
+        "model_created_at": "2026-10-19T07:49:43.335514+00:00",
+        "model_family": "linear",
+        "model_id": "e4c42055d2712944efcccae0780e44913602c2d7d9c3f1c50f64ca1692cea39d",
+        "opportunity_at": "2020-05-26T15:00:00.000000+00:00",
+        "opportunity_id": "4d7f84eaeedd4044c1db6033248c46dbb811af93040a7a6a294143d12f6f6289",
+        "order_id": "247c5fdbb660e9916f0caaac043e4f7f1520cf2d3665c69b59b15ea57d5fa435",
+        "reasons": [
+          {
+            "code": "exit_condition",
+            "text": "The applicable down score met the configured SELL threshold."
+          }
+        ],
+        "releases": [],
+        "requested_quantity": 10,
+        "reservation": {
+          "accepted_at": "2020-05-26T15:00:00.000000+00:00",
+          "order_id": "247c5fdbb660e9916f0caaac043e4f7f1520cf2d3665c69b59b15ea57d5fa435",
+          "reason": null,
+          "source_hash": "d8351db619d5395419fc6003479ccd1faaccf22079e84b9409dad8d471753b63",
+          "status": "accepted"
+        },
+        "score": 0.8,
+        "score_semantics": "conditional_uncalibrated_score",
+        "selected_rule": "exit_condition",
+        "signalEvidence": {
+          "decisionId": "75d7223d8b55f7f53e6566095fc6b735c83462b67c6ab890cf0bde18c3765a6f",
+          "sourceHash": "dee0bc30fe256198dbb41ca3b114758c12c3969172c937511e40ca750b4ae4d0",
+          "unavailable": {
+            "up_score": "source_field_unavailable"
+          },
+          "values": {
+            "down_score": 0.8,
+            "down_status": "scored",
+            "input_status": "ok",
+            "signal_state": "neutral",
+            "up_score": null,
+            "up_status": "context_mismatch"
+          }
+        },
+        "signal_evidence_scope": "controlled_mechanics_test_double",
+        "signal_status": null,
+        "snapshot_id": "1474079a40d630a37f8742352dada7cebe7a2d09cd0a191fd07196ddb6c383ce",
+        "source": {
+          "historical_input_hash": "c11df53e02d9313e08284e9956fa0f637005ec060500f8657807e0b99ff9ab2f",
+          "point_hash": "f0a712e0a0c1418671ae0e90479bfbf82ebe41bf01b3621e79f56a67e56ad91f",
+          "run_hash": "2bb9ee1efd5b69d454d5956560805ca69be984e8538b9881b127416d846297c7"
+        },
+        "source_observed_at": "2024-01-31T00:00:00+00:00",
+        "source_sequence": 76,
+        "thresholds": {
+          "buy": "0.7",
+          "sell": "0.6"
+        },
+        "ticker": "000075",
+        "trading_date": "2020-05-26",
+        "unavailable": {
+          "feature_contributions": "not_present_in_public_signal",
+          "feature_values": "source_field_unavailable",
+          "hgb_pair": "source_field_unavailable",
+          "hgb_provenance_hash": "source_field_unavailable",
+          "linear_intercept": "source_field_unavailable",
+          "signal_status": "aggregate_signal_status_not_recorded"
+        }
+      }
+    ],
+    "total": 3,
+    "offset": 0,
+    "limit": 2
+  },
+  "trades": {
+    "schemaVersion": "published_historical_portfolio_v1",
+    "researchOnly": true,
+    "operationalEligible": false,
+    "executable": false,
+    "pitVerified": false,
+    "oosVerified": false,
+    "investmentSuitabilityVerified": false,
+    "brokerageEligible": false,
+    "items": [
+      {
+        "classification": "filled",
+        "eventId": "15c2b780131f10bbe5f04c97c55a0ddc38302ee7f4cb7f0d91e344f56aa2f3af",
+        "evidence": {
+          "action": "BUY",
+          "admission": {
+            "admission_at": "2020-05-21T15:00:00.000000+00:00",
+            "budget_krw": "1000",
+            "order_id": "54b2ef9d943d7f8babb77eac5f4949fdc085e49f90e80f4ee78ea64a5f3dfa0c",
+            "reason": "research_candidate",
+            "status": "admitted"
+          },
+          "analysis_anchor_at": "2020-05-21T16:00:00+09:00",
+          "analysis_available_at": "2020-05-21T15:00:00.000000+00:00",
+          "analysis_id": "d02bde9c47bf7411f867d3a9090cfe11c910454ae10b9e6c828ccd34e62dc386",
+          "analysis_observed_at": "2026-10-19T07:49:43.514731+00:00",
+          "checks": {
+            "analysis": "passed",
+            "policy": "passed",
+            "sizing_risk_cost": "passed",
+            "snapshots": "passed"
+          },
+          "conditions": {
+            "entry": {
+              "code": "entry_condition",
+              "text": "The applicable up score met the configured BUY threshold."
+            },
+            "exit": {
+              "code": "no_position",
+              "text": "There is no long position to sell."
+            }
+          },
+          "context": "prior_decline",
+          "decision_at": "2020-05-21T15:00:00+00:00",
+          "decision_id": "a3d000a90eceaacc6cfdaabf6bba62542576ba720a8a426c64265d6518dd9ce4",
+          "executions": [
+            {
+              "exchange_execution_at": null,
+              "exchange_time_unavailable_reason": "daily_bar_has_no_verified_exchange_execution_timestamp",
+              "fill": {
+                "benchmark_price_krw": "90",
+                "fee_krw": "1.82",
+                "fill_at": "2020-05-22T15:00:00.000000+00:00",
+                "fill_id": "c6e846e6d60b0089f95ae95218031fd5ccdcdcb15d0419c85560209c40ba786e",
+                "fill_known_at": "2020-05-22T15:00:00.000000+00:00",
+                "notional_krw": "909",
+                "order_id": "05bf329bfc22b7d76389156da418fce1b97398fa0a09f8c5046ac9966a7a4889",
+                "price_krw": "90.9",
+                "quantity": 10,
+                "sequence": 2,
+                "slippage_krw": "9",
+                "source_event_id": "f86be2d5d24f1d1b9fb5a937d25d2e888cd1bc326f3cf6cb74e3a271902ea7b2",
+                "tax_krw": "0",
+                "ticker": "000075",
+                "unavailable": {}
+              },
+              "reason": null,
+              "source_event": {
+                "available_at": "2020-05-22T15:00:00.000000+00:00",
+                "event_at": "2020-05-22T15:00:00.000000+00:00",
+                "sequence": 66,
+                "source_received_at": "2024-01-31T00:00:00.000000+00:00",
+                "trading_date": "2020-05-22"
+              },
+              "source_hash": "6851f233aa2da0ae33503eb2e6e4e77787a686c31077751e9feded34327d1b67",
+              "status": "filled"
+            }
+          ],
+          "feature_contributions": null,
+          "feature_values": null,
+          "hgb_pair": null,
+          "hgb_provenance_hash": null,
+          "linear_intercept": null,
+          "model_created_at": "2026-10-19T07:49:43.335514+00:00",
+          "model_family": "linear",
+          "model_id": "e4c42055d2712944efcccae0780e44913602c2d7d9c3f1c50f64ca1692cea39d",
+          "opportunity_at": "2020-05-21T15:00:00.000000+00:00",
+          "opportunity_id": "4414f52bb8f3b43a9ea059eec4945a6083d22854ac2b387e73fdaad0d7349992",
+          "order_id": "05bf329bfc22b7d76389156da418fce1b97398fa0a09f8c5046ac9966a7a4889",
+          "reasons": [
+            {
+              "code": "entry_condition",
+              "text": "The applicable up score met the configured BUY threshold."
+            }
+          ],
+          "releases": [],
+          "requested_quantity": 10,
+          "reservation": {
+            "accepted_at": "2020-05-21T15:00:00.000000+00:00",
+            "order_id": "05bf329bfc22b7d76389156da418fce1b97398fa0a09f8c5046ac9966a7a4889",
+            "reason": null,
+            "source_hash": "3c8e68370f1cf59e0204bc4b7408c826b4400cbfa9e0bea759c36dbd96bdb217",
+            "status": "accepted"
+          },
+          "score": 0.8,
+          "score_semantics": "conditional_uncalibrated_score",
+          "selected_rule": "entry_condition",
+          "signalEvidence": {
+            "decisionId": "a3d000a90eceaacc6cfdaabf6bba62542576ba720a8a426c64265d6518dd9ce4",
+            "sourceHash": "d02bde9c47bf7411f867d3a9090cfe11c910454ae10b9e6c828ccd34e62dc386",
+            "unavailable": {
+              "down_score": "source_field_unavailable"
+            },
+            "values": {
+              "down_score": null,
+              "down_status": "context_mismatch",
+              "input_status": "ok",
+              "signal_state": "neutral",
+              "up_score": 0.8,
+              "up_status": "scored"
+            }
+          },
+          "signal_evidence_scope": "controlled_mechanics_test_double",
+          "signal_status": null,
+          "snapshot_id": "1474079a40d630a37f8742352dada7cebe7a2d09cd0a191fd07196ddb6c383ce",
+          "source": {
+            "historical_input_hash": "c11df53e02d9313e08284e9956fa0f637005ec060500f8657807e0b99ff9ab2f",
+            "point_hash": "ad6ed2c0017d75a6f8c1a9db3fe98f0b0bad88bc677f422f87cb177bcff2e917",
+            "run_hash": "2bb9ee1efd5b69d454d5956560805ca69be984e8538b9881b127416d846297c7"
+          },
+          "source_observed_at": "2024-01-31T00:00:00+00:00",
+          "source_sequence": 61,
+          "thresholds": {
+            "buy": "0.7",
+            "sell": "0.6"
+          },
+          "ticker": "000075",
+          "trading_date": "2020-05-21",
+          "unavailable": {
+            "feature_contributions": "not_present_in_public_signal",
+            "feature_values": "source_field_unavailable",
+            "hgb_pair": "source_field_unavailable",
+            "hgb_provenance_hash": "source_field_unavailable",
+            "linear_intercept": "source_field_unavailable",
+            "signal_status": "aggregate_signal_status_not_recorded"
+          }
+        },
+        "terminalStatus": "filled"
+      },
+      {
+        "classification": "rejected",
+        "eventId": "fe950b660f5872ca59a68bf2edec2ec053998310b3aefa4a4234371035a1379e",
+        "evidence": {
+          "action": "WAIT",
+          "admission": {
+            "admission_at": "2020-05-21T15:00:00.000000+00:00",
+            "budget_krw": null,
+            "order_id": null,
+            "reason": "insufficient_cash",
+            "status": "blocked"
+          },
+          "analysis_anchor_at": "2020-05-21T16:00:00+09:00",
+          "analysis_available_at": "2020-05-21T15:00:00.000000+00:00",
+          "analysis_id": "b93aeeb24a0a7a2aae726318d73dfbeabb4257395ef23e05edd575505ab698d5",
+          "analysis_observed_at": "2026-10-19T07:49:43.533810+00:00",
+          "checks": {
+            "analysis": "passed",
+            "policy": "passed",
+            "sizing_risk_cost": "failed",
+            "snapshots": "passed"
+          },
+          "conditions": {
+            "entry": {
+              "code": "insufficient_cash",
+              "text": "Available cash was insufficient for the proposed purchase."
+            },
+            "exit": {
+              "code": "not_evaluated",
+              "text": "There is insufficient evaluated evidence to explain this condition."
+            }
+          },
+          "context": "prior_decline",
+          "decision_at": "2020-05-21T15:00:00+00:00",
+          "decision_id": "edce21020e163f974bccbf1673e4887ba977fd533f32bc24d105e0951a994fa4",
+          "executions": [],
+          "feature_contributions": null,
+          "feature_values": null,
+          "hgb_pair": null,
+          "hgb_provenance_hash": null,
+          "linear_intercept": null,
+          "model_created_at": "2026-10-19T07:49:43.335514+00:00",
+          "model_family": "linear",
+          "model_id": "e4c42055d2712944efcccae0780e44913602c2d7d9c3f1c50f64ca1692cea39d",
+          "opportunity_at": "2020-05-21T15:00:00.000000+00:00",
+          "opportunity_id": "794df686b9f51d0d6636a824673d95ae05d519bbae037540f8f75b285576fc8a",
+          "order_id": null,
+          "reasons": [
+            {
+              "code": "insufficient_cash",
+              "text": "Available cash was insufficient for the proposed purchase."
+            }
+          ],
+          "releases": [],
+          "requested_quantity": null,
+          "reservation": null,
+          "score": 0.8,
+          "score_semantics": "conditional_uncalibrated_score",
+          "selected_rule": null,
+          "signalEvidence": {
+            "decisionId": "edce21020e163f974bccbf1673e4887ba977fd533f32bc24d105e0951a994fa4",
+            "sourceHash": "b93aeeb24a0a7a2aae726318d73dfbeabb4257395ef23e05edd575505ab698d5",
+            "unavailable": {
+              "down_score": "source_field_unavailable"
+            },
+            "values": {
+              "down_score": null,
+              "down_status": "context_mismatch",
+              "input_status": "ok",
+              "signal_state": "neutral",
+              "up_score": 0.8,
+              "up_status": "scored"
+            }
+          },
+          "signal_evidence_scope": "controlled_mechanics_test_double",
+          "signal_status": null,
+          "snapshot_id": "1474079a40d630a37f8742352dada7cebe7a2d09cd0a191fd07196ddb6c383ce",
+          "source": {
+            "historical_input_hash": "c11df53e02d9313e08284e9956fa0f637005ec060500f8657807e0b99ff9ab2f",
+            "point_hash": "c52436446d574ec37d319c85c1fbd00adeee4157b685bf14c436609c2bd8dcdd",
+            "run_hash": "2bb9ee1efd5b69d454d5956560805ca69be984e8538b9881b127416d846297c7"
+          },
+          "source_observed_at": "2024-01-31T00:00:00+00:00",
+          "source_sequence": 62,
+          "thresholds": {
+            "buy": "0.7",
+            "sell": "0.6"
+          },
+          "ticker": "00088K",
+          "trading_date": "2020-05-21",
+          "unavailable": {
+            "feature_contributions": "not_present_in_public_signal",
+            "feature_values": "source_field_unavailable",
+            "hgb_pair": "source_field_unavailable",
+            "hgb_provenance_hash": "source_field_unavailable",
+            "linear_intercept": "source_field_unavailable",
+            "order_id": "source_field_unavailable",
+            "requested_quantity": "source_field_unavailable",
+            "reservation": "source_field_unavailable",
+            "selected_rule": "source_field_unavailable",
+            "signal_status": "aggregate_signal_status_not_recorded"
+          }
+        },
+        "terminalStatus": null
+      }
+    ],
+    "total": 15,
+    "offset": 0,
+    "limit": 2,
+    "reportId": "dc6b627c37f06bd705b1978ade6ced066621bcecec176f89a06e3ba800604440"
+  },
+  "notFound": {
+    "detail": {
+      "code": "report_not_found"
+    }
+  },
+  "invalidArchive": {
+    "detail": {
+      "code": "archive_integrity_mismatch"
+    }
+  },
+  "unpublished": {
+    "detail": {
+      "code": "report_unpublished"
+    }
+  },
+  "unavailableValuation": {
+    "schemaVersion": "published_historical_portfolio_v1",
+    "researchOnly": true,
+    "operationalEligible": false,
+    "executable": false,
+    "pitVerified": false,
+    "oosVerified": false,
+    "investmentSuitabilityVerified": false,
+    "brokerageEligible": false,
+    "acceptedOrderCount": 1,
+    "archiveTransportHash": "2ae7c93637c828dd461e27c6fba468aa33c932d8c4e40dfcc7b913f018f162ab",
+    "availableCash": "589.18",
+    "completedPositionCount": 0,
+    "costs": {
+      "fees": "1.82",
+      "sell_taxes": "0",
+      "slippage_impact": "9",
+      "total_explicit_trading_costs": "1.82"
+    },
+    "dataOrigin": "synthetic",
+    "decisionCount": 5,
+    "evidenceScope": "synthetic_fixture",
+    "fillCount": 1,
+    "finalPortfolioEquity": null,
+    "finalTotalCash": "589.18",
+    "finalValuation": {
+      "cash": "589.18",
+      "complete": false,
+      "coverage": {
+        "open_positions": 1,
+        "unvalued_positions": 1,
+        "valued_positions": 0
+      },
+      "known_position_value": "0",
+      "known_unrealized_pnl": "0",
+      "positions": [
+        {
+          "cost_basis_krw": "910.82",
+          "mark": null,
+          "market_value": null,
+          "quantity": 10,
+          "reason": "stale_mark",
+          "reserved_quantity": 0,
+          "sellable_quantity": 10,
+          "status": "unvalued",
+          "ticker": "035420",
+          "unrealized_pnl": null
+        }
+      ],
+      "sequence": 114,
+      "stage": "account",
+      "timestamp": "2020-06-04T15:00:00.000000+00:00",
+      "total_equity": null,
+      "unrealized_pnl": null
+    },
+    "initialVirtualCash": "1500",
+    "limitations": [
+      "calendar_durations_use_recorded_fill_times",
+      "conditional_scores_not_calibrated_probabilities",
+      "daily_event_time_is_publication_assumption_not_exchange_open",
+      "daily_marks_listing_and_halt_status_unverified",
+      "expanded_legacy_trade_receipts_can_dominate_memory",
+      "explicit_five_security_selection_not_historical_blind_selection",
+      "feature_contributions_not_economic_causation",
+      "fill_known_only_after_complete_daily_bar_publication",
+      "final_valuation_incomplete",
+      "historical_daily_full_fill_assumption",
+      "incomplete_curve_mdd_is_only_observed_lower_bound",
+      "mdd_on_declared_observation_points_not_intraday",
+      "model_training_cutoff_unverified",
+      "no_actual_orders",
+      "no_external_cash_flows_or_forced_liquidation",
+      "no_order_book_or_liquidity_verification",
+      "not_pit_or_oos",
+      "source_revision_history_unavailable",
+      "synthetic_historical_research_not_pit_or_oos"
+    ],
+    "modelFamily": "linear",
+    "modelId": "c2c9f38cbf5a4ec1cbdb1f0b492e581953617d1f4c8540dccf0cc1bc704ad0f0",
+    "modelReferences": {
+      "dataset_id": "e87e3cf144d19d31fed63b19a5ef2395d3fc840c99a6de38b48ec0b85dd9f09c",
+      "model_id": "c2c9f38cbf5a4ec1cbdb1f0b492e581953617d1f4c8540dccf0cc1bc704ad0f0",
+      "training_snapshot_id": "bc997866287147657ebfac40215c6dd490594e8dcf1c45269ad0ed92aee8692b"
+    },
+    "pendingOrderCount": 0,
+    "performanceHash": "c8e11332f0ce3aa304f0d91f3e5a5f02c8294c1214d13d818f31e059ec27497a",
+    "period": {
+      "end": "2020-06-04",
+      "start": "2020-05-05"
+    },
+    "portfolioReturn": null,
+    "portfolioValuationAvailable": false,
+    "provenance": {
+      "frozen_run_hash": "31e5439d5a05cbda43455f1d81539a6a60b4f63bd3db88df30f118f33bfd7635",
+      "historical_input_hash": "0b76f61f52fcb553d1e50e1d2ee6187103b675232d1f6c61d56a5106df928538",
+      "performance_hash": "c8e11332f0ce3aa304f0d91f3e5a5f02c8294c1214d13d818f31e059ec27497a",
+      "position_history_hash": "70435197d2d467571698f07d5e38f99c9e2c7cc403dbffa22e6302b84b01cd78",
+      "request_hash": "59ffb79e39f732c528220b7d0a36a99c5e8423d06afa6e233701d82a065c5392",
+      "run_hash": "419ffb8252e9ededbc800c6cfcaffef3c6591ac9b7be0d1b24789b4df41821a6"
+    },
+    "realizedNetPnl": "0",
+    "reportHash": "60801f67504ccd4a6bbc5c78b15d76508f3ba886d5f773346cbe7b95c711ff70",
+    "reportSchemaVersion": "five_ticker_historical_report_v1",
+    "reservedCash": "0",
+    "resultHash": "4ad17793970e5b5962a4b7dc1953a851a6ded09b7dabc4c3459e65581b86e73e",
+    "resultSchemaVersion": "five_ticker_historical_result_v1",
+    "runHash": "419ffb8252e9ededbc800c6cfcaffef3c6591ac9b7be0d1b24789b4df41821a6",
+    "tickers": [
+      "000075",
+      "00088K",
+      "00104K",
+      "005930",
+      "035420"
+    ],
+    "unavailable": {
+      "finalPortfolioEquity": "valuation_evidence_unavailable",
+      "portfolioReturn": "valuation_evidence_unavailable",
+      "unrealizedPnl": "valuation_evidence_unavailable"
+    },
+    "unrealizedPnl": null,
+    "valuationCoverage": {
+      "complete_points": 79,
+      "open_positions": 1,
+      "total_points": 116,
+      "unvalued_positions": 1,
+      "valued_positions": 0
+    },
+    "reportId": "f5e0098310c9d99f53a4173d2142ebc2fe4e7707b3a1532ac4502d75fcfa240c",
+    "publishedAt": "2026-10-19T07:49:23.075714+00:00",
+    "archiveVerification": "integrity_verified",
+    "reportVerification": "offline_authoritative_replay_passed"
+  }
+}

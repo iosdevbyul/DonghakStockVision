@@ -34,6 +34,8 @@ def parser() -> argparse.ArgumentParser:
         type=int,
         help="optional acquisition-age policy, not publication freshness",
     )
+    result.add_argument("--portfolio-publications", type=Path, help="private publication root")
+    result.add_argument("--portfolio-index-sha256", help="operator-approved publication index SHA")
     result.add_argument("--host", default="127.0.0.1")
     result.add_argument("--port", type=int, default=8000)
     return result
@@ -65,6 +67,19 @@ def main(argv: list[str] | None = None) -> None:
         parser().error(
             "--security-metadata and --security-metadata-fingerprint must be specified together"
         )
+    portfolio_reader = None
+    if bool(args.portfolio_publications) != bool(args.portfolio_index_sha256):
+        parser().error(
+            "--portfolio-publications and --portfolio-index-sha256 are required together"
+        )
+    if args.portfolio_publications:
+        if args.host not in {"127.0.0.1", "::1"}:
+            parser().error("portfolio publications require a loopback bind")
+        from donghak_stock_vision.api.historical_portfolios import PortfolioPublicationReader
+
+        portfolio_reader = PortfolioPublicationReader(
+            args.portfolio_publications, args.portfolio_index_sha256
+        )
     ohlcv_reader = None
     if args.market_db:
         from donghak_stock_vision.api.ohlcv import OhlcvMarketReader
@@ -93,6 +108,7 @@ def main(argv: list[str] | None = None) -> None:
 
     app = create_app(
         reader,
+        portfolio_reader=portfolio_reader,
         ohlcv_reader=ohlcv_reader,
         analysis_reader=analysis_reader,
         security_metadata_reader=metadata_reader,
@@ -103,7 +119,10 @@ def main(argv: list[str] | None = None) -> None:
             market=ohlcv_reader,
         ),
     )
-    uvicorn.run(app, host=args.host, port=args.port)
+    if portfolio_reader is not None:
+        uvicorn.run(app, host=args.host, port=args.port, proxy_headers=False)
+    else:
+        uvicorn.run(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
