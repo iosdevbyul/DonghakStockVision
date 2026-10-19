@@ -6,6 +6,8 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 
+from donghak_stock_vision.api.historical_portfolio_routes import portfolio_router
+from donghak_stock_vision.api.historical_portfolios import PortfolioPublicationReader
 from donghak_stock_vision.api.models import (
     BaselineBacktestSnapshot,
     CoverageSummary,
@@ -47,6 +49,7 @@ def create_app(
     analysis_reader: AnalysisPublicationReader | None = None,
     operations_reader: OperationsReader | None = None,
     security_metadata_reader: SecurityMetadataReader | None = None,
+    portfolio_reader: PortfolioPublicationReader | None = None,
     allowed_origins: Sequence[str] = (
         "http://localhost:3000",
         "http://127.0.0.1:3000",
@@ -218,4 +221,5 @@ def create_app(
     ) -> AlertsPayload:
         return operations.alerts(offset, limit)
 
+    app.include_router(portfolio_router(portfolio_reader))
     return app

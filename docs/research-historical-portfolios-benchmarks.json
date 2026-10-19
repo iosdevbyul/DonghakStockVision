@@ -1,0 +1,164 @@
+{
+  "python": "3.12.14",
+  "platform": "macOS-26.7.1-x86_64-i386-64bit",
+  "scope": "synthetic_loopback_TestClient_no_production_SLA",
+  "note": "Single shared-host observations during offline regression. First/reused owner timings exclude owner startup, which is separately measured. Not physical cold-cache or concurrency benchmarks. No application verification cache. One-archive fixture has three controlled fills; two-archive fixture uses genuine linear inference with no fills; these are different workloads, not scaling claims.",
+  "measurements": [
+    {
+      "published_archives": 1,
+      "model_family": "linear",
+      "fill_count": 3,
+      "ticker_count": 5,
+      "queries": [
+        {
+          "query": "list",
+          "observations": [
+            {
+              "kind": "cold_owner",
+              "seconds": 0.03264542203396559,
+              "owner_startup_seconds": 0.04660567699465901,
+              "response_bytes": 1137
+            },
+            {
+              "kind": "warm_owner",
+              "seconds": 0.012426506029441953,
+              "owner_startup_seconds": null,
+              "response_bytes": 1137
+            }
+          ]
+        },
+        {
+          "query": "summary",
+          "observations": [
+            {
+              "kind": "cold_owner",
+              "seconds": 0.01725382497534156,
+              "owner_startup_seconds": 0.019119937904179096,
+              "response_bytes": 4090
+            },
+            {
+              "kind": "warm_owner",
+              "seconds": 0.011728420038707554,
+              "owner_startup_seconds": null,
+              "response_bytes": 4090
+            }
+          ]
+        },
+        {
+          "query": "ticker",
+          "observations": [
+            {
+              "kind": "cold_owner",
+              "seconds": 0.01673697994556278,
+              "owner_startup_seconds": 0.017385625978931785,
+              "response_bytes": 15296
+            },
+            {
+              "kind": "warm_owner",
+              "seconds": 0.011357696959748864,
+              "owner_startup_seconds": null,
+              "response_bytes": 15296
+            }
+          ]
+        },
+        {
+          "query": "trades",
+          "observations": [
+            {
+              "kind": "cold_owner",
+              "seconds": 0.018205894040875137,
+              "owner_startup_seconds": 0.018442766973748803,
+              "response_bytes": 7780
+            },
+            {
+              "kind": "warm_owner",
+              "seconds": 0.011987956007942557,
+              "owner_startup_seconds": null,
+              "response_bytes": 7780
+            }
+          ]
+        }
+      ],
+      "archive_integrity_recheck_seconds": 0.004703589016571641,
+      "archive_bytes": 1818330
+    },
+    {
+      "published_archives": 2,
+      "model_family": "linear",
+      "fill_count": 0,
+      "ticker_count": 5,
+      "queries": [
+        {
+          "query": "list",
+          "observations": [
+            {
+              "kind": "cold_owner",
+              "seconds": 0.10321326204575598,
+              "owner_startup_seconds": 0.37273288692813367,
+              "response_bytes": 2014
+            },
+            {
+              "kind": "warm_owner",
+              "seconds": 0.043571968912146986,
+              "owner_startup_seconds": null,
+              "response_bytes": 2014
+            }
+          ]
+        },
+        {
+          "query": "summary",
+          "observations": [
+            {
+              "kind": "cold_owner",
+              "seconds": 0.042070504976436496,
+              "owner_startup_seconds": 0.04746829508803785,
+              "response_bytes": 3722
+            },
+            {
+              "kind": "warm_owner",
+              "seconds": 0.03749170794617385,
+              "owner_startup_seconds": null,
+              "response_bytes": 3722
+            }
+          ]
+        },
+        {
+          "query": "ticker",
+          "observations": [
+            {
+              "kind": "cold_owner",
+              "seconds": 0.12094237899873406,
+              "owner_startup_seconds": 0.10395989997778088,
+              "response_bytes": 4751
+            },
+            {
+              "kind": "warm_owner",
+              "seconds": 0.03799142793286592,
+              "owner_startup_seconds": null,
+              "response_bytes": 4751
+            }
+          ]
+        },
+        {
+          "query": "trades",
+          "observations": [
+            {
+              "kind": "cold_owner",
+              "seconds": 0.04653397807851434,
+              "owner_startup_seconds": 0.1385911670513451,
+              "response_bytes": 8389
+            },
+            {
+              "kind": "warm_owner",
+              "seconds": 0.02591710793785751,
+              "owner_startup_seconds": null,
+              "response_bytes": 8389
+            }
+          ]
+        }
+      ],
+      "archive_integrity_recheck_seconds": 0.013866942026652396,
+      "archive_bytes": 1763233
+    }
+  ]
+}
