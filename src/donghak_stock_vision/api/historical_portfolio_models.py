@@ -1,6 +1,8 @@
 """Versioned read schemas; nested source fields retain validated report names."""
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+
+from pydantic import Field, StringConstraints, field_validator
 
 from donghak_stock_vision.api.models import FrozenModel
 
@@ -81,3 +83,52 @@ class PortfolioTicker(PortfolioEnvelope):
     total: int
     offset: int
     limit: int
+
+
+class PortfolioComparisonRequest(FrozenModel):
+    reportIds: tuple[
+        Annotated[str, StringConstraints(strict=True, pattern=r"^[a-f0-9]{64}$")], ...
+    ] = Field(min_length=2, max_length=5)
+
+    @field_validator("reportIds")
+    @classmethod
+    def unique_ids(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value):
+            raise ValueError("duplicate_report_ids")
+        return value
+
+
+class ComparisonValuationBasis(FrozenModel):
+    timestamp: str | None
+    stage: str | None
+    observedMarkFields: tuple[str, ...] | None
+    policy: None
+    unavailable: dict[str, str]
+
+
+class PortfolioComparisonItem(PortfolioSummary):
+    tickerCount: int
+    signalEvidenceScopes: tuple[str, ...]
+    valuationBasis: ComparisonValuationBasis
+
+
+class PortfolioComparability(FrozenModel):
+    periodsDiffer: bool
+    valuationTimestampsDiffer: bool | None
+    observedMarkFieldsDiffer: bool | None
+    valuationPolicyComparison: Literal["unavailable"]
+    unavailable: dict[str, str]
+    notices: tuple[str, ...]
+
+
+class PortfolioComparison(FrozenModel):
+    schemaVersion: Literal["historical_portfolio_comparison_v1"]
+    researchOnly: Literal[True]
+    operationalEligible: Literal[False]
+    executable: Literal[False]
+    pitVerified: Literal[False]
+    oosVerified: Literal[False]
+    investmentSuitabilityVerified: Literal[False]
+    brokerageEligible: Literal[False]
+    items: tuple[PortfolioComparisonItem, ...]
+    comparability: PortfolioComparability

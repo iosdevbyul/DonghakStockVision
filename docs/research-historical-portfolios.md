@@ -113,7 +113,7 @@ archive limits and can be expensive; it is not a GET responsibility.
 
 ## HTTP contract
 
-All payloads use `published_historical_portfolio_v1` and the existing HTTP error
+Existing GET payloads use `published_historical_portfolio_v1` and the existing HTTP error
 shape `{"detail": {"code": "stable_reason"}}`. Top-level fields use the API's
 camelCase convention. Nested source evidence retains original snake_case names,
 values, decimals-as-strings, nulls and stable hashes. Original calculations are
@@ -247,3 +247,137 @@ for reproducible synthetic mechanics/linear/HGB demos, the existing publication
 CLI's bounded `encode`/`diagnose` commands, explicit external pin capture, exact curl
 requests, diagnostics, revocation and foreground shutdown. No HTTP schema or
 publication authorization boundary changes are introduced by that workflow.
+
+## Read-only portfolio comparison
+
+`POST /api/v1/research/historical-portfolios/compare` selects **2–5 distinct,
+explicitly published** report IDs from the server's one approved publication root
+and trusted index pin. This POST only reads evidence; it does not publish, replay,
+load models, infer, write files or change approvals. Existing GET schemas and the
+operator workflow above remain unchanged. Register each separately executed result
+using the existing offline `publish` command, supplying the current approved pin
+after each registration. Start/reconfigure the API with the final reviewed pin.
+Never use different roots or arbitrary archive files as comparison inputs.
+
+Request JSON (replace both illustrative 64-character IDs with actual `reportId`
+values captured from publication output):
+
+```json
+{
+  "reportIds": [
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  ]
+}
+```
+
+For example, retain two authorized report IDs as `REPORT_A` and `REPORT_B` and use
+the already-running loopback server from the existing runbook:
+
+```sh
+python -c 'import json,sys; print(json.dumps({"reportIds":sys.argv[1:]}))' \
+  "$REPORT_A" "$REPORT_B" > "$DEMO/comparison-request.json"
+curl --fail-with-body -sS http://127.0.0.1:8877/api/v1/research/historical-portfolios/compare \
+  -H 'Content-Type: application/json' --data-binary "@$DEMO/comparison-request.json"
+```
+
+The response uses `historical_portfolio_comparison_v1`. `items` preserves request
+order. Each item carries every existing `PortfolioSummary` field with its source values
+and reason codes,
+plus `tickerCount`, `signalEvidenceScopes` (sorted distinct original timeline
+values), and `valuationBasis`. Thus report/model family and references, period,
+exact tickers, decisions/accepted orders/fills/pending counts, virtual cash, equity,
+valuation availability, unavailable reasons and all original provenance hashes
+remain available without new accounting. Existing source return/P&L fields are
+copied exactly; no new return, risk, ranking or investment recommendation is made.
+OpenAPI describes the full comparison and existing summary schemas.
+
+Illustrative response excerpt, showing only the additional comparison fields
+and one selected item (the actual response has 2–5 complete summary items):
+
+```json
+{
+  "schemaVersion": "historical_portfolio_comparison_v1",
+  "researchOnly": true,
+  "operationalEligible": false,
+  "items": [
+    {
+      "tickerCount": 5,
+      "signalEvidenceScopes": ["controlled_mechanics_test_double"],
+      "valuationBasis": {
+        "timestamp": "2020-06-04T15:00:00.000000+00:00",
+        "stage": "account",
+        "observedMarkFields": ["open"],
+        "policy": null,
+        "unavailable": {"policy": "valuation_policy_not_in_published_projection"}
+      }
+    }
+  ],
+  "comparability": {
+    "periodsDiffer": true,
+    "valuationTimestampsDiffer": true,
+    "observedMarkFieldsDiffer": null,
+    "valuationPolicyComparison": "unavailable",
+    "unavailable": {
+      "valuationPolicyComparison": "valuation_policy_not_in_published_projection",
+      "observedMarkFieldsDiffer": "valuation_comparison_evidence_unavailable"
+    },
+    "notices": [
+      "analysis_periods_differ",
+      "controlled_mechanics_not_model_inference",
+      "no_ranking_or_recommendation",
+      "synthetic_results_not_real_market_performance",
+      "valuation_evidence_unavailable",
+      "valuation_observation_times_differ",
+      "valuation_policy_not_in_published_projection"
+    ]
+  }
+}
+```
+
+`valuationBasis.timestamp` and `stage` copy the final valuation's recorded values;
+unknown values remain null with `valuation_source_field_unavailable`. Mark fields
+come only from recorded position marks. An empty array means no final position
+marks were required; null means at least one required mark field is unavailable.
+`observedMarkFieldsDiffer` and `valuationTimestampsDiffer` are null when evidence
+is missing from any selected item. Identical observed fields or timestamps **do
+not establish equivalent valuation policies**. The existing projection does not
+contain the full valuation policy; comparison explicitly reports it unavailable
+rather than reading expanded archives or changing old publication identities.
+Period and known observation/mark differences produce stable notices. Comparisons
+never normalize periods, replace marks, annualize, rank or impute missing values.
+
+A stale/missing valuation retains original null equity/unrealized values and
+`unavailable` codes; original `finalValuation.positions[].reason` distinguishes
+`stale_mark` from other causes. Do not replace null with zero. Initial cash and
+universe differences are visible in each item and are not adjusted away.
+`controlled_mechanics_test_double` distinguishes deterministic execution fixtures
+from `public_model_inference`. Both may have `dataOrigin=synthetic` and
+`evidenceScope=synthetic_fixture`: even genuine Linear/HGB inference on synthetic
+data is **not real-market investment performance**. Zero accepted orders or fills
+remain zero. Empty signal scopes have `signal_evidence_scope_not_recorded` rather
+than an inferred explanation. Publication integrity/replay status grants read
+access, not PIT/OOS, trading approval or investment suitability.
+
+Input is a JSON object with only `reportIds`: 2–5 unique lowercase 64-hex strings.
+Wrong counts/types/formats, duplicates, malformed JSON and extra root/path fields
+return 422 `invalid_comparison_request`; unknown/unregistered IDs return 404
+`report_not_found`; revoked IDs return 404 `report_unpublished`. Stale pins,
+corrupt archives, missing projections and local-access failures use the existing
+503/403 codes above. A failed item fails the **whole** comparison, with no partial
+results or silent substitution. The server verifies one pinned index snapshot and
+rechecks that pin before returning; a concurrent index update fails closed.
+
+Comparison reads at most five selected archives sequentially, using the existing
+manifest/archive/projection validation, no application cache and no expansion.
+The existing 256 KiB response cap applies. The decoded POST body has an additional
+4 KiB streaming cap (413 `oversized_request`), including bodies without a trusted
+Content-Length. This is an application JSON body bound, not a network/header cap.
+The same client/Host/Origin loopback restrictions and disabled proxy-header trust
+apply. No public hosting, CORS relaxation, publication auto-approval or new
+HTTP mutation/publication endpoint is introduced.
+
+The existing app CORS policy allows only GET methods and is deliberately unchanged.
+A browser cross-origin JSON POST preflight therefore remains blocked, including
+from the existing local frontend origin. Use the local curl/native client workflow
+or a same-origin client. This feature does not authorize widening CORS for Web use.
