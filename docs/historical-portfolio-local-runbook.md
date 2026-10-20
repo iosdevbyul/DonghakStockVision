@@ -233,3 +233,191 @@ Preparation is fixed to five synthetic tickers, one decision date and the bounde
 fixture history; there is no arbitrary market acquisition/date/count option.
 No large archive is committed. Existing CI, triggers, matrix and coverage policies
 are unchanged; live tests remain excluded from the single full offline regression.
+
+## Multiple publications → comparison → revocation
+
+The [comparison contract](research-historical-portfolios.md#read-only-portfolio-comparison)
+defines fields and restrictions. This section connects the existing commands; it
+adds no publication system. Run these blocks from the installed checkout. All
+outputs below belong to a **new private synthetic workspace**, not protected DBs
+or a real-market historical archive. Stop on any failed preparation/encode/publish.
+
+### Prepare the explicitly selected synthetic results
+
+```sh
+CMP="$(python -c 'import pathlib,tempfile; print(pathlib.Path(tempfile.mkdtemp(prefix="dsv-comparison-")).resolve())')"
+export CMP
+python -m tests.api.portfolio_demo --output "$CMP/mechanics" --family mechanics
+python -m tests.api.portfolio_demo --output "$CMP/linear" --family linear
+python -m tests.api.portfolio_demo --output "$CMP/hgb" --family hgb
+python -m tests.api.portfolio_demo --output "$CMP/stale" --family mechanics --scenario stale_valuation
+mkdir -m 700 "$CMP/publications" "$CMP/approved-output"
+```
+
+The first three use the original fixed five-ticker fixtures. The optional fourth
+uses the **existing** controlled stale-mark fixture: its bounded original range,
+omitted final bar, one decision date and strict mark age. It is only supported for
+`--family mechanics`. It does not delete real market rows or change any original
+valuation policy. The helper refuses this scenario for genuine model families
+before creating output. Mechanics must really fill; stale valuation must really be
+unavailable. No fabricated API result is inserted. All four remain synthetic;
+genuine Linear/HGB inference is distinct from the controlled mechanics test double.
+
+### Encode and register using the current approved CLI output
+
+This explicit list is not a directory scan or automatic approval of arbitrary
+archives. Run it only after choosing to publish these four synthetic results.
+The inner shell stops on the first error; keep the per-publication command output
+outside the publication root. No file is sourced or evaluated as shell code.
+
+```sh
+bash -e <<'SH'
+PUB="$CMP/publications"
+CURRENT_PIN=''
+for LABEL in mechanics linear hgb stale; do
+  cp "$CMP/$LABEL/publication/result.json" "$PUB/$LABEL-result.json"
+  dsv-portfolio-publication --root "$PUB" encode \
+    --result "$LABEL-result.json" --archive "$LABEL-input.json" \
+    > "$CMP/approved-output/$LABEL-encoding.json"
+  python - "$CMP/$LABEL/demo.json" "$CMP/approved-output/$LABEL-encoding.json" <<'PY'
+import json, sys
+facts, encoded = [json.load(open(path)) for path in sys.argv[1:]]
+assert all(facts[key] == encoded[key] for key in ('resultHash', 'reportHash'))
+assert encoded['publicationAuthorized'] is False
+PY
+  RESULT_HASH="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["resultHash"])' "$CMP/approved-output/$LABEL-encoding.json")"
+  REPORT_HASH="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["reportHash"])' "$CMP/approved-output/$LABEL-encoding.json")"
+  if [ -z "$CURRENT_PIN" ]; then
+    dsv-portfolio-publication --root "$PUB" publish --archive "$LABEL-input.json" \
+      --result-hash "$RESULT_HASH" --report-hash "$REPORT_HASH"
+  else
+    dsv-portfolio-publication --root "$PUB" --index-sha256 "$CURRENT_PIN" publish \
+      --archive "$LABEL-input.json" --result-hash "$RESULT_HASH" --report-hash "$REPORT_HASH"
+  fi > "$CMP/approved-output/$LABEL-publication.txt"
+  cat "$CMP/approved-output/$LABEL-publication.txt"
+  CURRENT_PIN="$(sed -n 's/^indexSha256=//p' "$CMP/approved-output/$LABEL-publication.txt")"
+done
+SH
+```
+
+Review the emitted records and retain them. Each expected result/report hash comes
+from the original prepared result and is checked against encoding output. Existing
+`publish` performs authoritative replay once per registration. Each subsequent
+registration uses the preceding authorized command's pin; never hash the mutable
+index and silently adopt that value as approval. Do not repeat full replay on GET
+or comparison. The new server must use the **last** approved pin, not the first.
+
+```sh
+PUB="$CMP/publications"
+CMP_INDEX="$(sed -n 's/^indexSha256=//p' "$CMP/approved-output/stale-publication.txt")"
+REPORT_HGB="$(sed -n 's/^reportId=//p' "$CMP/approved-output/hgb-publication.txt")"
+REPORT_MECHANICS="$(sed -n 's/^reportId=//p' "$CMP/approved-output/mechanics-publication.txt")"
+REPORT_LINEAR="$(sed -n 's/^reportId=//p' "$CMP/approved-output/linear-publication.txt")"
+REPORT_STALE="$(sed -n 's/^reportId=//p' "$CMP/approved-output/stale-publication.txt")"
+export PUB CMP_INDEX REPORT_HGB REPORT_MECHANICS REPORT_LINEAR REPORT_STALE
+
+dsv-portfolio-publication --root "$PUB" --index-sha256 "$CMP_INDEX" \
+  diagnose --report-id "$REPORT_STALE"
+python -c 'import json,sys; print(json.dumps({"reportIds":sys.argv[1:]}))' \
+  "$REPORT_HGB" "$REPORT_MECHANICS" "$REPORT_LINEAR" "$REPORT_STALE" \
+  > "$CMP/approved-output/comparison-request.json"
+dsv-api --snapshot "$CMP/mechanics/snapshot.json" --portfolio-publications "$PUB" \
+  --portfolio-index-sha256 "$CMP_INDEX" --host 127.0.0.1 --port 8877
+```
+
+That foreground command uses the actual existing serving CLI. In another terminal,
+restore `CMP`/`PUB` from your own workspace and authorized output; do not copy an
+example's IDs or pin. Query the running app:
+
+```sh
+curl --fail-with-body -sS http://127.0.0.1:8877/api/v1/research/historical-portfolios/compare \
+  -H 'Content-Type: application/json' \
+  --data-binary "@$CMP/approved-output/comparison-request.json" \
+  > "$CMP/approved-output/comparison-response.json"
+```
+
+Check `items` against the request order (HGB, mechanics, linear, stale), original
+result/report/run/performance hashes, model references and `provenance`. Every item
+must state integrity verification, prior offline authoritative replay and research
+restrictions. The executed fixture has one accepted/filled controlled mechanics
+order; genuine Linear/HGB have zero orders/fills. Preserve that distinction rather
+than manufacturing a successful investment outcome. The stale item has null equity
+and unrealized P&L with original `stale_mark` evidence. Periods and valuation
+observation times differ; the complete valuation policy is unavailable in the
+existing projection. No period normalization, imputation, ranking or recommendation
+is supported. The existing GET summary/ticker/trades commands above remain useful
+for decision/fill references. CORS still allows GET only: browser cross-origin POST
+preflight is blocked; the example uses a direct local client.
+
+### Verified diagnostics and explicit revocation
+
+The [executed example](historical-portfolio-workflow-example.json) includes an
+independent `comparisonWorkflow` run with real observed IDs, provenance, request,
+response and diagnostics. Its IDs/pin belong only to that temporary run. Fresh
+preparation may change original observation metadata and identities. Never apply
+those IDs to another workspace, and never label these as actual market returns.
+
+| Situation | Observed HTTP / existing code | Operator interpretation |
+| --- | --- | --- |
+| Unapproved ID or valid but unregistered archive | 404 `report_not_found` | Files alone do not grant publication. |
+| Malformed ID, duplicate, 6 IDs, path ID/root selector | 422 `invalid_comparison_request` | Supply only 2–5 unique approved IDs. |
+| Changed archive | 503 `archive_integrity_mismatch` | Fail the entire request; investigate offline. |
+| Missing projection | 503 `archive_unavailable` | Fail closed; HTTP never repairs evidence. |
+| Stale pin after revocation | 503 `publication_manifest_mismatch` | Review the CLI output and explicitly restart. |
+| Revoked ID with new approved pin | 404 `report_unpublished` | Revocation is enforced; do not substitute another run. |
+| Stale valuation | 200, null values and `valuation_evidence_unavailable` / `stale_mark` | Availability limitation, not a failed publication. |
+| All publications revoked | list 200, `total=0`; diagnose `no_published_archive` | Valid empty active registry; comparison of known revoked IDs is 404 `report_unpublished`, never-registered IDs are 404 `report_not_found`. |
+| Invalid local Host/Origin | 403 `local_research_access_required` | Keep the original loopback boundary. |
+
+These are existing contracts, not new errors. The tests damage only isolated
+publication copies; do not mutate or remove your original archives to reproduce
+errors. The difference between empty-list success and comparison's 404 is
+intentional: a comparison still requires 2–5 active registered identities.
+
+For explicit HGB revocation, use your **current approved** pin:
+
+```sh
+dsv-portfolio-publication --root "$PUB" --index-sha256 "$CMP_INDEX" \
+  revoke --report-id "$REPORT_HGB" > "$CMP/approved-output/hgb-revocation.txt"
+```
+
+The old server now rejects comparisons with 503. Stop it using Ctrl-C, review the
+revocation output, and explicitly replace the configuration pin:
+
+```sh
+CMP_INDEX="$(sed -n 's/^indexSha256=//p' "$CMP/approved-output/hgb-revocation.txt")"
+dsv-api --snapshot "$CMP/mechanics/snapshot.json" --portfolio-publications "$PUB" \
+  --portfolio-index-sha256 "$CMP_INDEX" --host 127.0.0.1 --port 8877
+```
+
+The original request now returns 404 `report_unpublished`; a request containing
+only the other three active IDs succeeds. Revoke any remaining IDs only through
+the same explicit CLI, each time carrying forward its new authorized pin. After
+all four are revoked, an explicitly reconfigured server lists zero active reports.
+No automatic pin refresh, republish, process kill or background daemon is added.
+Ctrl-C stops the foreground server when finished.
+
+### Integrity and automated validation scope
+
+`tests/api/test_portfolio_comparison_workflow.py` uses the real preparation parser,
+encode/publish/diagnose/revoke CLI functions and serving CLI to build the actual
+FastAPI app. Only Uvicorn's socket runner is captured; HTTP uses TestClient, with
+no listener left running. It executes four original synthetic results and exactly
+four authoritative publication replays, then forbids replay/backtest, Linear/HGB
+model construction/loading and inference. Socket connections are forbidden during
+both generation and reads. All ordinary API requests must leave these counters at
+zero. This does not claim that a real TCP server or frontend was tested.
+
+SHA-256 fingerprints cover every prepared source DB/model fixture and expanded
+result, staged compact input, published archive, projection and manifest. Base
+publication/source bytes remain unchanged after comparisons and diagnostics.
+Corruption/revocation tests use disposable copies; only authorized revocation may
+change their index/lock state. The committed example records observed source DB
+and publication-file hashes; large DB/archive/model objects are never committed.
+
+Keep the existing [single-publication validation and bounds](#validation-and-bounds).
+The stale scenario is bounded by the original five-ticker fixture's date range,
+not an arbitrary live-data acquisition option. The complete offline suite belongs
+to the user-managed Self-hosted CI; this workflow does not change its runner,
+Python version, test scope or execution policy. No protected DB, original evidence,
+qualification, approval, Operations state, iOS or Web project is modified.

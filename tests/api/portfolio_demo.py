@@ -19,8 +19,15 @@ from tests.api.helpers import snapshot_payload, write_snapshot
 from tests.backtest.portfolio_helpers import TICKERS, execute_fixture, mechanics_run, prepared
 
 
-def prepare(output: Path, family: str = "mechanics") -> dict[str, Any]:
+def prepare(
+    output: Path, family: str = "mechanics", *, scenario: str = "standard"
+) -> dict[str, Any]:
     check(family in {"mechanics", "linear", "hgb"}, "unsupported_demo_family")
+    check(
+        scenario in {"standard", "stale_valuation"}
+        and (scenario == "standard" or family == "mechanics"),
+        "unsupported_demo_scenario",
+    )
     root = output.absolute()
     check(not any(p in {".data", ".git", ".github"} for p in root.parts), "unsafe_demo_output")
     try:
@@ -32,7 +39,10 @@ def prepare(output: Path, family: str = "mechanics") -> dict[str, Any]:
         raise PublicationError("invalid_demo_output") from error
     fixture = root / "sources"
     request, provider = prepared(
-        fixture, "hgb" if family == "hgb" else "linear", controlled=family == "mechanics"
+        fixture,
+        "hgb" if family == "hgb" else "linear",
+        controlled=family == "mechanics",
+        omit_last=scenario == "stale_valuation",
     )
     d = request.document.to_dict()
     first = d["config"]["decision_dates"][0]
@@ -49,11 +59,17 @@ def prepare(output: Path, family: str = "mechanics") -> dict[str, Any]:
         check(len(dates) >= 2, "demo_fill_event_missing")
         # HGB derives features from the frozen requested range; retain the original
         # fixture history instead of claiming inference with a truncated warmup.
-        if family != "hgb":
-            d["start"] = first
-        d["end"] = dates[1]
+        if scenario == "standard":
+            if family != "hgb":
+                d["start"] = first
+            d["end"] = dates[1]
+        else:
+            # Existing stale-mark mechanics fixture: keep its bounded original
+            # range and fund the ticker whose final bar was deliberately omitted.
+            d["config"]["valuation_policy"]["max_age_seconds"] = 1
+            d["config"]["admission_policy"]["ordered_tickers"] = list(reversed(TICKERS))
         total_bars = sum(
-            len(market.read(t, date.fromisoformat(d["start"]), date.fromisoformat(dates[1])))
+            len(market.read(t, date.fromisoformat(d["start"]), date.fromisoformat(d["end"])))
             for t in TICKERS
         )
     finally:
@@ -70,6 +86,11 @@ def prepare(output: Path, family: str = "mechanics") -> dict[str, Any]:
     check(value["detailed_report"]["scope"] == "synthetic_fixture", "synthetic_demo_required")
     if family == "mechanics":
         check(value["performance"]["fill_count"] >= 1, "demo_fill_missing")
+        if scenario == "stale_valuation":
+            check(
+                value["detailed_report"]["final_valuation"]["complete"] is False,
+                "demo_stale_valuation_missing",
+            )
     else:
         check(
             any(
@@ -107,6 +128,7 @@ def prepare(output: Path, family: str = "mechanics") -> dict[str, Any]:
         if family == "mechanics"
         else "public_model_inference",
         "family": family,
+        "scenario": scenario,
         "tickers": list(TICKERS),
         "period": {"start": d["start"], "end": d["end"]},
         "resultHash": source.identifier,
@@ -125,9 +147,10 @@ def main(argv: list[str] | None = None) -> None:
         "--output", required=True, type=Path, help="new canonical private directory"
     )
     parser.add_argument("--family", choices=("mechanics", "linear", "hgb"), default="mechanics")
+    parser.add_argument("--scenario", choices=("standard", "stale_valuation"), default="standard")
     args = parser.parse_args(argv)
     try:
-        print(json.dumps(prepare(args.output, args.family), sort_keys=True))
+        print(json.dumps(prepare(args.output, args.family, scenario=args.scenario), sort_keys=True))
     except PublicationError as error:
         raise SystemExit(error.code) from None
 

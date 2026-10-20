@@ -67,5 +67,1013 @@
       ],
       "tradePageBytes": 7307
     }
-  ]
+  ],
+  "comparisonWorkflow": {
+    "apiExecutionCalls": {
+      "backtest": 0,
+      "inference": 0,
+      "modelLoading": 0,
+      "network": 0,
+      "replay": 0
+    },
+    "authoritativePublicationReplayCount": 4,
+    "compareRequest": {
+      "reportIds": [
+        "989fccec15b6014d800561732a214da3f71fc72595c39904c1d1d84e17c7c279",
+        "94b84bd6718196b5f200512e0b3787fb7d15793e97462129bcb2f7398caecf75",
+        "4d97fa83f8a77f51a19b2fbaedf0b048122b24f9cb8ae007c99dbb51e5146a08",
+        "22aaada5cf70ee363cfe516344e073c1b7ea991a75f0af1e356883cf428c525d"
+      ]
+    },
+    "comparisonResponse": {
+      "brokerageEligible": false,
+      "comparability": {
+        "notices": [
+          "analysis_periods_differ",
+          "controlled_mechanics_not_model_inference",
+          "no_ranking_or_recommendation",
+          "synthetic_results_not_real_market_performance",
+          "valuation_evidence_unavailable",
+          "valuation_observation_times_differ",
+          "valuation_policy_not_in_published_projection"
+        ],
+        "observedMarkFieldsDiffer": null,
+        "periodsDiffer": true,
+        "unavailable": {
+          "observedMarkFieldsDiffer": "valuation_comparison_evidence_unavailable",
+          "valuationPolicyComparison": "valuation_policy_not_in_published_projection"
+        },
+        "valuationPolicyComparison": "unavailable",
+        "valuationTimestampsDiffer": true
+      },
+      "executable": false,
+      "investmentSuitabilityVerified": false,
+      "items": [
+        {
+          "acceptedOrderCount": 0,
+          "archiveTransportHash": "cfd14f57e36ad7a52a49cbe9991500a761d74a098d0bd4026cb1ba9e3759231c",
+          "archiveVerification": "integrity_verified",
+          "availableCash": "1500",
+          "brokerageEligible": false,
+          "completedPositionCount": 0,
+          "costs": {
+            "fees": "0",
+            "sell_taxes": "0",
+            "slippage_impact": "0",
+            "total_explicit_trading_costs": "0"
+          },
+          "dataOrigin": "synthetic",
+          "decisionCount": 5,
+          "evidenceScope": "synthetic_fixture",
+          "executable": false,
+          "fillCount": 0,
+          "finalPortfolioEquity": "1500",
+          "finalTotalCash": "1500",
+          "finalValuation": {
+            "cash": "1500",
+            "complete": true,
+            "coverage": {
+              "open_positions": 0,
+              "unvalued_positions": 0,
+              "valued_positions": 0
+            },
+            "known_position_value": "0",
+            "known_unrealized_pnl": "0",
+            "positions": [],
+            "sequence": 70,
+            "stage": "account",
+            "timestamp": "2020-05-22T15:00:00.000000+00:00",
+            "total_equity": "1500",
+            "unrealized_pnl": "0"
+          },
+          "initialVirtualCash": "1500",
+          "investmentSuitabilityVerified": false,
+          "limitations": [
+            "calendar_durations_use_recorded_fill_times",
+            "conditional_scores_not_calibrated_probabilities",
+            "daily_event_time_is_publication_assumption_not_exchange_open",
+            "daily_marks_listing_and_halt_status_unverified",
+            "expanded_legacy_trade_receipts_can_dominate_memory",
+            "explicit_five_security_selection_not_historical_blind_selection",
+            "feature_contributions_not_economic_causation",
+            "fill_known_only_after_complete_daily_bar_publication",
+            "historical_daily_full_fill_assumption",
+            "mdd_on_declared_observation_points_not_intraday",
+            "model_training_cutoff_unverified",
+            "no_actual_orders",
+            "no_external_cash_flows_or_forced_liquidation",
+            "no_order_book_or_liquidity_verification",
+            "not_pit_or_oos",
+            "source_revision_history_unavailable",
+            "synthetic_historical_research_not_pit_or_oos"
+          ],
+          "modelFamily": "hgb",
+          "modelId": "2fe434e9d5468aef9084394dab106593ad8fac47cc0c4b3be3710bc58e81365d",
+          "modelReferences": {
+            "down": {
+              "checkpoint_sha256": "3539af6f43caae2690fd874eb2182473eeb0bf2ca00a0780a4047d7008de4d38",
+              "fingerprint": "bee64d782fc87db944e15f982e7dc4b7e8b124e427ca2032af47855ed6c90546"
+            },
+            "up": {
+              "checkpoint_sha256": "2880840e0367402f7e030544ae15739bfcee46a5e65c18972d872c6616f745c4",
+              "fingerprint": "19ad200e4984cecb5cf26e7c947855b6b8a78a438891fd271a1f3c57aa41f37d"
+            }
+          },
+          "oosVerified": false,
+          "operationalEligible": false,
+          "pendingOrderCount": 0,
+          "performanceHash": "eaee124d2f06c08e5c3eacb50c2a04d42fa01770619521e62f8311a653dc5683",
+          "period": {
+            "end": "2020-05-22",
+            "start": "2020-05-05"
+          },
+          "pitVerified": false,
+          "portfolioReturn": "0",
+          "portfolioValuationAvailable": true,
+          "provenance": {
+            "frozen_run_hash": "3e8a8e966db755bfacc60e18548c3eb95ea0c7b9bce07be93c43775a0c0a9e7a",
+            "historical_input_hash": "872eec6062d8ef561dc68e220e24a61cb686a0a674ae6ec88d60edf2b2f1986a",
+            "performance_hash": "eaee124d2f06c08e5c3eacb50c2a04d42fa01770619521e62f8311a653dc5683",
+            "position_history_hash": "3bd6e1924ec65f21e74834883e4a3ee8225be64e97a8ef33de19be77fe214e10",
+            "request_hash": "ff2c4c6e19e7437ae55d8d2e51bc8176f519ffa0403e4b27200ec2131eb6d411",
+            "run_hash": "a53c1eae31cc253fe6d998f5a3a4c77f0292e9d92419fd8ff359c75147d1bd28"
+          },
+          "publishedAt": "2026-10-20T08:57:32.818870+00:00",
+          "realizedNetPnl": "0",
+          "reportHash": "b8b071b1a8d5445124043ca7d12bd5303e3a4ee08fefd6724d5b27f47bb64e81",
+          "reportId": "989fccec15b6014d800561732a214da3f71fc72595c39904c1d1d84e17c7c279",
+          "reportSchemaVersion": "five_ticker_historical_report_v1",
+          "reportVerification": "offline_authoritative_replay_passed",
+          "researchOnly": true,
+          "reservedCash": "0",
+          "resultHash": "e3e89e0d67e97483b0f782168e2868c0ff6076ff4b4d03d34cfa1d4f5b69f42b",
+          "resultSchemaVersion": "five_ticker_historical_result_v1",
+          "runHash": "a53c1eae31cc253fe6d998f5a3a4c77f0292e9d92419fd8ff359c75147d1bd28",
+          "schemaVersion": "published_historical_portfolio_v1",
+          "signalEvidenceScopes": [
+            "public_model_inference"
+          ],
+          "tickerCount": 5,
+          "tickers": [
+            "000075",
+            "00088K",
+            "00104K",
+            "005930",
+            "035420"
+          ],
+          "unavailable": {},
+          "unrealizedPnl": "0",
+          "valuationBasis": {
+            "observedMarkFields": [],
+            "policy": null,
+            "stage": "account",
+            "timestamp": "2020-05-22T15:00:00.000000+00:00",
+            "unavailable": {
+              "policy": "valuation_policy_not_in_published_projection"
+            }
+          },
+          "valuationCoverage": {
+            "complete_points": 72,
+            "open_positions": 0,
+            "total_points": 72,
+            "unvalued_positions": 0,
+            "valued_positions": 0
+          }
+        },
+        {
+          "acceptedOrderCount": 1,
+          "archiveTransportHash": "52acc4359dd04291ef89e2c444f841281c3e0d2b1811fdbf9787678eac692ebc",
+          "archiveVerification": "integrity_verified",
+          "availableCash": "589.18",
+          "brokerageEligible": false,
+          "completedPositionCount": 0,
+          "costs": {
+            "fees": "1.82",
+            "sell_taxes": "0",
+            "slippage_impact": "9",
+            "total_explicit_trading_costs": "1.82"
+          },
+          "dataOrigin": "synthetic",
+          "decisionCount": 5,
+          "evidenceScope": "synthetic_fixture",
+          "executable": false,
+          "fillCount": 1,
+          "finalPortfolioEquity": "1489.18",
+          "finalTotalCash": "589.18",
+          "finalValuation": {
+            "cash": "589.18",
+            "complete": true,
+            "coverage": {
+              "open_positions": 1,
+              "unvalued_positions": 0,
+              "valued_positions": 1
+            },
+            "known_position_value": "900",
+            "known_unrealized_pnl": "-10.82",
+            "positions": [
+              {
+                "cost_basis_krw": "910.82",
+                "mark": {
+                  "available_at": "2020-05-22T15:00:00.000000+00:00",
+                  "event_at": "2020-05-22T15:00:00.000000+00:00",
+                  "field": "open",
+                  "price": "90",
+                  "sequence": 6
+                },
+                "market_value": "900",
+                "quantity": 10,
+                "reason": null,
+                "reserved_quantity": 0,
+                "sellable_quantity": 10,
+                "status": "valued",
+                "ticker": "000075",
+                "unrealized_pnl": "-10.82"
+              }
+            ],
+            "sequence": 10,
+            "stage": "account",
+            "timestamp": "2020-05-22T15:00:00.000000+00:00",
+            "total_equity": "1489.18",
+            "unrealized_pnl": "-10.82"
+          },
+          "initialVirtualCash": "1500",
+          "investmentSuitabilityVerified": false,
+          "limitations": [
+            "calendar_durations_use_recorded_fill_times",
+            "conditional_scores_not_calibrated_probabilities",
+            "daily_event_time_is_publication_assumption_not_exchange_open",
+            "daily_marks_listing_and_halt_status_unverified",
+            "expanded_legacy_trade_receipts_can_dominate_memory",
+            "explicit_five_security_selection_not_historical_blind_selection",
+            "feature_contributions_not_economic_causation",
+            "fill_known_only_after_complete_daily_bar_publication",
+            "historical_daily_full_fill_assumption",
+            "mdd_on_declared_observation_points_not_intraday",
+            "model_training_cutoff_unverified",
+            "no_actual_orders",
+            "no_external_cash_flows_or_forced_liquidation",
+            "no_order_book_or_liquidity_verification",
+            "not_pit_or_oos",
+            "source_revision_history_unavailable",
+            "synthetic_historical_research_not_pit_or_oos"
+          ],
+          "modelFamily": "linear",
+          "modelId": "fde696f513648c5dde10aecb7389c394a975b610bfad398a1d7fbde4f7b43872",
+          "modelReferences": {
+            "dataset_id": "d712f1e58d9647a0440ad54290b55e308d3131ba10351ea6115e485d7fea5c07",
+            "model_id": "fde696f513648c5dde10aecb7389c394a975b610bfad398a1d7fbde4f7b43872",
+            "training_snapshot_id": "1474079a40d630a37f8742352dada7cebe7a2d09cd0a191fd07196ddb6c383ce"
+          },
+          "oosVerified": false,
+          "operationalEligible": false,
+          "pendingOrderCount": 0,
+          "performanceHash": "a5dd4fbdc13e5e635724ab34b8cb97ffe169341724aa12f869f534ec5f1e145f",
+          "period": {
+            "end": "2020-05-22",
+            "start": "2020-05-21"
+          },
+          "pitVerified": false,
+          "portfolioReturn": "-0.00721333",
+          "portfolioValuationAvailable": true,
+          "provenance": {
+            "frozen_run_hash": "49980bdb1bfa5a4a722ec85f4d7bd47cc37b3fd3141c0dbe465f5eacdea140d7",
+            "historical_input_hash": "17e177934c1c627504ca13364606b1734b84b2b5cf6fb36bdc1116c8758a34f0",
+            "performance_hash": "a5dd4fbdc13e5e635724ab34b8cb97ffe169341724aa12f869f534ec5f1e145f",
+            "position_history_hash": "e0451a01bd28f033523e2782d073eb5c3a4bd2159c5e4d7b03f1d7f044a07977",
+            "request_hash": "b8e289bf3a5e7f1a926d2ba84748af2967295f8f5a64b23cc99321d9488b1bf3",
+            "run_hash": "be1e2940fc0af5d5d37105702da6287ade205dd3715b7fb8745805d8cc68c92e"
+          },
+          "publishedAt": "2026-10-20T08:57:21.492330+00:00",
+          "realizedNetPnl": "0",
+          "reportHash": "fa4ae87a92c4e7f353ac179088d634d686d772b5c5e34906dd9dd74506254e40",
+          "reportId": "94b84bd6718196b5f200512e0b3787fb7d15793e97462129bcb2f7398caecf75",
+          "reportSchemaVersion": "five_ticker_historical_report_v1",
+          "reportVerification": "offline_authoritative_replay_passed",
+          "researchOnly": true,
+          "reservedCash": "0",
+          "resultHash": "114cc39f0a6cbc429666f091ea6f7a37b25fb7c15e5f6a507c80465b839c6834",
+          "resultSchemaVersion": "five_ticker_historical_result_v1",
+          "runHash": "be1e2940fc0af5d5d37105702da6287ade205dd3715b7fb8745805d8cc68c92e",
+          "schemaVersion": "published_historical_portfolio_v1",
+          "signalEvidenceScopes": [
+            "controlled_mechanics_test_double"
+          ],
+          "tickerCount": 5,
+          "tickers": [
+            "000075",
+            "00088K",
+            "00104K",
+            "005930",
+            "035420"
+          ],
+          "unavailable": {},
+          "unrealizedPnl": "-10.82",
+          "valuationBasis": {
+            "observedMarkFields": [
+              "open"
+            ],
+            "policy": null,
+            "stage": "account",
+            "timestamp": "2020-05-22T15:00:00.000000+00:00",
+            "unavailable": {
+              "policy": "valuation_policy_not_in_published_projection"
+            }
+          },
+          "valuationCoverage": {
+            "complete_points": 12,
+            "open_positions": 1,
+            "total_points": 12,
+            "unvalued_positions": 0,
+            "valued_positions": 1
+          }
+        },
+        {
+          "acceptedOrderCount": 0,
+          "archiveTransportHash": "8fd03ccce1eb2c13155f5dbe8a80a684cad8c8fb4e7d88eed7a4ed27e04d2673",
+          "archiveVerification": "integrity_verified",
+          "availableCash": "1500",
+          "brokerageEligible": false,
+          "completedPositionCount": 0,
+          "costs": {
+            "fees": "0",
+            "sell_taxes": "0",
+            "slippage_impact": "0",
+            "total_explicit_trading_costs": "0"
+          },
+          "dataOrigin": "synthetic",
+          "decisionCount": 5,
+          "evidenceScope": "synthetic_fixture",
+          "executable": false,
+          "fillCount": 0,
+          "finalPortfolioEquity": "1500",
+          "finalTotalCash": "1500",
+          "finalValuation": {
+            "cash": "1500",
+            "complete": true,
+            "coverage": {
+              "open_positions": 0,
+              "unvalued_positions": 0,
+              "valued_positions": 0
+            },
+            "known_position_value": "0",
+            "known_unrealized_pnl": "0",
+            "positions": [],
+            "sequence": 10,
+            "stage": "account",
+            "timestamp": "2020-05-22T15:00:00.000000+00:00",
+            "total_equity": "1500",
+            "unrealized_pnl": "0"
+          },
+          "initialVirtualCash": "1500",
+          "investmentSuitabilityVerified": false,
+          "limitations": [
+            "calendar_durations_use_recorded_fill_times",
+            "conditional_scores_not_calibrated_probabilities",
+            "daily_event_time_is_publication_assumption_not_exchange_open",
+            "daily_marks_listing_and_halt_status_unverified",
+            "expanded_legacy_trade_receipts_can_dominate_memory",
+            "explicit_five_security_selection_not_historical_blind_selection",
+            "feature_contributions_not_economic_causation",
+            "fill_known_only_after_complete_daily_bar_publication",
+            "historical_daily_full_fill_assumption",
+            "mdd_on_declared_observation_points_not_intraday",
+            "model_training_cutoff_unverified",
+            "no_actual_orders",
+            "no_external_cash_flows_or_forced_liquidation",
+            "no_order_book_or_liquidity_verification",
+            "not_pit_or_oos",
+            "source_revision_history_unavailable",
+            "synthetic_historical_research_not_pit_or_oos"
+          ],
+          "modelFamily": "linear",
+          "modelId": "ae98118706c89082746958ab9be0ce17a15bb8dfff83b2104e636bb84f3ca4ea",
+          "modelReferences": {
+            "dataset_id": "81cc44ae203044bf24d22d08bd46cf686af77b103f209ea592dd368229ffa9d6",
+            "model_id": "ae98118706c89082746958ab9be0ce17a15bb8dfff83b2104e636bb84f3ca4ea",
+            "training_snapshot_id": "6c493e1969ad2d0be70057c3802994dd68f8d956de1353e1348047e3c4761335"
+          },
+          "oosVerified": false,
+          "operationalEligible": false,
+          "pendingOrderCount": 0,
+          "performanceHash": "3021da75b66a3ca113c332b2574a5b679263311f280fb4271227b5f35f54310e",
+          "period": {
+            "end": "2020-05-22",
+            "start": "2020-05-21"
+          },
+          "pitVerified": false,
+          "portfolioReturn": "0",
+          "portfolioValuationAvailable": true,
+          "provenance": {
+            "frozen_run_hash": "a22484a2eb0cdc54c4539dd101a6d93257eb7db41876221c8e936365b2ba2018",
+            "historical_input_hash": "4a8c871f46b9f139683dc9062046c25c23a6778797ed78688c4ddaa43d9bb12e",
+            "performance_hash": "3021da75b66a3ca113c332b2574a5b679263311f280fb4271227b5f35f54310e",
+            "position_history_hash": "3d1828b15fe9421012e63b5078d7c3d0ab779acb9863e2420313e502f75f9b93",
+            "request_hash": "b8a57b8a114c1ab1589498f1d8336d6eece82b1e2f678c6f80ac2fe08dfab435",
+            "run_hash": "c176b557647edaa14d05eb9243f96b70401bbb15daeda11408877b6b3383b249"
+          },
+          "publishedAt": "2026-10-20T08:57:26.882976+00:00",
+          "realizedNetPnl": "0",
+          "reportHash": "aaf457edccf12c57ec2860842c7c13299655f108ceb7f1189644a472098016bf",
+          "reportId": "4d97fa83f8a77f51a19b2fbaedf0b048122b24f9cb8ae007c99dbb51e5146a08",
+          "reportSchemaVersion": "five_ticker_historical_report_v1",
+          "reportVerification": "offline_authoritative_replay_passed",
+          "researchOnly": true,
+          "reservedCash": "0",
+          "resultHash": "2a441922f0aca7ee60e1fbd310b421a804268a993372bf8d8c844f5f8bd685ab",
+          "resultSchemaVersion": "five_ticker_historical_result_v1",
+          "runHash": "c176b557647edaa14d05eb9243f96b70401bbb15daeda11408877b6b3383b249",
+          "schemaVersion": "published_historical_portfolio_v1",
+          "signalEvidenceScopes": [
+            "public_model_inference"
+          ],
+          "tickerCount": 5,
+          "tickers": [
+            "000075",
+            "00088K",
+            "00104K",
+            "005930",
+            "035420"
+          ],
+          "unavailable": {},
+          "unrealizedPnl": "0",
+          "valuationBasis": {
+            "observedMarkFields": [],
+            "policy": null,
+            "stage": "account",
+            "timestamp": "2020-05-22T15:00:00.000000+00:00",
+            "unavailable": {
+              "policy": "valuation_policy_not_in_published_projection"
+            }
+          },
+          "valuationCoverage": {
+            "complete_points": 12,
+            "open_positions": 0,
+            "total_points": 12,
+            "unvalued_positions": 0,
+            "valued_positions": 0
+          }
+        },
+        {
+          "acceptedOrderCount": 1,
+          "archiveTransportHash": "ace2053186589a39c315899e5d615ae5e2c03f5733401f0fba674e2858113447",
+          "archiveVerification": "integrity_verified",
+          "availableCash": "589.18",
+          "brokerageEligible": false,
+          "completedPositionCount": 0,
+          "costs": {
+            "fees": "1.82",
+            "sell_taxes": "0",
+            "slippage_impact": "9",
+            "total_explicit_trading_costs": "1.82"
+          },
+          "dataOrigin": "synthetic",
+          "decisionCount": 5,
+          "evidenceScope": "synthetic_fixture",
+          "executable": false,
+          "fillCount": 1,
+          "finalPortfolioEquity": null,
+          "finalTotalCash": "589.18",
+          "finalValuation": {
+            "cash": "589.18",
+            "complete": false,
+            "coverage": {
+              "open_positions": 1,
+              "unvalued_positions": 1,
+              "valued_positions": 0
+            },
+            "known_position_value": "0",
+            "known_unrealized_pnl": "0",
+            "positions": [
+              {
+                "cost_basis_krw": "910.82",
+                "mark": null,
+                "market_value": null,
+                "quantity": 10,
+                "reason": "stale_mark",
+                "reserved_quantity": 0,
+                "sellable_quantity": 10,
+                "status": "unvalued",
+                "ticker": "035420",
+                "unrealized_pnl": null
+              }
+            ],
+            "sequence": 114,
+            "stage": "account",
+            "timestamp": "2020-06-04T15:00:00.000000+00:00",
+            "total_equity": null,
+            "unrealized_pnl": null
+          },
+          "initialVirtualCash": "1500",
+          "investmentSuitabilityVerified": false,
+          "limitations": [
+            "calendar_durations_use_recorded_fill_times",
+            "conditional_scores_not_calibrated_probabilities",
+            "daily_event_time_is_publication_assumption_not_exchange_open",
+            "daily_marks_listing_and_halt_status_unverified",
+            "expanded_legacy_trade_receipts_can_dominate_memory",
+            "explicit_five_security_selection_not_historical_blind_selection",
+            "feature_contributions_not_economic_causation",
+            "fill_known_only_after_complete_daily_bar_publication",
+            "final_valuation_incomplete",
+            "historical_daily_full_fill_assumption",
+            "incomplete_curve_mdd_is_only_observed_lower_bound",
+            "mdd_on_declared_observation_points_not_intraday",
+            "model_training_cutoff_unverified",
+            "no_actual_orders",
+            "no_external_cash_flows_or_forced_liquidation",
+            "no_order_book_or_liquidity_verification",
+            "not_pit_or_oos",
+            "source_revision_history_unavailable",
+            "synthetic_historical_research_not_pit_or_oos"
+          ],
+          "modelFamily": "linear",
+          "modelId": "25436f65292c69ebc2c22d1161e289b297c2032d975456e88c8184d94f405dfd",
+          "modelReferences": {
+            "dataset_id": "e87e3cf144d19d31fed63b19a5ef2395d3fc840c99a6de38b48ec0b85dd9f09c",
+            "model_id": "25436f65292c69ebc2c22d1161e289b297c2032d975456e88c8184d94f405dfd",
+            "training_snapshot_id": "bc997866287147657ebfac40215c6dd490594e8dcf1c45269ad0ed92aee8692b"
+          },
+          "oosVerified": false,
+          "operationalEligible": false,
+          "pendingOrderCount": 0,
+          "performanceHash": "26004e537579c36f8eb134e7f977fd75407a85b30262390114275bb2ba443982",
+          "period": {
+            "end": "2020-06-04",
+            "start": "2020-05-05"
+          },
+          "pitVerified": false,
+          "portfolioReturn": null,
+          "portfolioValuationAvailable": false,
+          "provenance": {
+            "frozen_run_hash": "b92d4b9a9c46facbd5882f576a37656badbd581bdb2fb622e9d4bceff3441bf9",
+            "historical_input_hash": "57e64f6d531bc0f882d71f03dba1f2c5f4251403d135b8a139ad0faf1e220600",
+            "performance_hash": "26004e537579c36f8eb134e7f977fd75407a85b30262390114275bb2ba443982",
+            "position_history_hash": "c139e398bb68a9e7cddb58374f87dcfb329dfcfbcd4adbe8073fe43daf656c88",
+            "request_hash": "65e4a32e7b9be4e74d3e937c09a6c81561468fc5b1f4ecf3096710939c9c8676",
+            "run_hash": "6c4e8871c7d7b518c7ded479841c38f1257d421084c3b06108ccd0b90f072669"
+          },
+          "publishedAt": "2026-10-20T08:58:09.288687+00:00",
+          "realizedNetPnl": "0",
+          "reportHash": "589750bf5b201dada56d797b1b61e6b62257127b3885a8248ba73dafa60da4f9",
+          "reportId": "22aaada5cf70ee363cfe516344e073c1b7ea991a75f0af1e356883cf428c525d",
+          "reportSchemaVersion": "five_ticker_historical_report_v1",
+          "reportVerification": "offline_authoritative_replay_passed",
+          "researchOnly": true,
+          "reservedCash": "0",
+          "resultHash": "18c30b87d3fbcb2fe7f7996fb24427491e29c9f16efc2b3d3f25710efe0a743c",
+          "resultSchemaVersion": "five_ticker_historical_result_v1",
+          "runHash": "6c4e8871c7d7b518c7ded479841c38f1257d421084c3b06108ccd0b90f072669",
+          "schemaVersion": "published_historical_portfolio_v1",
+          "signalEvidenceScopes": [
+            "controlled_mechanics_test_double"
+          ],
+          "tickerCount": 5,
+          "tickers": [
+            "000075",
+            "00088K",
+            "00104K",
+            "005930",
+            "035420"
+          ],
+          "unavailable": {
+            "finalPortfolioEquity": "valuation_evidence_unavailable",
+            "portfolioReturn": "valuation_evidence_unavailable",
+            "unrealizedPnl": "valuation_evidence_unavailable"
+          },
+          "unrealizedPnl": null,
+          "valuationBasis": {
+            "observedMarkFields": null,
+            "policy": null,
+            "stage": "account",
+            "timestamp": "2020-06-04T15:00:00.000000+00:00",
+            "unavailable": {
+              "observedMarkFields": "valuation_mark_field_unavailable",
+              "policy": "valuation_policy_not_in_published_projection"
+            }
+          },
+          "valuationCoverage": {
+            "complete_points": 79,
+            "open_positions": 1,
+            "total_points": 116,
+            "unvalued_positions": 1,
+            "valued_positions": 0
+          }
+        }
+      ],
+      "oosVerified": false,
+      "operationalEligible": false,
+      "pitVerified": false,
+      "researchOnly": true,
+      "schemaVersion": "historical_portfolio_comparison_v1"
+    },
+    "diagnostics": {
+      "archive": {
+        "detail": {
+          "code": "archive_integrity_mismatch"
+        },
+        "status": 503
+      },
+      "duplicate": {
+        "detail": {
+          "code": "invalid_comparison_request"
+        },
+        "status": 422
+      },
+      "empty_registry_known_revoked": {
+        "detail": {
+          "code": "report_unpublished"
+        },
+        "status": 404
+      },
+      "empty_registry_list": {
+        "diagnose": {
+          "researchOnly": true,
+          "status": "no_published_archive",
+          "total": 0
+        },
+        "status": 200,
+        "total": 0
+      },
+      "empty_registry_unknown": {
+        "detail": {
+          "code": "report_not_found"
+        },
+        "status": 404
+      },
+      "excessive": {
+        "detail": {
+          "code": "invalid_comparison_request"
+        },
+        "status": 422
+      },
+      "invalid": {
+        "detail": {
+          "code": "invalid_comparison_request"
+        },
+        "status": 422
+      },
+      "local_Host": {
+        "detail": {
+          "code": "local_research_access_required"
+        },
+        "status": 403
+      },
+      "local_Origin": {
+        "detail": {
+          "code": "local_research_access_required"
+        },
+        "status": 403
+      },
+      "path_id": {
+        "detail": {
+          "code": "invalid_comparison_request"
+        },
+        "status": 422
+      },
+      "path_selector": {
+        "detail": {
+          "code": "invalid_comparison_request"
+        },
+        "status": 422
+      },
+      "projection": {
+        "detail": {
+          "code": "archive_unavailable"
+        },
+        "status": 503
+      },
+      "revoked": {
+        "detail": {
+          "code": "report_unpublished"
+        },
+        "status": 404
+      },
+      "stale_pin": {
+        "detail": {
+          "code": "publication_manifest_mismatch"
+        },
+        "status": 503
+      },
+      "unapproved": {
+        "detail": {
+          "code": "report_not_found"
+        },
+        "status": 404
+      },
+      "unregistered_valid_transport": {
+        "detail": {
+          "code": "report_not_found"
+        },
+        "status": 404
+      },
+      "valuation_unavailable": {
+        "positionReason": "stale_mark",
+        "reason": "valuation_evidence_unavailable",
+        "status": 200
+      }
+    },
+    "integrity": {
+      "publicationFileSha256": {
+        "22aaada5cf70ee363cfe516344e073c1b7ea991a75f0af1e356883cf428c525d.archive.json": "ace2053186589a39c315899e5d615ae5e2c03f5733401f0fba674e2858113447",
+        "22aaada5cf70ee363cfe516344e073c1b7ea991a75f0af1e356883cf428c525d.manifest.json": "2d6698026c8315e632c56e1862c55d29a7af2db9755727b52c45f7d7fd75801b",
+        "22aaada5cf70ee363cfe516344e073c1b7ea991a75f0af1e356883cf428c525d.projection.json": "5dc33d9fec217f4b6c55d10152685cf2d42accf8de18b139e3043c56539d50de",
+        "4d97fa83f8a77f51a19b2fbaedf0b048122b24f9cb8ae007c99dbb51e5146a08.archive.json": "8fd03ccce1eb2c13155f5dbe8a80a684cad8c8fb4e7d88eed7a4ed27e04d2673",
+        "4d97fa83f8a77f51a19b2fbaedf0b048122b24f9cb8ae007c99dbb51e5146a08.manifest.json": "1a9447237ca5b7ca99013716451b244c06c1aff450894f3990b2913e9e8591c7",
+        "4d97fa83f8a77f51a19b2fbaedf0b048122b24f9cb8ae007c99dbb51e5146a08.projection.json": "64d6afb75c2c38bf31ebea9893bc699a1cbe1c34b56c0636f4bf66f5b0f0db74",
+        "94b84bd6718196b5f200512e0b3787fb7d15793e97462129bcb2f7398caecf75.archive.json": "52acc4359dd04291ef89e2c444f841281c3e0d2b1811fdbf9787678eac692ebc",
+        "94b84bd6718196b5f200512e0b3787fb7d15793e97462129bcb2f7398caecf75.manifest.json": "0ddeff55421e042739494679918720a02bbdcee78d8cc1fec81be392a5c84e3c",
+        "94b84bd6718196b5f200512e0b3787fb7d15793e97462129bcb2f7398caecf75.projection.json": "5640cf89a0298ee61dce959fad06098f4a5ec860151d923f672f939804fbf86d",
+        "989fccec15b6014d800561732a214da3f71fc72595c39904c1d1d84e17c7c279.archive.json": "cfd14f57e36ad7a52a49cbe9991500a761d74a098d0bd4026cb1ba9e3759231c",
+        "989fccec15b6014d800561732a214da3f71fc72595c39904c1d1d84e17c7c279.manifest.json": "adff39c102db7343adf26ce7a8ebbcb009e2002aad0a5a56f820f300e0ac3501",
+        "989fccec15b6014d800561732a214da3f71fc72595c39904c1d1d84e17c7c279.projection.json": "b1ac86ea92931bcff4f48a92262c1f82312673e9f8fd64098cb58533db374a15",
+        "hgb-input.json": "cfd14f57e36ad7a52a49cbe9991500a761d74a098d0bd4026cb1ba9e3759231c",
+        "hgb-result.json": "e3e89e0d67e97483b0f782168e2868c0ff6076ff4b4d03d34cfa1d4f5b69f42b",
+        "index.json": "38d2c48bb9e1512b9493576ddd87e8376b9a690e7452ac9a77a6e43edfd7bfc7",
+        "linear-input.json": "8fd03ccce1eb2c13155f5dbe8a80a684cad8c8fb4e7d88eed7a4ed27e04d2673",
+        "linear-result.json": "2a441922f0aca7ee60e1fbd310b421a804268a993372bf8d8c844f5f8bd685ab",
+        "mechanics-input.json": "52acc4359dd04291ef89e2c444f841281c3e0d2b1811fdbf9787678eac692ebc",
+        "mechanics-result.json": "114cc39f0a6cbc429666f091ea6f7a37b25fb7c15e5f6a507c80465b839c6834",
+        "stale-input.json": "ace2053186589a39c315899e5d615ae5e2c03f5733401f0fba674e2858113447",
+        "stale-result.json": "18c30b87d3fbcb2fe7f7996fb24427491e29c9f16efc2b3d3f25710efe0a743c",
+        "writer.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "sourceAndArchiveBytesUnchanged": true,
+      "sourceDatabaseSha256": {
+        "hgb": {
+          "sources/analysis.db": "0b1742f5a945b8f172aba21deda7b0f3be674fbdc92b3856828c2b49a7a2ab20",
+          "sources/market.db": "e577dbfc7eb30dae01d23bdee4befa27551499d5164e50a836e3722a1c17f471",
+          "sources/run.db": "d017d03e52b6b8d1447b76c7d7bd132c79c07eacc4273575021565f1808d0f93"
+        },
+        "linear": {
+          "sources/analysis.db": "969807b3a149fb4fd11ccf14ef01a13e3d4725cbf34058ee283c43b35d18d740",
+          "sources/market.db": "e577dbfc7eb30dae01d23bdee4befa27551499d5164e50a836e3722a1c17f471",
+          "sources/run.db": "347923bc8c09e33592e015bb0763dd96a0b0aec4b3859cb5709933f9286b5ff9"
+        },
+        "mechanics": {
+          "sources/analysis.db": "4dabff8c30bd3a77f038e31800f3aa23329d4c4bbe317b34c8e4716567a4e6fa",
+          "sources/market.db": "188362fd537fab8209bb04969c9b6688d8ca0aebbf27f50cff65a3dc77073648",
+          "sources/mechanics.db": "ae2679783143ff74f89cb27978a9baa690c079029353250c32662ef40a1e44cb"
+        },
+        "stale": {
+          "sources/analysis.db": "5f8a448b3a28741f629be53757b2e07bc3501cf8592152c40a4052660ad3400e",
+          "sources/market.db": "0ca09d0dc96fa5992095f1cfac6bfd2880910aeb4229b532289240f7ef7f3147",
+          "sources/mechanics.db": "65c0d5adf20af635ca82811face09b6c7b90dcfb14fca683a35d2851f0f29303"
+        }
+      },
+      "sourceFileCount": 29
+    },
+    "publicationIndexSha256": "38d2c48bb9e1512b9493576ddd87e8376b9a690e7452ac9a77a6e43edfd7bfc7",
+    "reports": {
+      "hgb": {
+        "encoding": {
+          "archiveBytes": 518248,
+          "archiveTransportHash": "cfd14f57e36ad7a52a49cbe9991500a761d74a098d0bd4026cb1ba9e3759231c",
+          "archiveValidation": "transport_verified_only",
+          "publicationAuthorized": false,
+          "reportHash": "b8b071b1a8d5445124043ca7d12bd5303e3a4ee08fefd6724d5b27f47bb64e81",
+          "resultBytes": 606524,
+          "resultHash": "e3e89e0d67e97483b0f782168e2868c0ff6076ff4b4d03d34cfa1d4f5b69f42b"
+        },
+        "expected": {
+          "fillCount": 0,
+          "finalPortfolioEquity": "1500",
+          "modelReferences": {
+            "down": {
+              "checkpoint_sha256": "3539af6f43caae2690fd874eb2182473eeb0bf2ca00a0780a4047d7008de4d38",
+              "fingerprint": "bee64d782fc87db944e15f982e7dc4b7e8b124e427ca2032af47855ed6c90546"
+            },
+            "up": {
+              "checkpoint_sha256": "2880840e0367402f7e030544ae15739bfcee46a5e65c18972d872c6616f745c4",
+              "fingerprint": "19ad200e4984cecb5cf26e7c947855b6b8a78a438891fd271a1f3c57aa41f37d"
+            }
+          },
+          "performanceHash": "eaee124d2f06c08e5c3eacb50c2a04d42fa01770619521e62f8311a653dc5683",
+          "period": {
+            "end": "2020-05-22",
+            "start": "2020-05-05"
+          },
+          "provenance": {
+            "frozen_run_hash": "3e8a8e966db755bfacc60e18548c3eb95ea0c7b9bce07be93c43775a0c0a9e7a",
+            "historical_input_hash": "872eec6062d8ef561dc68e220e24a61cb686a0a674ae6ec88d60edf2b2f1986a",
+            "performance_hash": "eaee124d2f06c08e5c3eacb50c2a04d42fa01770619521e62f8311a653dc5683",
+            "position_history_hash": "3bd6e1924ec65f21e74834883e4a3ee8225be64e97a8ef33de19be77fe214e10",
+            "request_hash": "ff2c4c6e19e7437ae55d8d2e51bc8176f519ffa0403e4b27200ec2131eb6d411",
+            "run_hash": "a53c1eae31cc253fe6d998f5a3a4c77f0292e9d92419fd8ff359c75147d1bd28"
+          },
+          "realizedNetPnl": "0",
+          "reportHash": "b8b071b1a8d5445124043ca7d12bd5303e3a4ee08fefd6724d5b27f47bb64e81",
+          "resultHash": "e3e89e0d67e97483b0f782168e2868c0ff6076ff4b4d03d34cfa1d4f5b69f42b",
+          "runHash": "a53c1eae31cc253fe6d998f5a3a4c77f0292e9d92419fd8ff359c75147d1bd28",
+          "unrealizedPnl": "0"
+        },
+        "facts": {
+          "family": "hgb",
+          "fillCount": 0,
+          "period": {
+            "end": "2020-05-22",
+            "start": "2020-05-05"
+          },
+          "published": false,
+          "reportHash": "b8b071b1a8d5445124043ca7d12bd5303e3a4ee08fefd6724d5b27f47bb64e81",
+          "researchOnly": true,
+          "resultHash": "e3e89e0d67e97483b0f782168e2868c0ff6076ff4b4d03d34cfa1d4f5b69f42b",
+          "scenario": "standard",
+          "scope": "synthetic_fixture_not_real_historical_research",
+          "signalEvidenceScope": "public_model_inference",
+          "tickers": [
+            "000075",
+            "00088K",
+            "00104K",
+            "005930",
+            "035420"
+          ]
+        },
+        "reportId": "989fccec15b6014d800561732a214da3f71fc72595c39904c1d1d84e17c7c279"
+      },
+      "linear": {
+        "encoding": {
+          "archiveBytes": 1290314,
+          "archiveTransportHash": "8fd03ccce1eb2c13155f5dbe8a80a684cad8c8fb4e7d88eed7a4ed27e04d2673",
+          "archiveValidation": "transport_verified_only",
+          "publicationAuthorized": false,
+          "reportHash": "aaf457edccf12c57ec2860842c7c13299655f108ceb7f1189644a472098016bf",
+          "resultBytes": 1383754,
+          "resultHash": "2a441922f0aca7ee60e1fbd310b421a804268a993372bf8d8c844f5f8bd685ab"
+        },
+        "expected": {
+          "fillCount": 0,
+          "finalPortfolioEquity": "1500",
+          "modelReferences": {
+            "dataset_id": "81cc44ae203044bf24d22d08bd46cf686af77b103f209ea592dd368229ffa9d6",
+            "model_id": "ae98118706c89082746958ab9be0ce17a15bb8dfff83b2104e636bb84f3ca4ea",
+            "training_snapshot_id": "6c493e1969ad2d0be70057c3802994dd68f8d956de1353e1348047e3c4761335"
+          },
+          "performanceHash": "3021da75b66a3ca113c332b2574a5b679263311f280fb4271227b5f35f54310e",
+          "period": {
+            "end": "2020-05-22",
+            "start": "2020-05-21"
+          },
+          "provenance": {
+            "frozen_run_hash": "a22484a2eb0cdc54c4539dd101a6d93257eb7db41876221c8e936365b2ba2018",
+            "historical_input_hash": "4a8c871f46b9f139683dc9062046c25c23a6778797ed78688c4ddaa43d9bb12e",
+            "performance_hash": "3021da75b66a3ca113c332b2574a5b679263311f280fb4271227b5f35f54310e",
+            "position_history_hash": "3d1828b15fe9421012e63b5078d7c3d0ab779acb9863e2420313e502f75f9b93",
+            "request_hash": "b8a57b8a114c1ab1589498f1d8336d6eece82b1e2f678c6f80ac2fe08dfab435",
+            "run_hash": "c176b557647edaa14d05eb9243f96b70401bbb15daeda11408877b6b3383b249"
+          },
+          "realizedNetPnl": "0",
+          "reportHash": "aaf457edccf12c57ec2860842c7c13299655f108ceb7f1189644a472098016bf",
+          "resultHash": "2a441922f0aca7ee60e1fbd310b421a804268a993372bf8d8c844f5f8bd685ab",
+          "runHash": "c176b557647edaa14d05eb9243f96b70401bbb15daeda11408877b6b3383b249",
+          "unrealizedPnl": "0"
+        },
+        "facts": {
+          "family": "linear",
+          "fillCount": 0,
+          "period": {
+            "end": "2020-05-22",
+            "start": "2020-05-21"
+          },
+          "published": false,
+          "reportHash": "aaf457edccf12c57ec2860842c7c13299655f108ceb7f1189644a472098016bf",
+          "researchOnly": true,
+          "resultHash": "2a441922f0aca7ee60e1fbd310b421a804268a993372bf8d8c844f5f8bd685ab",
+          "scenario": "standard",
+          "scope": "synthetic_fixture_not_real_historical_research",
+          "signalEvidenceScope": "public_model_inference",
+          "tickers": [
+            "000075",
+            "00088K",
+            "00104K",
+            "005930",
+            "035420"
+          ]
+        },
+        "reportId": "4d97fa83f8a77f51a19b2fbaedf0b048122b24f9cb8ae007c99dbb51e5146a08"
+      },
+      "mechanics": {
+        "encoding": {
+          "archiveBytes": 1104834,
+          "archiveTransportHash": "52acc4359dd04291ef89e2c444f841281c3e0d2b1811fdbf9787678eac692ebc",
+          "archiveValidation": "transport_verified_only",
+          "publicationAuthorized": false,
+          "reportHash": "fa4ae87a92c4e7f353ac179088d634d686d772b5c5e34906dd9dd74506254e40",
+          "resultBytes": 4397948,
+          "resultHash": "114cc39f0a6cbc429666f091ea6f7a37b25fb7c15e5f6a507c80465b839c6834"
+        },
+        "expected": {
+          "fillCount": 1,
+          "finalPortfolioEquity": "1489.18",
+          "modelReferences": {
+            "dataset_id": "d712f1e58d9647a0440ad54290b55e308d3131ba10351ea6115e485d7fea5c07",
+            "model_id": "fde696f513648c5dde10aecb7389c394a975b610bfad398a1d7fbde4f7b43872",
+            "training_snapshot_id": "1474079a40d630a37f8742352dada7cebe7a2d09cd0a191fd07196ddb6c383ce"
+          },
+          "performanceHash": "a5dd4fbdc13e5e635724ab34b8cb97ffe169341724aa12f869f534ec5f1e145f",
+          "period": {
+            "end": "2020-05-22",
+            "start": "2020-05-21"
+          },
+          "provenance": {
+            "frozen_run_hash": "49980bdb1bfa5a4a722ec85f4d7bd47cc37b3fd3141c0dbe465f5eacdea140d7",
+            "historical_input_hash": "17e177934c1c627504ca13364606b1734b84b2b5cf6fb36bdc1116c8758a34f0",
+            "performance_hash": "a5dd4fbdc13e5e635724ab34b8cb97ffe169341724aa12f869f534ec5f1e145f",
+            "position_history_hash": "e0451a01bd28f033523e2782d073eb5c3a4bd2159c5e4d7b03f1d7f044a07977",
+            "request_hash": "b8e289bf3a5e7f1a926d2ba84748af2967295f8f5a64b23cc99321d9488b1bf3",
+            "run_hash": "be1e2940fc0af5d5d37105702da6287ade205dd3715b7fb8745805d8cc68c92e"
+          },
+          "realizedNetPnl": "0",
+          "reportHash": "fa4ae87a92c4e7f353ac179088d634d686d772b5c5e34906dd9dd74506254e40",
+          "resultHash": "114cc39f0a6cbc429666f091ea6f7a37b25fb7c15e5f6a507c80465b839c6834",
+          "runHash": "be1e2940fc0af5d5d37105702da6287ade205dd3715b7fb8745805d8cc68c92e",
+          "unrealizedPnl": "-10.82"
+        },
+        "facts": {
+          "family": "mechanics",
+          "fillCount": 1,
+          "period": {
+            "end": "2020-05-22",
+            "start": "2020-05-21"
+          },
+          "published": false,
+          "reportHash": "fa4ae87a92c4e7f353ac179088d634d686d772b5c5e34906dd9dd74506254e40",
+          "researchOnly": true,
+          "resultHash": "114cc39f0a6cbc429666f091ea6f7a37b25fb7c15e5f6a507c80465b839c6834",
+          "scenario": "standard",
+          "scope": "synthetic_fixture_not_real_historical_research",
+          "signalEvidenceScope": "controlled_mechanics_test_double",
+          "tickers": [
+            "000075",
+            "00088K",
+            "00104K",
+            "005930",
+            "035420"
+          ]
+        },
+        "reportId": "94b84bd6718196b5f200512e0b3787fb7d15793e97462129bcb2f7398caecf75"
+      },
+      "stale": {
+        "encoding": {
+          "archiveBytes": 1585101,
+          "archiveTransportHash": "ace2053186589a39c315899e5d615ae5e2c03f5733401f0fba674e2858113447",
+          "archiveValidation": "transport_verified_only",
+          "publicationAuthorized": false,
+          "reportHash": "589750bf5b201dada56d797b1b61e6b62257127b3885a8248ba73dafa60da4f9",
+          "resultBytes": 5508815,
+          "resultHash": "18c30b87d3fbcb2fe7f7996fb24427491e29c9f16efc2b3d3f25710efe0a743c"
+        },
+        "expected": {
+          "fillCount": 1,
+          "finalPortfolioEquity": null,
+          "modelReferences": {
+            "dataset_id": "e87e3cf144d19d31fed63b19a5ef2395d3fc840c99a6de38b48ec0b85dd9f09c",
+            "model_id": "25436f65292c69ebc2c22d1161e289b297c2032d975456e88c8184d94f405dfd",
+            "training_snapshot_id": "bc997866287147657ebfac40215c6dd490594e8dcf1c45269ad0ed92aee8692b"
+          },
+          "performanceHash": "26004e537579c36f8eb134e7f977fd75407a85b30262390114275bb2ba443982",
+          "period": {
+            "end": "2020-06-04",
+            "start": "2020-05-05"
+          },
+          "provenance": {
+            "frozen_run_hash": "b92d4b9a9c46facbd5882f576a37656badbd581bdb2fb622e9d4bceff3441bf9",
+            "historical_input_hash": "57e64f6d531bc0f882d71f03dba1f2c5f4251403d135b8a139ad0faf1e220600",
+            "performance_hash": "26004e537579c36f8eb134e7f977fd75407a85b30262390114275bb2ba443982",
+            "position_history_hash": "c139e398bb68a9e7cddb58374f87dcfb329dfcfbcd4adbe8073fe43daf656c88",
+            "request_hash": "65e4a32e7b9be4e74d3e937c09a6c81561468fc5b1f4ecf3096710939c9c8676",
+            "run_hash": "6c4e8871c7d7b518c7ded479841c38f1257d421084c3b06108ccd0b90f072669"
+          },
+          "realizedNetPnl": "0",
+          "reportHash": "589750bf5b201dada56d797b1b61e6b62257127b3885a8248ba73dafa60da4f9",
+          "resultHash": "18c30b87d3fbcb2fe7f7996fb24427491e29c9f16efc2b3d3f25710efe0a743c",
+          "runHash": "6c4e8871c7d7b518c7ded479841c38f1257d421084c3b06108ccd0b90f072669",
+          "unrealizedPnl": null
+        },
+        "facts": {
+          "family": "mechanics",
+          "fillCount": 1,
+          "period": {
+            "end": "2020-06-04",
+            "start": "2020-05-05"
+          },
+          "published": false,
+          "reportHash": "589750bf5b201dada56d797b1b61e6b62257127b3885a8248ba73dafa60da4f9",
+          "researchOnly": true,
+          "resultHash": "18c30b87d3fbcb2fe7f7996fb24427491e29c9f16efc2b3d3f25710efe0a743c",
+          "scenario": "stale_valuation",
+          "scope": "synthetic_fixture_not_real_historical_research",
+          "signalEvidenceScope": "controlled_mechanics_test_double",
+          "tickers": [
+            "000075",
+            "00088K",
+            "00104K",
+            "005930",
+            "035420"
+          ]
+        },
+        "reportId": "22aaada5cf70ee363cfe516344e073c1b7ea991a75f0af1e356883cf428c525d"
+      }
+    },
+    "scope": "executed_synthetic_comparison_workflow_not_real_market_performance"
+  }
 }
