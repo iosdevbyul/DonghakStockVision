@@ -421,3 +421,113 @@ not an arbitrary live-data acquisition option. The complete offline suite belong
 to the user-managed Self-hosted CI; this workflow does not change its runner,
 Python version, test scope or execution policy. No protected DB, original evidence,
 qualification, approval, Operations state, iOS or Web project is modified.
+
+## Real loopback TCP verification
+
+`tests/api/test_portfolio_comparison_tcp.py` complements the earlier TestClient
+workflow. It reuses the same four bounded synthetic preparations, real
+encode/publish output, external approved pin and serving CLI app construction.
+HTTP then uses **HTTPX's real TCP transport**, not TestClient or a mock response.
+No publication/API schema, trading engine, dependency, CI policy or global offline
+network guard is changed.
+
+### Run the TCP integration test
+
+```sh
+python -m pytest tests/api/test_portfolio_comparison_tcp.py
+```
+
+The harness reserves an IPv4 socket at `127.0.0.1:0` and holds it through Uvicorn
+startup. The OS chooses the port; there is no hardcoded test port or close/rebind
+race. A short-lived in-process server thread uses the existing FastAPI app and
+Uvicorn HTTP implementation, one worker, standard asyncio and disabled proxy
+headers. Readiness uses a bounded startup event, not repeated HTTP health probes.
+HTTPX uses a five-second timeout, no environment proxy and zero transport retries.
+Only the exact listener owned by the current test is permitted through the
+function-scoped network guard. The original offline guard remains unchanged for
+other tests; no `live` marker or CI exclusion is added.
+
+The test covers two approved reports, Mechanics/Linear/HGB, and the additional
+stale-valuation mechanics fixture. Response schemas, request ordering, original
+result/report/run/performance hashes, model references and provenance must match
+already-executed evidence. A real HTTP/1.1 network stream's peer address must equal
+the owned listener. Monetary values are copied from source Performance, never
+recalculated. Genuine synthetic model results with no orders/fills remain zero;
+controlled mechanics is identified separately from model inference.
+
+The same wire-level contracts apply: 200 for validated comparisons (including
+null/stale valuation), 422 `invalid_comparison_request` for wrong counts, duplicate
+or malformed IDs/JSON, 404 `report_not_found` for unknown/unapproved archives,
+503 `publication_manifest_mismatch` for stale pins or a corrupt projection,
+503 `archive_unavailable` for a missing projection, 503
+`archive_integrity_mismatch` for changed archive bytes, and 404
+`report_unpublished` after authorized revocation with a new pin. A nonlocal Host
+is 403; a forwarded address cannot change the actual accepted loopback peer.
+The existing collection still rejects HTTP POST publication with 405.
+
+Cleanup is in `finally`, including an intentionally raised test-body exception.
+It closes the HTTP client, requests graceful shutdown with a two-second task
+budget, joins the owned server thread, closes the listener and checks that it no
+longer accepts a TCP connection. Newly created HTTP worker threads must also exit.
+The test checks that no server subprocess was created, without stopping unrelated
+threads/processes or killing a service occupying some fixed port. Startup and
+shutdown have finite waits; a cleanup failure fails the test.
+
+### Foreground operator example with an OS-assigned port
+
+Use a fresh, still-active comparison workspace from the explicit preparation and
+registration steps above. If reports were already revoked, keep that evidence and
+prepare a new workspace; do not silently republish or adopt an index hash. Supply
+`CMP`, `PUB` and the current `CMP_INDEX` from your own authorized command output.
+The request file must contain this workspace's actual active report IDs.
+
+```sh
+dsv-api --snapshot "$CMP/mechanics/snapshot.json" --portfolio-publications "$PUB" \
+  --portfolio-index-sha256 "$CMP_INDEX" --host 127.0.0.1 --port 0 \
+  2>&1 | tee "$CMP/approved-output/tcp-server.log"
+```
+
+Wait for Uvicorn's startup message showing the assigned `http://127.0.0.1:<port>`.
+In another terminal, restore your `CMP` variable and extract that observed address
+only after startup succeeds (no retry loop or arbitrary port guessing):
+
+```sh
+TCP_BASE="$(python -c 'import re,sys; text=open(sys.argv[1]).read(); match=re.search(r"Uvicorn running on (http://127\.0\.0\.1:[0-9]+)",text); assert match, "startup address unavailable"; print(match[1])' "$CMP/approved-output/tcp-server.log")"
+curl --fail-with-body -sS "$TCP_BASE/api/v1/research/historical-portfolios/compare" \
+  -H 'Content-Type: application/json' \
+  --data-binary "@$CMP/approved-output/comparison-request.json" \
+  > "$CMP/approved-output/tcp-comparison-response.json"
+```
+
+Verify the returned item IDs in the original request order, original hashes and
+provenance, `archiveVerification=integrity_verified`,
+`reportVerification=offline_authoritative_replay_passed`, explicit research-only
+flags and null valuation reasons. Fresh fixture creation can have different source
+observation metadata/IDs; never use a committed example's IDs or pin for this run.
+These are synthetic fixtures, not real-market investment performance, calibrated
+probabilities, PIT/OOS qualification or authorization to trade.
+
+Use the existing offline revoke command and your **current** approved pin as shown
+above. The running server retains its old pin and must return 503; it does not
+refresh approval automatically. Ctrl-C in the server terminal stops the foreground
+process. Review the revoke output, explicitly restart with its new approved pin,
+and extract the newly assigned port again. A comparison containing a revoked ID
+then returns 404 `report_unpublished`; comparing two remaining active reports
+succeeds. Do not stop unrelated services or reuse an old bound address after restart.
+
+### What this adds and what it does not establish
+
+TestClient coverage remains in place and still validates the same contracts.
+The TCP layer additionally exercises a kernel listener, actual HTTP parsing and
+transport, connection peer, readiness, shutdown and resource release. Source
+DB/model fixture, expanded/compact input and publication hashes remain unchanged
+across reads. Corruption/revocation affect disposable copies only; publication
+approval is never performed through HTTP. Replay, backtest, model construction,
+loading and inference are forbidden after offline registration in both suites.
+
+This verifies only direct IPv4 loopback use on the local macOS/Linux filesystem
+contract. It does not test public ingress, remote-client routing, TLS, browser
+integration, proxies or tunnels. Existing browser CORS POST restrictions and the
+unavailable full valuation-policy comparison remain unchanged. The full offline
+suite is left to the existing self-hosted CI; these tests do not change its labels,
+Python policy, execution scope or any qualification/evidence gate.
