@@ -42,6 +42,10 @@ class Workflow:
     observations: dict[str, Any]
     counters: dict[str, int]
     connect: Callable[[Path, str], TestClient]
+    application: Callable[[Path, str, int], FastAPI]
+    socket_connect: Callable[..., Any]
+    socket_connect_ex: Callable[..., Any]
+    socket_create_connection: Callable[..., Any]
 
     def record_error(self, label: str, response: Any, status: int, code: str) -> None:
         assert response.status_code == status, response.text
@@ -73,6 +77,9 @@ def workflow(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Workflow]:
 
         return forbidden
 
+    socket_connect = socket.socket.connect
+    socket_connect_ex = socket.socket.connect_ex
+    socket_create_connection = socket.create_connection
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(socket.socket, "connect", deny("network"))
         patch.setattr(socket, "create_connection", deny("network"))
@@ -190,14 +197,17 @@ def workflow(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Workflow]:
             "donghak_stock_vision.signals.service.SignalService.research", deny("inference")
         )
         apps: list[FastAPI] = []
+        selected_port = 8877
 
         def capture(app: FastAPI, **settings: Any) -> None:
-            assert settings == {"host": "127.0.0.1", "port": 8877, "proxy_headers": False}
+            assert settings == {"host": "127.0.0.1", "port": selected_port, "proxy_headers": False}
             apps.append(app)
 
         patch.setattr("uvicorn.run", capture)
 
-        def connect(publication: Path, trusted: str) -> TestClient:
+        def application(publication: Path, trusted: str, port: int) -> FastAPI:
+            nonlocal selected_port
+            selected_port = port
             serve(
                 [
                     "--snapshot",
@@ -209,10 +219,14 @@ def workflow(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Workflow]:
                     "--host",
                     "127.0.0.1",
                     "--port",
-                    "8877",
+                    str(port),
                 ]
             )
-            return TestClient(apps[-1], base_url="http://127.0.0.1", client=("127.0.0.1", 123))
+            return apps[-1]
+
+        def connect(publication: Path, trusted: str) -> TestClient:
+            app = application(publication, trusted, 8877)
+            return TestClient(app, base_url="http://127.0.0.1", client=("127.0.0.1", 123))
 
         ids = tuple(records[label]["reportId"] for label in ("hgb", "mechanics", "linear", "stale"))
         observations.update(
@@ -220,7 +234,20 @@ def workflow(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Workflow]:
             publicationIndexSha256=pin,
             authoritativePublicationReplayCount=len(replays),
         )
-        yield Workflow(work, root, ids, pin, records, observations, counters, connect)
+        yield Workflow(
+            work,
+            root,
+            ids,
+            pin,
+            records,
+            observations,
+            counters,
+            connect,
+            application,
+            socket_connect,
+            socket_connect_ex,
+            socket_create_connection,
+        )
         assert fingerprint(root) == immutable
         for label, before_hashes in source_hashes.items():
             assert fingerprint(work / label) == before_hashes
