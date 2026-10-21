@@ -1,0 +1,541 @@
+{
+  "schema_version": 1,
+  "base_main": "8c84e0f36bb993cdd711271b43f7f9cacb5043e8",
+  "violations": [
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.availability\",\"donghak_stock_vision.storage.analysis\",\"ImportFrom(module='donghak_stock_vision.storage.analysis', names=[alias(name='AnalysisStore')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing availability depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.baseline_inputs\",\"donghak_stock_vision.models.artifact_resolver\",\"ImportFrom(module='donghak_stock_vision.models.artifact_resolver', names=[alias(name='TrustedHGBResolver')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing baseline_inputs depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.corporate_action_acquisition\",\"donghak_stock_vision.backtest.dart_transport\",\"ImportFrom(module='donghak_stock_vision.backtest.dart_transport', names=[alias(name='DartTransferLimits'), alias(name='read_cached_body'), alias(name='request_identity'), alias(name='zip_response_valid')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing corporate_action_acquisition depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.corporate_action_document_review\",\"donghak_stock_vision.backtest.dart_transport\",\"ImportFrom(module='donghak_stock_vision.backtest.dart_transport', names=[alias(name='request_identity')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing corporate_action_document_review depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.historical\",\"ImportFrom(module='donghak_stock_vision.backtest.historical', names=[alias(name='HistoricalBacktestInput')], level=0)\",\"<module>\",true,false]",
+      "count": 1,
+      "reason": "A core-marked module also contains higher-level frozen-input/entry validation or reconstruction. Later separate those services from minimal immutable values with compatibility re-exports; keep current hashes unchanged."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.historical\",\"ImportFrom(module='donghak_stock_vision.backtest.historical', names=[alias(name='HistoricalBacktestInput')], level=0)\",\"FrozenJSON.historical_evidence\",false,true]",
+      "count": 1,
+      "reason": "A core-marked module also contains higher-level frozen-input/entry validation or reconstruction. Later separate those services from minimal immutable values with compatibility re-exports; keep current hashes unchanged."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.historical_execution\",\"ImportFrom(module='donghak_stock_vision.backtest.historical_execution', names=[alias(name='_validate_input')], level=0)\",\"FrozenJSON.historical_evidence\",false,true]",
+      "count": 1,
+      "reason": "A core-marked module also contains higher-level frozen-input/entry validation or reconstruction. Later separate those services from minimal immutable values with compatibility re-exports; keep current hashes unchanged."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.shared_evidence\",\"ImportFrom(module='donghak_stock_vision.backtest.shared_evidence', names=[alias(name='SharedEvidence')], level=0)\",\"<module>\",true,false]",
+      "count": 1,
+      "reason": "A core-marked module also contains higher-level frozen-input/entry validation or reconstruction. Later separate those services from minimal immutable values with compatibility re-exports; keep current hashes unchanged."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.shared_evidence\",\"ImportFrom(module='donghak_stock_vision.backtest.shared_evidence', names=[alias(name='SharedEvidence')], level=0)\",\"FrozenJSON.shared_evidence\",false,true]",
+      "count": 1,
+      "reason": "A core-marked module also contains higher-level frozen-input/entry validation or reconstruction. Later separate those services from minimal immutable values with compatibility re-exports; keep current hashes unchanged."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.shared_evidence\",\"ImportFrom(module='donghak_stock_vision.backtest.shared_evidence', names=[alias(name='legacy_identifier')], level=0)\",\"FrozenJSON.historical_identifier\",false,true]",
+      "count": 1,
+      "reason": "A core-marked module also contains higher-level frozen-input/entry validation or reconstruction. Later separate those services from minimal immutable values with compatibility re-exports; keep current hashes unchanged."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.shared_evidence\",\"ImportFrom(module='donghak_stock_vision.backtest.shared_evidence', names=[alias(name='legacy_identifier')], level=0)\",\"FrozenJSON.legacy_identifier\",false,true]",
+      "count": 1,
+      "reason": "A core-marked module also contains higher-level frozen-input/entry validation or reconstruction. Later separate those services from minimal immutable values with compatibility re-exports; keep current hashes unchanged."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.data.snapshot\",\"ImportFrom(module='donghak_stock_vision.data.snapshot', names=[alias(name='covered'), alias(name='validate_quality')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "A core-marked module also contains higher-level frozen-input/entry validation or reconstruction. Later separate those services from minimal immutable values with compatibility re-exports; keep current hashes unchanged."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.decision_bridge\",\"donghak_stock_vision.backtest.availability\",\"ImportFrom(module='donghak_stock_vision.backtest.availability', names=[alias(name='FrozenAnalysis')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.decision_bridge\",\"donghak_stock_vision.storage.decision\",\"ImportFrom(module='donghak_stock_vision.storage.decision', names=[alias(name='DecisionStore')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing decision_bridge depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.decision_bridge\",\"donghak_stock_vision.strategy.adapter\",\"ImportFrom(module='donghak_stock_vision.strategy.adapter', names=[alias(name='assemble')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing decision_bridge depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.decision_bridge\",\"donghak_stock_vision.strategy.engine\",\"ImportFrom(module='donghak_stock_vision.strategy.engine', names=[alias(name='decide')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.entry_contract\",\"donghak_stock_vision.data.snapshot\",\"ImportFrom(module='donghak_stock_vision.data.snapshot', names=[alias(name='covered'), alias(name='validate_quality')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "A core-marked module also contains higher-level frozen-input/entry validation or reconstruction. Later separate those services from minimal immutable values with compatibility re-exports; keep current hashes unchanged."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.entry_contract\",\"donghak_stock_vision.features.engine\",\"ImportFrom(module='donghak_stock_vision.features.engine', names=[alias(name='check_segment')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "A core-marked module also contains higher-level frozen-input/entry validation or reconstruction. Later separate those services from minimal immutable values with compatibility re-exports; keep current hashes unchanged."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.hgb_provider\",\"donghak_stock_vision.models.artifact_resolver\",\"ImportFrom(module='donghak_stock_vision.models.artifact_resolver', names=[alias(name='TrustedHGBResolver')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing hgb_provider depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.historical\",\"donghak_stock_vision.storage.analysis\",\"ImportFrom(module='donghak_stock_vision.storage.analysis', names=[alias(name='AnalysisStore'), alias(name='ResearchRunStore')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing historical depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.historical_execution\",\"donghak_stock_vision.backtest.historical\",\"ImportFrom(module='donghak_stock_vision.backtest.historical', names=[alias(name='ASSUMPTION'), alias(name='HistoricalBacktestInput')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.historical_service\",\"donghak_stock_vision.storage.analysis\",\"ImportFrom(module='donghak_stock_vision.storage.analysis', names=[alias(name='AnalysisStore')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing historical_service depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.performance\",\"donghak_stock_vision.backtest.account\",\"ImportFrom(module='donghak_stock_vision.backtest.account', names=[alias(name='release_pending')], level=0)\",\"verified_frames\",false,true]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.performance\",\"donghak_stock_vision.backtest.historical_execution\",\"ImportFrom(module='donghak_stock_vision.backtest.historical_execution', names=[alias(name='MODE'), alias(name='validate_input')], level=0)\",\"calculate_performance\",false,true]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.portfolio\",\"donghak_stock_vision.storage.analysis\",\"ImportFrom(module='donghak_stock_vision.storage.analysis', names=[alias(name='AnalysisStore'), alias(name='ResearchRunStore')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing portfolio depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.position_history\",\"donghak_stock_vision.backtest.availability\",\"ImportFrom(module='donghak_stock_vision.backtest.availability', names=[alias(name='FrozenAnalysis')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.position_history\",\"donghak_stock_vision.backtest.execution\",\"ImportFrom(module='donghak_stock_vision.backtest.execution', names=[alias(name='execute')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.position_history\",\"donghak_stock_vision.backtest.historical_execution\",\"ImportFrom(module='donghak_stock_vision.backtest.historical_execution', names=[alias(name='validate_input')], level=0)\",\"verify_trade\",false,true]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.position_history\",\"donghak_stock_vision.strategy.engine\",\"ImportFrom(module='donghak_stock_vision.strategy.engine', names=[alias(name='decide')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.receipt_validation\",\"donghak_stock_vision.backtest.historical\",\"ImportFrom(module='donghak_stock_vision.backtest.historical', names=[alias(name='HistoricalBacktestInput'), alias(name='decision_schedule')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Archive semantic verification calls existing simulation/replay/report validators. This target-direction debt must be resolved through an explicit verifier port, never by removing or weakening source evidence validation."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.receipt_validation\",\"donghak_stock_vision.backtest.historical_service\",\"ImportFrom(module='donghak_stock_vision.backtest.historical_service', names=[alias(name='HistoricalBacktestRequest'), alias(name='run_frozen_historical')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Archive semantic verification calls existing simulation/replay/report validators. This target-direction debt must be resolved through an explicit verifier port, never by removing or weakening source evidence validation."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.receipt_validation\",\"donghak_stock_vision.backtest.portfolio_report\",\"ImportFrom(module='donghak_stock_vision.backtest.portfolio_report', names=[alias(name='replay_five_ticker')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Archive semantic verification calls existing simulation/replay/report validators. This target-direction debt must be resolved through an explicit verifier port, never by removing or weakening source evidence validation."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.receipt_validation\",\"donghak_stock_vision.backtest.report\",\"ImportFrom(module='donghak_stock_vision.backtest.report', names=[alias(name='format_report')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Archive semantic verification calls existing simulation/replay/report validators. This target-direction debt must be resolved through an explicit verifier port, never by removing or weakening source evidence validation."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.receipt_validation\",\"donghak_stock_vision.backtest.service\",\"ImportFrom(module='donghak_stock_vision.backtest.service', names=[alias(name='run_backtest_with_report')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Archive semantic verification calls existing simulation/replay/report validators. This target-direction debt must be resolved through an explicit verifier port, never by removing or weakening source evidence validation."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.receipt_validation\",\"donghak_stock_vision.backtest.trading_report\",\"ImportFrom(module='donghak_stock_vision.backtest.trading_report', names=[alias(name='ReportedBacktest')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Archive semantic verification calls existing simulation/replay/report validators. This target-direction debt must be resolved through an explicit verifier port, never by removing or weakening source evidence validation."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.run_evidence\",\"donghak_stock_vision.backtest.baseline_costs\",\"ImportFrom(module='donghak_stock_vision.backtest.baseline_costs', names=[alias(name='tax_rates')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.runner_tail\",\"donghak_stock_vision.backtest.baseline_costs\",\"ImportFrom(module='donghak_stock_vision.backtest.baseline_costs', names=[alias(name='BaselineCostPolicy')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.runner_tail\",\"donghak_stock_vision.backtest.baseline_policy\",\"ImportFrom(module='donghak_stock_vision.backtest.baseline_policy', names=[alias(name='BaselineBacktestPolicy'), alias(name='baseline_rules')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.runner_tail\",\"donghak_stock_vision.backtest.baseline_runner\",\"ImportFrom(module='donghak_stock_vision.backtest.baseline_runner', names=[alias(name='VERSION', asname='RUNNER_VERSION')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.security_lifecycle\",\"donghak_stock_vision.backtest.verify_dart\",\"ImportFrom(module='donghak_stock_vision.backtest.verify_dart', names=[alias(name='semantic_metadata')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.shared_evidence\",\"donghak_stock_vision.backtest.availability\",\"ImportFrom(module='donghak_stock_vision.backtest.availability', names=[alias(name='FrozenAnalysis')], level=0)\",\"<module>\",true,false]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.backtest.shared_evidence\",\"donghak_stock_vision.backtest.availability\",\"ImportFrom(module='donghak_stock_vision.backtest.availability', names=[alias(name='FrozenAnalysis')], level=0)\",\"SharedEvidence.analyses\",false,true]",
+      "count": 1,
+      "reason": "Confirmed source import conflicts with the documented proposed domain direction; orchestration/proof code is colocated with this logical domain. Later extract the caller/interface without changing public modules, decisions or evidence semantics."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.ingestion.market\",\"donghak_stock_vision.providers.krx\",\"ImportFrom(module='donghak_stock_vision.providers.krx', names=[alias(name='KRXProvider')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing market depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.models.experiment\",\"donghak_stock_vision.storage.analysis\",\"ImportFrom(module='donghak_stock_vision.storage.analysis', names=[alias(name='AnalysisStore')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing experiment depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.models.service\",\"donghak_stock_vision.storage.analysis\",\"ImportFrom(module='donghak_stock_vision.storage.analysis', names=[alias(name='AnalysisStore')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing service depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.signals.domain\",\"donghak_stock_vision.models.inference\",\"ImportFrom(module='donghak_stock_vision.models.inference', names=[alias(name='ResearchPolicy'), alias(name='ResearchScore')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Signal dataclasses depend on ResearchPolicy/ResearchScore housed in model inference implementation. Later separate or re-export minimal score contracts while preserving existing public imports."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.signals.integration\",\"donghak_stock_vision.models.artifact_resolver\",\"ImportFrom(module='donghak_stock_vision.models.artifact_resolver', names=[alias(name='TrustedHGBResolver')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing integration depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"domain-direction\",\"donghak_stock_vision.signals.service\",\"donghak_stock_vision.storage.analysis\",\"ImportFrom(module='donghak_stock_vision.storage.analysis', names=[alias(name='AnalysisStore')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing service depends on a concrete adapter. Later inject an interface and move composition outward; retain current read-only/provenance/approval checks during migration."
+    },
+    {
+      "key": "[\"infrastructure-in-domain\",\"donghak_stock_vision.backtest.run_evidence\",\"sqlite3\",\"Import(names=[alias(name='sqlite3')])\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing run_evidence imports sqlite3 for persistence-aware handling. Later separate adapter/errors from the domain boundary with behavior-preserving regressions; this PR retains the import exactly."
+    },
+    {
+      "key": "[\"infrastructure-in-domain\",\"donghak_stock_vision.ingestion.market\",\"sqlite3\",\"Import(names=[alias(name='sqlite3')])\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing market imports sqlite3 for persistence-aware handling. Later separate adapter/errors from the domain boundary with behavior-preserving regressions; this PR retains the import exactly."
+    },
+    {
+      "key": "[\"infrastructure-in-domain\",\"donghak_stock_vision.ingestion.pipeline\",\"sqlite3\",\"Import(names=[alias(name='sqlite3')])\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing pipeline imports sqlite3 for persistence-aware handling. Later separate adapter/errors from the domain boundary with behavior-preserving regressions; this PR retains the import exactly."
+    },
+    {
+      "key": "[\"infrastructure-in-domain\",\"donghak_stock_vision.storage.capture_raw_source_contract\",\"sqlite3\",\"Import(names=[alias(name='sqlite3')])\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing capture_raw_source_contract imports sqlite3 for persistence-aware handling. Later separate adapter/errors from the domain boundary with behavior-preserving regressions; this PR retains the import exactly."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api\",\"donghak_stock_vision.api.app\",\"ImportFrom(module='donghak_stock_vision.api.app', names=[alias(name='create_app')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.historical_portfolio_routes\",\"ImportFrom(module='donghak_stock_vision.api.historical_portfolio_routes', names=[alias(name='portfolio_router')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.historical_portfolios\",\"ImportFrom(module='donghak_stock_vision.api.historical_portfolios', names=[alias(name='PortfolioPublicationReader')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.models\",\"ImportFrom(module='donghak_stock_vision.api.models', names=[alias(name='BaselineBacktestSnapshot'), alias(name='CoverageSummary'), alias(name='EvidenceDetail'), alias(name='EvidenceLayerId'), alias(name='EvidenceLayerSummary'), alias(name='HealthPayload'), alias(name='ModelDetail'), alias(name='ModelDirection'), alias(name='ModelSummary'), alias(name='ProjectStatus'), alias(name='StockDetail'), alias(name='StockSummary')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.ohlcv\",\"ImportFrom(module='donghak_stock_vision.api.ohlcv', names=[alias(name='OhlcvMarketReader'), alias(name='OhlcvSeries')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.operations\",\"ImportFrom(module='donghak_stock_vision.api.operations', names=[alias(name='AlertsPayload'), alias(name='FreshnessPayload'), alias(name='OperationsReader'), alias(name='RunsPayload')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.screener\",\"ImportFrom(module='donghak_stock_vision.api.screener', names=[alias(name='ScreenerSnapshot'), alias(name='published_screener')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.security_metadata\",\"ImportFrom(module='donghak_stock_vision.api.security_metadata', names=[alias(name='MetadataEnvelope'), alias(name='SecurityMetadataDetail'), alias(name='SecurityMetadataReader')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.service\",\"ImportFrom(module='donghak_stock_vision.api.service', names=[alias(name='ResearchAPIReader')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.stock_analysis\",\"ImportFrom(module='donghak_stock_vision.api.stock_analysis', names=[alias(name='AnalysisPublicationReader'), alias(name='PublishedStockAnalysis')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.exporter\",\"donghak_stock_vision.api.models\",\"ImportFrom(module='donghak_stock_vision.api.models', names=[alias(name='BacktestFingerprint'), alias(name='BacktestReadinessStep'), alias(name='BacktestRule'), alias(name='BacktestRuleGroup'), alias(name='BacktestTimelineItem'), alias(name='BaselineBacktestSnapshot'), alias(name='CoverageSummary'), alias(name='EvidenceDetail'), alias(name='EvidenceMetric'), alias(name='ModelDetail'), alias(name='ProjectStatus'), alias(name='ResearchCheckpoint'), alias(name='StockDetail'), alias(name='SummaryMetric')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.exporter\",\"donghak_stock_vision.api.snapshot\",\"ImportFrom(module='donghak_stock_vision.api.snapshot', names=[alias(name='ResearchAPISnapshot')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.historical_portfolio_comparison\",\"donghak_stock_vision.api.historical_portfolio_projection\",\"ImportFrom(module='donghak_stock_vision.api.historical_portfolio_projection', names=[alias(name='PROJECTION'), alias(name='RESTRICTIONS')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.historical_portfolio_models\",\"donghak_stock_vision.api.models\",\"ImportFrom(module='donghak_stock_vision.api.models', names=[alias(name='FrozenModel')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.historical_portfolio_routes\",\"donghak_stock_vision.api.historical_portfolio_models\",\"ImportFrom(module='donghak_stock_vision.api.historical_portfolio_models', names=[alias(name='PortfolioComparison'), alias(name='PortfolioComparisonRequest'), alias(name='PortfolioPage'), alias(name='PortfolioSummary'), alias(name='PortfolioTicker'), alias(name='PortfolioTrades')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.historical_portfolio_routes\",\"donghak_stock_vision.api.historical_portfolios\",\"ImportFrom(module='donghak_stock_vision.api.historical_portfolios', names=[alias(name='PortfolioPublicationReader'), alias(name='PublicationError')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.historical_portfolios\",\"donghak_stock_vision.api.historical_portfolio_comparison\",\"ImportFrom(module='donghak_stock_vision.api.historical_portfolio_comparison', names=[alias(name='compare_views')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.historical_portfolios\",\"donghak_stock_vision.api.historical_portfolio_projection\",\"ImportFrom(module='donghak_stock_vision.api.historical_portfolio_projection', names=[alias(name='PROJECTION'), alias(name='REPORT'), alias(name='RESTRICTIONS'), alias(name='RESULT'), alias(name='projection')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.operations\",\"donghak_stock_vision.api.models\",\"ImportFrom(module='donghak_stock_vision.api.models', names=[alias(name='FrozenModel')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.operations\",\"donghak_stock_vision.api.ohlcv\",\"ImportFrom(module='donghak_stock_vision.api.ohlcv', names=[alias(name='OhlcvMarketReader')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.operations\",\"donghak_stock_vision.api.service\",\"ImportFrom(module='donghak_stock_vision.api.service', names=[alias(name='ResearchAPIReader')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.screener\",\"donghak_stock_vision.api.service\",\"ImportFrom(module='donghak_stock_vision.api.service', names=[alias(name='ResearchAPIReader')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.screener\",\"donghak_stock_vision.api.stock_analysis\",\"ImportFrom(module='donghak_stock_vision.api.stock_analysis', names=[alias(name='AnalysisPublicationReader')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.security_metadata\",\"donghak_stock_vision.api.exporter\",\"ImportFrom(module='donghak_stock_vision.api.exporter', names=[alias(name='_english_name'), alias(name='load_artifact'), alias(name='snapshot_bytes')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.security_metadata\",\"donghak_stock_vision.api.models\",\"ImportFrom(module='donghak_stock_vision.api.models', names=[alias(name='FrozenModel'), alias(name='StockSummary')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.security_metadata\",\"donghak_stock_vision.api.service\",\"ImportFrom(module='donghak_stock_vision.api.service', names=[alias(name='ResearchAPIReader')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.security_metadata\",\"donghak_stock_vision.api.snapshot\",\"ImportFrom(module='donghak_stock_vision.api.snapshot', names=[alias(name='ResearchAPISnapshot'), alias(name='SnapshotReader')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.service\",\"donghak_stock_vision.api.models\",\"ImportFrom(module='donghak_stock_vision.api.models', names=[alias(name='BaselineBacktestSnapshot'), alias(name='CoverageSummary'), alias(name='EvidenceDetail'), alias(name='EvidenceLayerId'), alias(name='EvidenceLayerSummary'), alias(name='ModelDetail'), alias(name='ModelDirection'), alias(name='ModelSummary'), alias(name='ProjectStatus'), alias(name='StockDetail'), alias(name='StockSummary')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.snapshot\",\"donghak_stock_vision.api.models\",\"ImportFrom(module='donghak_stock_vision.api.models', names=[alias(name='BaselineBacktestSnapshot'), alias(name='CoverageSummary'), alias(name='EvidenceDetail'), alias(name='EvidenceLayerId'), alias(name='EvidenceLayerSummary'), alias(name='ModelDetail'), alias(name='ModelDirection'), alias(name='ModelSummary'), alias(name='ProjectStatus'), alias(name='StockDetail'), alias(name='StockSummary')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.account\",\"donghak_stock_vision.backtest.performance\",\"ImportFrom(module='donghak_stock_vision.backtest.performance', names=[alias(name='policy_values'), alias(name='valuation')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing execution frames and performance verification mutually reference account/performance ownership. Preserve all replay/economic validators; extract a proof interface later. Static cycle includes deferred imports."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.availability\",\"donghak_stock_vision.backtest.data\",\"ImportFrom(module='donghak_stock_vision.backtest.data', names=[alias(name='PROVENANCE'), alias(name='FrozenJSON'), alias(name='PublicView')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.availability\",\"donghak_stock_vision.backtest.shared_evidence\",\"ImportFrom(module='donghak_stock_vision.backtest.shared_evidence', names=[alias(name='SharedAnalysis')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.collect_corporate_action_documents\",\"donghak_stock_vision.backtest.dart_document_batch\",\"ImportFrom(module='donghak_stock_vision.backtest.dart_document_batch', names=[alias(name='execute'), alias(name='load')], level=0)\",\"main\",false,true]",
+      "count": 1,
+      "reason": "Existing DART CLI/session orchestration uses mutual helper imports, including deferred imports. Later extract shared helpers without changing approval/request limits. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.dart_batch_orchestrator\",\"donghak_stock_vision.backtest.dart_document_batch\",\"ImportFrom(module='donghak_stock_vision.backtest', names=[alias(name='dart_document_batch', asname='batch')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing DART CLI/session orchestration uses mutual helper imports, including deferred imports. Later extract shared helpers without changing approval/request limits. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.dart_document_batch\",\"donghak_stock_vision.backtest.collect_corporate_action_documents\",\"ImportFrom(module='donghak_stock_vision.backtest.collect_corporate_action_documents', names=[alias(name='PILOT_DIRECTORY'), alias(name='PILOT_RECEIPT'), alias(name='read')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing DART CLI/session orchestration uses mutual helper imports, including deferred imports. Later extract shared helpers without changing approval/request limits. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.dart_document_batch\",\"donghak_stock_vision.backtest.dart_multi_batch_session\",\"ImportFrom(module='donghak_stock_vision.backtest.dart_multi_batch_session', names=[alias(name='execution_guard')], level=0)\",\"execute\",false,true]",
+      "count": 1,
+      "reason": "Existing DART CLI/session orchestration uses mutual helper imports, including deferred imports. Later extract shared helpers without changing approval/request limits. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.dart_multi_batch_session\",\"donghak_stock_vision.backtest.dart_batch_orchestrator\",\"ImportFrom(module='donghak_stock_vision.backtest', names=[alias(name='dart_batch_orchestrator', asname='orchestrator')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing DART CLI/session orchestration uses mutual helper imports, including deferred imports. Later extract shared helpers without changing approval/request limits. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.dart_multi_batch_session\",\"donghak_stock_vision.backtest.dart_document_batch\",\"ImportFrom(module='donghak_stock_vision.backtest', names=[alias(name='dart_document_batch', asname='batch')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Existing DART CLI/session orchestration uses mutual helper imports, including deferred imports. Later extract shared helpers without changing approval/request limits. Static cycle, not a proven runtime failure."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.historical\",\"ImportFrom(module='donghak_stock_vision.backtest.historical', names=[alias(name='HistoricalBacktestInput')], level=0)\",\"FrozenJSON.historical_evidence\",false,true]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.historical_execution\",\"ImportFrom(module='donghak_stock_vision.backtest.historical_execution', names=[alias(name='_validate_input')], level=0)\",\"FrozenJSON.historical_evidence\",false,true]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.shared_evidence\",\"ImportFrom(module='donghak_stock_vision.backtest.shared_evidence', names=[alias(name='SharedEvidence')], level=0)\",\"FrozenJSON.shared_evidence\",false,true]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.shared_evidence\",\"ImportFrom(module='donghak_stock_vision.backtest.shared_evidence', names=[alias(name='legacy_identifier')], level=0)\",\"FrozenJSON.historical_identifier\",false,true]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.data\",\"donghak_stock_vision.backtest.shared_evidence\",\"ImportFrom(module='donghak_stock_vision.backtest.shared_evidence', names=[alias(name='legacy_identifier')], level=0)\",\"FrozenJSON.legacy_identifier\",false,true]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.historical\",\"donghak_stock_vision.backtest.availability\",\"ImportFrom(module='donghak_stock_vision.backtest.availability', names=[alias(name='FrozenAnalysis')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.historical\",\"donghak_stock_vision.backtest.data\",\"ImportFrom(module='donghak_stock_vision.backtest.data', names=[alias(name='PROVENANCE'), alias(name='FrozenJSON'), alias(name='FrozenTape'), alias(name='capture_market')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.historical\",\"donghak_stock_vision.backtest.shared_evidence\",\"ImportFrom(module='donghak_stock_vision.backtest.shared_evidence', names=[alias(name='EvidenceBuilder'), alias(name='is_shared')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.historical_execution\",\"donghak_stock_vision.backtest.data\",\"ImportFrom(module='donghak_stock_vision.backtest.data', names=[alias(name='FrozenJSON'), alias(name='FrozenTape')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.historical_execution\",\"donghak_stock_vision.backtest.historical\",\"ImportFrom(module='donghak_stock_vision.backtest.historical', names=[alias(name='ASSUMPTION'), alias(name='HistoricalBacktestInput')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.performance\",\"donghak_stock_vision.backtest.account\",\"ImportFrom(module='donghak_stock_vision.backtest.account', names=[alias(name='release_pending')], level=0)\",\"verified_frames\",false,true]",
+      "count": 1,
+      "reason": "Existing execution frames and performance verification mutually reference account/performance ownership. Preserve all replay/economic validators; extract a proof interface later. Static cycle includes deferred imports."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.portfolio\",\"donghak_stock_vision.backtest.portfolio_report\",\"ImportFrom(module='donghak_stock_vision.backtest.portfolio_report', names=[alias(name='replay_five_ticker')], level=0)\",\"run_five_ticker\",false,true]",
+      "count": 1,
+      "reason": "Portfolio runner and report projection mutually reference each other through a deferred report import. Later split projection constants/interfaces while preserving report hashes."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.portfolio_report\",\"donghak_stock_vision.backtest.portfolio\",\"ImportFrom(module='donghak_stock_vision.backtest.portfolio', names=[alias(name='canonical_frozen'), alias(name='frozen_runner')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Portfolio runner and report projection mutually reference each other through a deferred report import. Later split projection constants/interfaces while preserving report hashes."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.shared_evidence\",\"donghak_stock_vision.backtest.availability\",\"ImportFrom(module='donghak_stock_vision.backtest.availability', names=[alias(name='FrozenAnalysis')], level=0)\",\"SharedEvidence.analyses\",false,true]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.shared_evidence\",\"donghak_stock_vision.backtest.data\",\"ImportFrom(module='donghak_stock_vision.backtest.data', names=[alias(name='FrozenJSON')], level=0)\",\"<module>\",false,false]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.shared_evidence\",\"donghak_stock_vision.backtest.data\",\"ImportFrom(module='donghak_stock_vision.backtest.data', names=[alias(name='FrozenTape')], level=0)\",\"legacy_dict\",false,true]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    },
+    {
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.backtest.shared_evidence\",\"donghak_stock_vision.backtest.data\",\"ImportFrom(module='donghak_stock_vision.backtest.data', names=[alias(name='FrozenTape')], level=0)\",\"pack\",false,true]",
+      "count": 1,
+      "reason": "Frozen input/shared-evidence reconstruction and historical/availability code mutually reference each other, including lazy properties. Later extract minimal immutable evidence interfaces without changing legacy IDs or validators."
+    }
+  ]
+}
