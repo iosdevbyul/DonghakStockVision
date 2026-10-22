@@ -528,3 +528,10 @@ categories and compatible experiment comparison, see
 [Simulation failure analysis foundation](simulation-failure-analysis-foundation.md).
 That additive projection does not change adapter execution, risk policies,
 checkpoint formats or the unavailable terminal valuation contract.
+
+## Explicit portfolio valuation
+
+[Paper simulation portfolio valuation](paper-simulation-portfolio-valuation.md)
+adds a separate pinned-mark analysis interface for completed native KRW/USD
+outputs. It preserves this adapter's unavailable valuation placeholder and the
+existing diagnostic v1 contract. No execution, resume or approval behavior changes.
