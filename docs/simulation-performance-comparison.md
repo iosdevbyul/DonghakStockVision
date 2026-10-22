@@ -235,3 +235,11 @@ Next work requires independent OOS/economic validation and explicitly governed
 valuation-aware publication, not automatically optimizing or promoting a variant.
 Existing PIT, OOS, Corporate Actions and operational restrictions remain intact.
 Synthetic returns are not verified real-world investment performance.
+
+## Separate temporal validation
+
+[OOS / walk-forward validation](simulation-walk-forward-validation.md) consumes
+these original owners and pins through existing full verification. Comparison
+membership alone does not establish training chronology or a strategy freeze;
+missing temporal evidence stays ineligible. The additive layer leaves this v1
+comparison contract and all historical/PIT approval gates unchanged.
