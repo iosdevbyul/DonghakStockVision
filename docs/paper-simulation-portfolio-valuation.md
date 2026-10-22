@@ -260,3 +260,10 @@ quality. Future OOS evaluation needs independently approved data, cost/flow
 boundaries, robust valuation policies, Corporate Actions/PIT evidence, leakage
 controls and independent validation. Optimization or strategy promotion is not
 implemented or authorized by this foundation.
+
+## Separate performance comparison
+
+[Simulation performance comparison](simulation-performance-comparison.md) verifies
+original valuation owners and trusted source pins before comparing compatible
+synthetic cohorts. It provides exact descriptive/paired statistics and explicit
+failure coverage without changing valuation v1 or diagnostic v1 contracts.
