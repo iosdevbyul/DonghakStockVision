@@ -164,9 +164,20 @@ threads are started by this foundation.
 ## Checkpoint and resume
 
 `mass_simulation_checkpoint_v1` contains the exact experiment fingerprint and
-all committed versioned attempt records. New state is built and validated before
-one immutable in-memory head replacement. Failure during construction/validation
-leaves the previous head intact. Readers may retain prior `FrozenJSON` owners.
+all committed versioned attempt records. The current internal representation is a
+private persistent chain of validated immutable records with incremental attempt,
+ordering, byte-budget and output-budget summaries. Each append fully validates
+the new record, binds it to the current owner/parent, then atomically replaces the
+state and invalidates the old export cache. Failure before this commit leaves the
+previous head intact. Readers may retain prior `FrozenJSON` exports.
+
+The v1 JSON format, run/result hashes and canonical checkpoint bytes are unchanged.
+`checkpoint()` materializes the complete legacy document on demand, with a
+per-head rendering cache. Supplied JSON never gets this internal fast path: every
+restore independently verifies its trusted pin, full schema, records, hashes,
+transitions and limits. The rendering cache is not an approval or input-validation
+cache. See the [before/after investigation](mass-simulation-paper-broker-adapter.md#checkpoint-performance-optimization)
+for measurement methodology, private-owner boundaries and remaining costs.
 
 Resume requires both the original specification and an **independently trusted
 checkpoint hash**. It validates the canonical bytes/pin, exact version/config,
@@ -250,10 +261,13 @@ remain outside execution; protected artifact hashes are compared separately.
 ## Toward 1,000 and 10,000 jobs
 
 No 10,000-job CI workload is added. The 10/100 cases validate mechanics, not
-production throughput. The current checkpoint implementation copies/serializes
-and validates retained records on every transition; cumulative checkpoint work
-is quadratic in batch length and memory includes old/new immutable documents.
-This PR does not claim streaming, constant-memory replay or throughput gains.
+production throughput. The original checkpoint implementation copied/serialized
+and validated retained records on every transition, with quadratic cumulative
+checkpoint work. The subsequent optimization validates each newly appended record
+once and defers full serialization until requested. A fresh full export after
+every job can still make a caller's cumulative rendering work quadratic. Complete
+results, restore and export remain linear in retained evidence size; no streaming,
+constant-memory replay or 1,000/10,000-run performance claim is made.
 
 Before scaling, measure 1,000 synthetic jobs locally under explicit budgets,
 profile serialization/retention and adapter costs, then design independently
