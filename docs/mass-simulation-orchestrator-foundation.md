@@ -1,5 +1,9 @@
 # Mass Simulation Orchestrator foundation
 
+The subsequent [Paper Broker integration](mass-simulation-paper-broker-adapter.md)
+composes this foundation with explicit synthetic paper scenarios. The scope
+described below records what the original foundation PR provided.
+
 This is offline research orchestration infrastructure, not strategy optimization,
 a trading service or an investment recommendation. A successful run means that
 an adapter returned a structurally valid result within the observed budgets.
