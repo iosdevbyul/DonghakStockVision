@@ -328,9 +328,9 @@ measurements on Python 3.12 are not a throughput claim for CI or another host.
 No 10,000-run CI workload is added.
 
 Retaining full small broker receipts makes result size proportional to jobs and
-scenario commands. Existing scheduler checkpoint copying/canonical validation
-scans prior results each transition, so cumulative checkpoint work is quadratic.
-The adapter's successful 100-run test does not establish cost-effective 1,000 or
+scenario commands. The original scheduler scanned prior results each transition;
+its measured quadratic cost motivated the checkpoint optimization below. The
+adapter's successful bounded tests do not establish cost-effective 1,000 or
 10,000-run execution. Measure those sizes independently before changing storage
 or concurrency; do not remove safety bounds to obtain a faster benchmark.
 
@@ -340,3 +340,183 @@ That work must preserve original receipts, trusted pins, native settlement, risk
 checks and independent OOS validation. No optimization, strategy approval,
 Corporate Actions/PIT/OOS relaxation or operational activation follows from this
 integration.
+
+
+## Checkpoint performance optimization
+
+The reference baseline is main after PR #126:
+`d0a31fa20d674c8c8a58b1c8d75753f47794f2be`. The earlier table records that PR's
+original one-sample traced observations. The following investigation remeasures
+the same fixtures rather than using those old timings as the comparison baseline.
+
+### Investigation and implementation
+
+Originally each committed job built `[*records, record]`, serialized all completed
+outputs through `FrozenJSON`, parsed that document, and revalidated every previous
+run hash, output and transition. It also reparsed/copied history to build latest
+results and reconstruct resume bookkeeping. With N equal-sized results, append
+serialization/validation visited N(N+1)/2 records. Whole-checkpoint hashing at
+export is a separate linear cost, not the dominant repeated operation.
+
+The implementation keeps a private persistent chain of immutable validated record
+owners. Appending validates the entire **new** record (schema, canonical bytes,
+hash, identity, seed, status/failure, attempt, transition and resource limits),
+then derives cumulative byte/output counts from the current validated parent.
+Current-parent identity and scheduler-owner checks prevent stale or cross-owner
+append reuse. Small summary seals and per-record byte digests detect stale or
+corrupted internal metadata; they are not signatures or a new authorization grant.
+A single head replacement commits the record and invalidates the old export cache
+atomically. Interrupted precommit work preserves the original checkpoint.
+
+Full legacy v1 JSON is rendered only when `checkpoint()` is requested. A per-head
+rendering cache can serve repeated reads. Export traverses/checks the immutable
+chain, verifies recorded byte accounting and checks cached rendering bytes against
+the original byte pin. Public result owners are detached from internal records.
+No dictionary of untrusted supplied documents is marked "already validated".
+
+**Restore has no incremental shortcut.** Every supplied `FrozenJSON`, including a
+previously supplied object, is independently checked against its trusted pin and
+then fully validated record by record into a new private chain. Unknown versions,
+extra cache metadata, modified identities, corrupted records, illegal transitions
+and mismatched limits are rejected. A valid earlier prefix cannot be distinguished
+from legitimate earlier state without the original trusted pin; that pin remains
+mandatory. Hashes do not authenticate a semantic forgery if both evidence and pin
+are replaced. Explicit `PaperSimulationAdapter.replay_validate` remains necessary
+for semantic replay and is never implicitly skipped or replaced by a summary seal.
+
+The trust boundary is immutable in-process owners and ordinary untrusted JSON.
+Summary seals are accidental-corruption checks, not a sandbox against arbitrary
+Python code that can replace private attributes, recompute seals and run arbitrary
+instructions. This is the same in-process trust limitation as the cooperative
+runner; no trading/risk/governance eligibility is expanded.
+
+### Compatibility and correctness
+
+`mass_simulation_checkpoint_v1` keeps exactly the same meaning, fields, ordering
+and canonical bytes. There is no migration, new format, pickle or DB change. Run
+IDs, seeds, result hashes and adapter outputs remain unchanged. Golden hashes
+captured from the baseline cover success, failure, cancellation and interruption;
+the Paper Broker fixture retains PR #126 checkpoint/result hashes. Full restored
+validation, bounded attempt history, cancellation/failure isolation and job-boundary
+resume remain authoritative. Complete jobs do not execute again during resume.
+
+A metadata/transport pin check does not claim a profitable or independently
+validated strategy. No Paper Broker, Risk Engine or accounting code is changed.
+All existing risk/conservation/replay regressions remain in scope.
+
+### Bounded before/after measurements
+
+Untraced total times include the first full checkpoint export. Ten/100-job
+cases have two fresh-process samples per implementation; the 300-job case is a
+single bounded sample. Percentage decreases use the sample means, not rounded
+numbers. Small-case variability is shown rather than treated as a precise speedup.
+
+| Jobs | Before raw totals (s) | After raw totals (s) | Mean time decrease | Checkpoint bytes, unchanged |
+| --- | --- | --- | ---: | ---: |
+| 10 | 0.779229, 0.747374 | 0.662698, 0.630228 | 15.31% | 117,233 |
+| 100 | 16.268955, 16.217186 | 6.683056, 6.518434 | 59.36% | 1,171,033 |
+| 300 | 110.869562 | 20.421424 | 81.58% | 3,512,811 |
+
+Representative untraced component timings (second sample for 10/100, sole sample
+for 300), before → after, in seconds. Construction is cumulative `_document`
+time including the first export, while validation is `_validate` time. Export
+also includes chain-byte/seal checks not attributed to `_validate`. Residual
+scheduling therefore includes record preparation/commit guards; these component
+boundaries must not be interpreted as eliminating every integrity cost.
+
+| Jobs | Paper adapter | Checkpoint construction | Record/history validation | Result projection | First export | Restore | Completed resume |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 10 | 0.614116 → 0.589979 | 0.030555 → 0.005348 | 0.086641 → 0.015237 | 0.007361 → 0.004077 | 0.000001 → 0.007563 | 0.023739 → 0.030705 | 0.010703 → 0.003673 |
+| 100 | 6.079426 → 6.069736 | 2.735056 → 0.060572 | 7.220941 → 0.155781 | 0.070349 → 0.046119 | 0.000002 → 0.083365 | 0.229536 → 0.373385 | 0.089431 → 0.039444 |
+| 300 | 18.782944 → 18.854174 | 25.046305 → 0.149142 | 66.260314 → 0.474610 | 0.203717 → 0.127199 | 0.000002 → 0.230470 | 0.959755 → 1.263707 | 0.284063 → 0.122492 |
+
+External canonical checkpoint hashing is still a full linear operation: for 100
+jobs it was 0.026196 → 0.035434 s and for 300 jobs 0.090819 → 0.089779 s. No hashing
+speedup is claimed. Initialization was 0.048039 → 0.043170 s at 100 jobs and
+0.368636 → 0.363721 s at 300; existing run-ID setup still repeatedly fingerprints
+the full job specification, a remaining quadratic term that was minor in these
+bounded samples. The adapter itself remains approximately 6.1 s per 100 jobs and
+18.8 s per 300: it is now the dominant measured work, not an optimized trading
+engine.
+
+**Cold restore is slower**, because it still fully verifies every supplied record
+and constructs independently owned immutable records/summaries/digests. At 100
+jobs the representative restore rose from 0.230 s to 0.373 s; at 300 it rose from
+0.960 s to 1.264 s. The new first export is also actual work rather than returning
+a previously built head; total timings include that cost. These are explicit
+tradeoffs, not hidden performance wins.
+
+Separate allocation-traced samples (one per size/implementation):
+
+| Jobs | Traced total before → after (s) | Python peak before → after (bytes) | Fresh-process RSS before → after, untraced representative (bytes) |
+| --- | --- | --- | --- |
+| 10 | 3.748631 → 2.984016 | 2,857,434 → 2,985,536 | 35,475,456 → 35,844,096 |
+| 100 | 115.035175 → 30.825141 | 14,050,165 → 14,175,615 | 56,541,184 → 53,338,112 |
+| 300 | Not traced | Not measured | 88,674,304 → 99,430,400 |
+
+**No overall peak-memory reduction is established.** The 100-job traced peak is
+essentially flat/slightly higher, and the single 300-job process RSS high-water
+sample is higher after optimization. The persistent chain plus detached results,
+rendered checkpoint and restored owners retain additional representations; final
+full rendering/measurement also allocates large transient objects. RSS varies
+with allocator/GC behavior and cannot be attributed solely to the checkpoint.
+This is a time optimization, not a proven memory or streaming optimization.
+
+Serialized result-array bytes are unchanged at 117,087 / 1,170,887 / 3,512,665 for
+10/100/300 jobs. Corresponding checkpoint hashes are unchanged from baseline:
+`00c3b8ce04ebf3ea2161b49fc847538e5108266015e1ade89ad0c13e367fc8ab`,
+`78dddd0e0e042ed327666f3378a5152dbc4efd255d9c257e94c93b420783c6da`,
+`eeaf3e4e7aad72e7debc1e3b96c0b1662c3089043c79ec459799e9ea3a7c133b`.
+All samples executed exactly N scheduled adapter calls and zero adapter calls on
+completed resume. One-job explicit semantic replay passed in every sample;
+untraced before/after observations ranged approximately 0.059–0.074 / 0.059–0.071 s.
+No full 300-job semantic replay timing is claimed.
+
+
+Reproduction from a source checkout (the benchmark is opt-in, not collected by
+normal pytest):
+
+```sh
+git show d0a31fa20d674c8c8a58b1c8d75753f47794f2be:src/donghak_stock_vision/backtest/mass_simulation.py > /tmp/dsv-checkpoint-before.py
+PYTHONPATH=src:. .venv/bin/python tests/benchmarks/mass_simulation_checkpoint.py --runs 100 --legacy-module /tmp/dsv-checkpoint-before.py
+PYTHONPATH=src:. .venv/bin/python tests/benchmarks/mass_simulation_checkpoint.py --runs 100
+# Separate allocation-traced sample; do not mix with untraced time comparisons:
+PYTHONPATH=src:. .venv/bin/python tests/benchmarks/mass_simulation_checkpoint.py --runs 100 --trace
+```
+
+The legacy-module switch loads a developer-supplied local source snapshot solely
+in this measurement harness, never in production restore or an API request. Each
+sample runs in a new process. Before/after use the same registry, order/clock/cost
+fixtures, instrumented method boundaries and unchanged production limits. The
+300-job fixture changes only the explicit max-run count and job tuple; its 16 MiB
+output cap and per-job budgets remain unchanged. Each invocation was externally
+bounded to 180 seconds; no 300-job allocation-traced run was attempted because
+the baseline's quadratic traced cost would exceed the bounded reference budget.
+
+Times use `perf_counter`. Total includes scheduler initialization, execution,
+result projection and first complete checkpoint export; it does not hide the new
+on-demand export cost. Method instrumentation separately times adapter execution,
+checkpoint construction, validation and results; residual scheduling is reported
+by the JSON driver. Hash/decode and restore/complete-resume are separate operations.
+Python peak uses `tracemalloc` only in the explicitly traced cases; those times
+must not be compared with untraced timings. Source fixture construction precedes
+tracing. RSS is process-lifetime `getrusage(RUSAGE_SELF).ru_maxrss` from each fresh
+process, including imports, fixtures, restore and one explicit replay, converted
+to bytes for the host platform; it is not attributed solely to checkpointing.
+One-job semantic replay is measured; full-batch semantic replay is not claimed.
+
+### Remaining limits and practical next work
+
+Successful 10/100/300 cases are not a proof of 1,000/10,000-run performance. The
+whole result/JSON document must still be retained/rendered, restored documents
+must still undergo independent full verification, and frequent full exports can
+still create caller-driven quadratic work. Paper Broker execution, result
+projection and experiment/run-ID setup also consume resources independently.
+
+There is no durable mid-job crash recovery or hard OS CPU/RSS deadline sandbox.
+Cooperative time/work limits and the synthetic research-only restrictions are
+unchanged. Future scaling should first measure 1,000 bounded synthetic jobs,
+profile adapter/initialization and full export/restore separately, and only then
+consider explicitly versioned chunked persistence or isolated workers. Preserve
+trusted pins and semantic replay; do not relax verification, accounting or risk
+checks to produce a faster benchmark.
