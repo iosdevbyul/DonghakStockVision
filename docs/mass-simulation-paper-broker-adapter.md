@@ -520,3 +520,11 @@ profile adapter/initialization and full export/restore separately, and only then
 consider explicitly versioned chunked persistence or isolated workers. Preserve
 trusted pins and semantic replay; do not relax verification, accounting or risk
 checks to produce a faster benchmark.
+
+## Read-only failure diagnostics
+
+For pinned checkpoint verification, explicit semantic replay, observed failure
+categories and compatible experiment comparison, see
+[Simulation failure analysis foundation](simulation-failure-analysis-foundation.md).
+That additive projection does not change adapter execution, risk policies,
+checkpoint formats or the unavailable terminal valuation contract.
