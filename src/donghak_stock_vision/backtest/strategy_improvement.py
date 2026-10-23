@@ -419,8 +419,7 @@ def run_improvement(
         # case membership before comparing return objectives for new proposals.
         expected_cases = {c.case_id for c in plan.source.observations.cases}
         eligible = [
-            r for r in history
-            if r["eligible"] and set(r["evaluated_case_ids"]) == expected_cases
+            r for r in history if r["eligible"] and set(r["evaluated_case_ids"]) == expected_cases
         ]
         unseen = [i for i in range(size) if i not in visited]
         anchor = None
