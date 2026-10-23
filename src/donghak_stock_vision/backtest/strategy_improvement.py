@@ -302,6 +302,7 @@ def _assess(plan: ImprovementPlan, feedback: TuningFeedback) -> list[dict[str, A
     ):
         observations = []
         sources = []
+        evaluated_cases: set[str] = set()
         owner = None
         # Match the complete original immutable experiment, including its frozen strategy.
         if entry["status"] != "failed":
@@ -325,6 +326,8 @@ def _assess(plan: ImprovementPlan, feedback: TuningFeedback) -> list[dict[str, A
                     }
                 )
                 if metric["available"]:
+                    require(value.job_key not in evaluated_cases, "duplicate_evaluated_case")
+                    evaluated_cases.add(value.job_key)
                     ratio = metric["exact_ratio"]
                     observations.append(
                         Fraction(int(ratio["numerator"]), int(ratio["denominator"]))
@@ -349,6 +352,7 @@ def _assess(plan: ImprovementPlan, feedback: TuningFeedback) -> list[dict[str, A
                 "failure_classification": entry["failure_classification"],
                 "expected": expected,
                 "evaluated": len(observations),
+                "evaluated_case_ids": sorted(evaluated_cases),
                 "coverage": _ratio(coverage),
                 "eligible": eligible,
                 "objective": _ratio(metric_value),
@@ -394,6 +398,12 @@ def run_improvement(
         if len(visited) + len(proposed) > plan.max_attempts:
             state, reason = "stopped", "attempt_budget_exhausted"
             break
+        # Prior generations provide an observed lower-bound budget for the next one.
+        # Existing per-run limits still govern the execution itself.
+        remaining = plan.max_result_bytes - retained
+        if generation > 0 and remaining <= max(0, retained // generation):
+            state, reason = "stopped", "evidence_budget_preflight"
+            break
         feedback = evaluate_generation(plan, generation, proposed, parent)
         verify_feedback(plan, feedback, generation, proposed, parent)
         rows = _assess(plan, feedback)
@@ -404,7 +414,14 @@ def run_improvement(
         require(retained <= plan.max_result_bytes, "cycle_evidence_budget")
         visited.update(proposed)
         history.extend(rows)
-        eligible = [r for r in history if r["eligible"]]
+        # Incomplete but policy-eligible results remain visible, but must not drive
+        # research priority against different observed subsets. Require full paired
+        # case membership before comparing return objectives for new proposals.
+        expected_cases = {c.case_id for c in plan.source.observations.cases}
+        eligible = [
+            r for r in history
+            if r["eligible"] and set(r["evaluated_case_ids"]) == expected_cases
+        ]
         unseen = [i for i in range(size) if i not in visited]
         anchor = None
         next_indices: tuple[int, ...] = ()
@@ -439,7 +456,7 @@ def run_improvement(
             state, reason = "stopped", "no_eligible_tuning_feedback"
             break
         proposed = next_indices
-    if history and all(r["status"] == "failed" for r in history):
+    if state != "stopped" and history and all(r["status"] == "failed" for r in history):
         state, reason = "failed", "all_candidate_configurations_failed"
     value = {
         "version": "strategy_improvement_report_v1",
