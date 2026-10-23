@@ -326,9 +326,8 @@ def test_partial_coverage_remains_reported_but_cannot_steer_proposals() -> None:
 
 def test_preflight_stops_before_next_generation_when_evidence_budget_is_exhausted() -> None:
     baseline = fixture()
-    first = run_improvement(
-        replace(baseline, max_generations=1), replace(baseline, max_generations=1).document.identifier
-    )
+    one_generation = replace(baseline, max_generations=1)
+    first = run_improvement(one_generation, one_generation.document.identifier)
     # Give the first generation enough room, but not enough for an equally
     # sized second generation. Preflight must retain the first generation.
     first_feedback = first.feedback[0]
