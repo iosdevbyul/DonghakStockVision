@@ -305,3 +305,41 @@ def test_verified_feedback_changes_research_priority() -> None:
     assert right_row["next_indices"] == [2]
     assert left_row["assessments"][0]["eligible"]
     assert right_row["assessments"][1]["eligible"]
+
+
+def test_partial_coverage_remains_reported_but_cannot_steer_proposals() -> None:
+    from donghak_stock_vision.backtest.strategy_observations import SyntheticObservations
+    from tests.backtest.test_strategy_execution import rebind
+
+    old = fixture()
+    case = old.source.observations.cases[0]
+    source = rebind(old.source, SyntheticObservations((case, replace(case, case_id="case-2"))))
+    plan = replace(old, source=source, minimum_coverage="1/2")
+    result = run_improvement(plan, plan.document.identifier).report.to_dict()
+    first = result["generations"][0]
+    assert all(row["eligible"] for row in first["assessments"])
+    assert all(row["evaluated_case_ids"] == [case.case_id] for row in first["assessments"])
+    assert first["next_indices"] == []
+    assert result["stop_reason"] == "no_eligible_tuning_feedback"
+    assert result["attempted"] == 2
+
+
+def test_preflight_stops_before_next_generation_when_evidence_budget_is_exhausted() -> None:
+    baseline = fixture()
+    first = run_improvement(
+        replace(baseline, max_generations=1), replace(baseline, max_generations=1).document.identifier
+    )
+    # Give the first generation enough room, but not enough for an equally
+    # sized second generation. Preflight must retain the first generation.
+    first_feedback = first.feedback[0]
+    observed = (
+        len(first_feedback.batch.report.payload_json.encode())
+        + len(first_feedback.analysis.report.payload_json.encode())
+        + sum(len(i.checkpoint.payload_json.encode()) for i in first_feedback.batch.inputs)
+    )
+    plan = replace(baseline, max_result_bytes=observed + 8192)
+    result = run_improvement(plan, plan.document.identifier).report.to_dict()
+    assert result["attempted"] == 2
+    assert result["state"] == "stopped"
+    assert result["stop_reason"] == "evidence_budget_preflight"
+    assert len(result["generations"]) == 1
