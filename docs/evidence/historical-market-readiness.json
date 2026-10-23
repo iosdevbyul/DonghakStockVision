@@ -1,0 +1,250 @@
+{
+  "calendar_pin": "fa247837b50e45617995a99aa58cdea20697a73f470b1a79a7cc2eb7eea4c2cb",
+  "calendar_raw_source": "docs/evidence/baseline-official/raw/calendar-2024-06.html.gz",
+  "calendar_source": {
+    "bytes": 40490,
+    "document_name": "searchTraidingCalendar monthly response",
+    "file": "calendar-2024-06.html",
+    "method": "POST",
+    "params": {
+      "forward": "searchtraidingcalendar",
+      "ldMktTpCd": "1",
+      "method": "searchTraidingCalendar",
+      "periodType": "M",
+      "repIsuSrtCd": "",
+      "searchMenu": "13",
+      "selMonth": "06",
+      "selYear": "2024"
+    },
+    "publisher": "Korea Exchange (KIND)",
+    "raw_sha256": "d4db65c70ad36a1420e9650c325f8cccf46d46b8f1d3d2ebbd60ae06e82296fb",
+    "requested_period": {
+      "end": "2024-06-30",
+      "start": "2024-06-01"
+    },
+    "status": 200,
+    "url": "https://kind.krx.co.kr/common/stockschedule.do"
+  },
+  "content_fingerprint": "1310f9d3f554b11118de5be0bd4e3fba86a620ec46af9827e5786de5f702242b",
+  "note": "Inspection metadata only; no raw response or price projection published",
+  "replay": {
+    "fills": 0,
+    "oos_approved": false,
+    "operational_eligible": false,
+    "orders": 0,
+    "pit_approved": false,
+    "readiness_hash": "99d697a2b45372ac4ade46b98d59c31c749e3c1cff7fd2a09a5042152c9c4733",
+    "reasons": [
+      "authoritative_strategy_historical_replay_authorization_unavailable",
+      "corporate_action_coverage_not_verified",
+      "historical_observation_timestamp_missing",
+      "historical_security_identity_not_verified",
+      "independent_historical_availability_missing",
+      "independent_historical_custody_unverified",
+      "strict_pit_qualification_unavailable"
+    ],
+    "status": "blocked",
+    "strategy_execution_started": false,
+    "version": "historical_strategy_replay_readiness_v1"
+  },
+  "report": {
+    "availability_timestamp": null,
+    "bar_references": [
+      {
+        "bar_hash": "2e27287262e54e6d566db2c8ee589a0d5f2dc7820968a3cf9c4828ba52eec153",
+        "matched_raw_ids": [
+          646
+        ],
+        "trading_date": "2024-06-24"
+      },
+      {
+        "bar_hash": "d08de766984df0ff89ae5631e915d44c3453b43a0ad30aa25fe3c0a43198077e",
+        "matched_raw_ids": [
+          647
+        ],
+        "trading_date": "2024-06-25"
+      },
+      {
+        "bar_hash": "3e42ba6de30eff218d2c16c18efbca520dff9358135819672411ab73e47cb7da",
+        "matched_raw_ids": [
+          648
+        ],
+        "trading_date": "2024-06-26"
+      },
+      {
+        "bar_hash": "9db43c9e4ecf8c338efd2c03595e6731626c2ea1ff940ead1060a42f4dc02087",
+        "matched_raw_ids": [
+          649
+        ],
+        "trading_date": "2024-06-27"
+      },
+      {
+        "bar_hash": "57371e07b6747f42b5a4edefcd2e41d349974b9500f188c14236830212a62a83",
+        "matched_raw_ids": [
+          650
+        ],
+        "trading_date": "2024-06-28"
+      }
+    ],
+    "blockers": [
+      "authoritative_strategy_historical_replay_authorization_unavailable",
+      "corporate_action_coverage_not_verified",
+      "historical_observation_timestamp_missing",
+      "historical_security_identity_not_verified",
+      "independent_historical_availability_missing",
+      "independent_historical_custody_unverified",
+      "strict_pit_qualification_unavailable"
+    ],
+    "calendar_pins": [
+      "fa247837b50e45617995a99aa58cdea20697a73f470b1a79a7cc2eb7eea4c2cb"
+    ],
+    "classification": "provenance_replayed_missing_independent_qualification",
+    "content_fingerprint": "99d697a2b45372ac4ade46b98d59c31c749e3c1cff7fd2a09a5042152c9c4733",
+    "duplicate_sessions": 0,
+    "eligible_for_historical_replay": false,
+    "instrument": {
+      "currency": "KRW",
+      "exchange": "KOSPI",
+      "symbol": "005930"
+    },
+    "invalid_reasons": [],
+    "inventory": {
+      "bars": {
+        "count": 1099255,
+        "first_date": "2022-01-03",
+        "last_date": "2026-10-01",
+        "symbols": 993
+      },
+      "raw_capture_receipt_table_present": false,
+      "raw_pages": [
+        {
+          "count": 2151,
+          "first_ingested_at": "2026-09-29T06:12:48.049844+00:00",
+          "first_source_date": "2022-01-03",
+          "last_ingested_at": "2026-10-02T17:28:07.614123+00:00",
+          "last_source_date": "2026-10-02",
+          "provider": "krx"
+        }
+      ],
+      "scope": "aggregate_metadata_only_not_full_database_validation"
+    },
+    "limitations": [
+      "no_approval_authority_added",
+      "raw_hash_is_not_historical_custody",
+      "scoped_raw_replay_not_full_database_verification",
+      "no_model_or_strategy_execution"
+    ],
+    "missing_expected_sessions": [],
+    "missing_provenance": [],
+    "observation_projection_hash": "3f0bd6a5c82622d7b6e18af85e8994fc9662d828c23b40cbaf77930b40c3aa5d",
+    "observation_timestamp": null,
+    "oos_approved": false,
+    "operational_eligible": false,
+    "partition": "tuning",
+    "price_semantics": [
+      "unadjusted"
+    ],
+    "raw_sources": [
+      {
+        "bytes": 297312,
+        "ingested_at": "2026-09-29T06:25:58.909328+00:00",
+        "provider": "krx",
+        "raw_id": 646,
+        "scope": "005930",
+        "sha256": "91dd256d4f080c6522845e7357e8cf583cbc7935fd4f1675acd245c6cffe8301",
+        "source_date": "2024-06-24"
+      },
+      {
+        "bytes": 296513,
+        "ingested_at": "2026-09-29T06:25:59.977682+00:00",
+        "provider": "krx",
+        "raw_id": 647,
+        "scope": "005930",
+        "sha256": "c22fe5e1c266e9736c5abf2f514c1e22bf1618d9c174a554f6ed54293f6a4021",
+        "source_date": "2024-06-25"
+      },
+      {
+        "bytes": 296788,
+        "ingested_at": "2026-09-29T06:26:01.339149+00:00",
+        "provider": "krx",
+        "raw_id": 648,
+        "scope": "005930",
+        "sha256": "97a73f69d25fed2d82944b16019f36450ad235a315b9cf9cdbd4c910c86f0212",
+        "source_date": "2024-06-26"
+      },
+      {
+        "bytes": 296988,
+        "ingested_at": "2026-09-29T06:26:02.288638+00:00",
+        "provider": "krx",
+        "raw_id": 649,
+        "scope": "005930",
+        "sha256": "239ae4d83d6fe92757c1d24cdb2a90eaf204a256cfa08aead8b8a01adecbec22",
+        "source_date": "2024-06-27"
+      },
+      {
+        "bytes": 296315,
+        "ingested_at": "2026-09-29T06:26:03.362532+00:00",
+        "provider": "krx",
+        "raw_id": 650,
+        "scope": "005930",
+        "sha256": "a012919307676c8c3f0853f5b56d125bff2cf9100bb50dc8ae9c3a1055c63a37",
+        "source_date": "2024-06-28"
+      }
+    ],
+    "scope_hash": "a5ae546fbb65c76e34762e1895c3c3553d03e546b20d67227e46302290e13121",
+    "scoped_rows": 5,
+    "source": {
+      "contract": "krx_daily_sqlite_v1",
+      "database_hash": "2b9e82be943607f6ec99c8e8fc9c4015be4bd668af914f9fa2df1150244ffd42",
+      "endpoint_contract": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd",
+      "issuer_authenticated": false,
+      "provenance_scope": "local_archived_raw_replay_only",
+      "recorded_provider": "krx"
+    },
+    "split_hash": "6d4fa516227f13640cdb785f029359134d51b074468be543654c8873f9296150",
+    "strict_pit_approved": false,
+    "unexpected_sessions": [],
+    "version": "historical_market_readiness_v1",
+    "window": {
+      "end": "2024-06-28",
+      "start": "2024-06-24"
+    }
+  },
+  "scope": {
+    "authorization_scope": "readiness_inspection_not_execution_or_pit_approval",
+    "database_hash": "2b9e82be943607f6ec99c8e8fc9c4015be4bd668af914f9fa2df1150244ffd42",
+    "instrument": {
+      "currency": "KRW",
+      "exchange": "KOSPI",
+      "symbol": "005930"
+    },
+    "max_raw_bytes": 8388608,
+    "max_rows": 64,
+    "partition": "tuning",
+    "split_hash": "6d4fa516227f13640cdb785f029359134d51b074468be543654c8873f9296150",
+    "version": "historical_read_scope_v1",
+    "window": {
+      "end": "2024-06-28",
+      "start": "2024-06-24"
+    }
+  },
+  "split": {
+    "final_test": {
+      "end": "2025-06-30",
+      "start": "2024-07-01"
+    },
+    "training": {
+      "end": "2023-12-28",
+      "start": "2022-01-03"
+    },
+    "validation": {
+      "end": "2024-06-28",
+      "start": "2024-01-02"
+    },
+    "version": 1
+  },
+  "split_custody": "existing_local_metadata_not_independent_authorization",
+  "split_source": ".data/phase2-training-20261001/summary.json",
+  "split_source_sha256": "201b69acc2268d07d474834531b7bf450abe6d98b94f1cabeb0d69889c530f85",
+  "version": "historical_market_readiness_local_inspection_v1"
+}
