@@ -59,6 +59,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.historical_cli import add_commands as add_historical
 
     add_historical(sub)
+    from donghak_stock_vision.forward_capture_cli import add_commands as add_capture
+
+    add_capture(sub)
     return root
 
 
@@ -69,6 +72,10 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
+        if args.command == "forward-capture":
+            from donghak_stock_vision.forward_capture_cli import run as run_capture
+
+            return run_capture(args)
         if args.command == "backtest-input":
             from donghak_stock_vision.historical_cli import run as run_historical
 
