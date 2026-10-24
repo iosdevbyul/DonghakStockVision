@@ -39,25 +39,26 @@ jobs:
         run: python -m build
       - name: Installed wheel smoke test
         run: |
-          python -m venv /tmp/dsv-wheel
-          /tmp/dsv-wheel/bin/pip install dist/*.whl
+          echo "DSV_WHEEL_VENV=$RUNNER_TEMP/dsv-wheel-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+          uv venv --seed --python "$(command -v python)" "$RUNNER_TEMP/dsv-wheel-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          "$RUNNER_TEMP/dsv-wheel-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/bin/python" -m pip install dist/*.whl
           cd /tmp
-          /tmp/dsv-wheel/bin/dsv --db /tmp/smoke.sqlite3 collect --provider fake --tickers 005930 --start 2024-01-02 --end 2024-01-08
-          /tmp/dsv-wheel/bin/dsv --db /tmp/smoke.sqlite3 validate
-          PYTHONPATH="$GITHUB_WORKSPACE" /tmp/dsv-wheel/bin/python "$GITHUB_WORKSPACE/tests/strategy/wheel_smoke.py"
+          "$DSV_WHEEL_VENV/bin/dsv" --db /tmp/smoke.sqlite3 collect --provider fake --tickers 005930 --start 2024-01-02 --end 2024-01-08
+          "$DSV_WHEEL_VENV/bin/dsv" --db /tmp/smoke.sqlite3 validate
+          PYTHONPATH="$GITHUB_WORKSPACE" "$DSV_WHEEL_VENV/bin/python" "$GITHUB_WORKSPACE/tests/strategy/wheel_smoke.py"
       - name: Installed learning wheel smoke test
         run: |
           for wheel in "$GITHUB_WORKSPACE"/dist/*.whl; do
-            /tmp/dsv-wheel/bin/pip install "$wheel[learning]"
+            "$DSV_WHEEL_VENV/bin/python" -m pip install "$wheel[learning]"
           done
           cd /tmp
-          PYTHONPATH="$GITHUB_WORKSPACE" /tmp/dsv-wheel/bin/python "$GITHUB_WORKSPACE/tests/learning/wheel_smoke.py"
+          PYTHONPATH="$GITHUB_WORKSPACE" "$DSV_WHEEL_VENV/bin/python" "$GITHUB_WORKSPACE/tests/learning/wheel_smoke.py"
       - name: Installed API wheel smoke test
         run: |
           for wheel in "$GITHUB_WORKSPACE"/dist/*.whl; do
-            /tmp/dsv-wheel/bin/pip install "$wheel[api]"
+            "$DSV_WHEEL_VENV/bin/python" -m pip install "$wheel[api]"
           done
-          /tmp/dsv-wheel/bin/python - <<'PY'
+          "$DSV_WHEEL_VENV/bin/python" - <<'PY'
           from fastapi.testclient import TestClient
           from donghak_stock_vision.api import create_app
 
@@ -68,4 +69,4 @@ jobs:
       - name: Installed decision wheel integration smoke test
         run: |
           cd /tmp
-          PYTHONPATH="$GITHUB_WORKSPACE" /tmp/dsv-wheel/bin/python "$GITHUB_WORKSPACE/tests/strategy/wheel_smoke.py" --learning
+          PYTHONPATH="$GITHUB_WORKSPACE" "$DSV_WHEEL_VENV/bin/python" "$GITHUB_WORKSPACE/tests/strategy/wheel_smoke.py" --learning
