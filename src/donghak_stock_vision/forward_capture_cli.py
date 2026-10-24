@@ -31,7 +31,20 @@ def add_commands(sub: Any) -> None:
     )
     cmd.add_argument(
         "action",
-        choices=("dry-run", "capture", "status", "verify", "readback", "history", "offline-pilot"),
+        choices=(
+            "dry-run",
+            "capture",
+            "status",
+            "verify",
+            "readback",
+            "history",
+            "offline-pilot",
+            "custody-readiness",
+            "custody-stage",
+            "custody-status",
+            "custody-verify",
+            "custody-readback",
+        ),
     )
     cmd.add_argument("--root", type=Path, required=True)
     cmd.add_argument("--plan", type=Path)
@@ -41,6 +54,9 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--sequence", type=int, default=0)
     cmd.add_argument("--output", type=Path)
     cmd.add_argument("--allow-network", action="store_true")
+    for name in ("operations-config", "binding", "acknowledgement", "returned-readback"):
+        cmd.add_argument(f"--{name}", type=Path)
+        cmd.add_argument(f"--{name}-pin")
 
 
 def offline_plan() -> ForwardCapturePlan:
@@ -111,6 +127,10 @@ def run(args: argparse.Namespace) -> int:
         if owner.identifier != args.plan_pin:
             raise ValueError("plan_pin_mismatch")
         plan = ForwardCapturePlan.from_dict(owner.to_dict())
+    if args.action.startswith("custody-"):
+        from donghak_stock_vision.forward_custody_cli import run as run_custody
+
+        return run_custody(args, plan)
     if args.action == "dry-run":
         print(
             FrozenJSON.freeze(
