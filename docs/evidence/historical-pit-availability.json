@@ -1,0 +1,289 @@
+{
+  "assessment": {
+    "assurance": "local_lineage_and_claim_consistency_only",
+    "calendar_pins": [
+      "fa247837b50e45617995a99aa58cdea20697a73f470b1a79a7cc2eb7eea4c2cb"
+    ],
+    "content_fingerprint": "e29bc93932db980d2160337d52beca014ba372a9bac3757f0cd67fa80589ded7",
+    "coverage": {
+      "authentic_publication_evidence": 0,
+      "authenticated_revision_evidence": 0,
+      "decision_time_availability_established": 0,
+      "pit_unqualified": 5,
+      "total_scoped_observations": 5,
+      "unprojectable_scoped_observations": 0,
+      "verified_source_lineage": 5
+    },
+    "database_hash": "2b9e82be943607f6ec99c8e8fc9c4015be4bd668af914f9fa2df1150244ffd42",
+    "evidence_manifest_hash": "0e0e3e96a5f90d58bac2ceea5f5db49d674eb8eb0c07c41fdb81461a18ddc296",
+    "historical_strategy_execution": "blocked",
+    "issuer_authenticated": false,
+    "missing_requirements": [
+      "authentic_publication_evidence_missing",
+      "authenticated_revision_history_missing",
+      "decision_time_availability_unestablished",
+      "independent_availability_evidence_missing",
+      "independent_timestamp_verifier_unavailable",
+      "original_capture_receipt_missing"
+    ],
+    "observations": [
+      {
+        "bar_hash": "2e27287262e54e6d566db2c8ee589a0d5f2dc7820968a3cf9c4828ba52eec153",
+        "instrument": {
+          "currency": "KRW",
+          "exchange": "KOSPI",
+          "symbol": "005930"
+        },
+        "local_capture_receipts": [],
+        "locally_retained_retrievals": [
+          {
+            "local_retrieval_at": "2026-09-29T06:25:58.909328+00:00",
+            "origin": "raw_pages/646.collected_at",
+            "raw_id": 646,
+            "source_hash": "91dd256d4f080c6522845e7357e8cf583cbc7935fd4f1675acd245c6cffe8301"
+          }
+        ],
+        "missing_requirements": [
+          "authentic_publication_evidence_missing",
+          "authenticated_revision_history_missing",
+          "decision_time_availability_unestablished",
+          "independent_availability_evidence_missing",
+          "independent_timestamp_verifier_unavailable",
+          "original_capture_receipt_missing"
+        ],
+        "pit_qualified": false,
+        "session_date": "2024-06-24",
+        "source_lineage_verified": true,
+        "timestamps": {
+          "actual_first_observed_at": null,
+          "evidence_available_at": null,
+          "exchange_session_at": null,
+          "independently_authenticated_at": null,
+          "original_artifact_capture_at": null,
+          "provider_ingestion_at": null,
+          "source_correction_at": null,
+          "source_publication_at": null,
+          "strategy_safe_available_at": null
+        },
+        "unverified_evidence": []
+      },
+      {
+        "bar_hash": "d08de766984df0ff89ae5631e915d44c3453b43a0ad30aa25fe3c0a43198077e",
+        "instrument": {
+          "currency": "KRW",
+          "exchange": "KOSPI",
+          "symbol": "005930"
+        },
+        "local_capture_receipts": [],
+        "locally_retained_retrievals": [
+          {
+            "local_retrieval_at": "2026-09-29T06:25:59.977682+00:00",
+            "origin": "raw_pages/647.collected_at",
+            "raw_id": 647,
+            "source_hash": "c22fe5e1c266e9736c5abf2f514c1e22bf1618d9c174a554f6ed54293f6a4021"
+          }
+        ],
+        "missing_requirements": [
+          "authentic_publication_evidence_missing",
+          "authenticated_revision_history_missing",
+          "decision_time_availability_unestablished",
+          "independent_availability_evidence_missing",
+          "independent_timestamp_verifier_unavailable",
+          "original_capture_receipt_missing"
+        ],
+        "pit_qualified": false,
+        "session_date": "2024-06-25",
+        "source_lineage_verified": true,
+        "timestamps": {
+          "actual_first_observed_at": null,
+          "evidence_available_at": null,
+          "exchange_session_at": null,
+          "independently_authenticated_at": null,
+          "original_artifact_capture_at": null,
+          "provider_ingestion_at": null,
+          "source_correction_at": null,
+          "source_publication_at": null,
+          "strategy_safe_available_at": null
+        },
+        "unverified_evidence": []
+      },
+      {
+        "bar_hash": "3e42ba6de30eff218d2c16c18efbca520dff9358135819672411ab73e47cb7da",
+        "instrument": {
+          "currency": "KRW",
+          "exchange": "KOSPI",
+          "symbol": "005930"
+        },
+        "local_capture_receipts": [],
+        "locally_retained_retrievals": [
+          {
+            "local_retrieval_at": "2026-09-29T06:26:01.339149+00:00",
+            "origin": "raw_pages/648.collected_at",
+            "raw_id": 648,
+            "source_hash": "97a73f69d25fed2d82944b16019f36450ad235a315b9cf9cdbd4c910c86f0212"
+          }
+        ],
+        "missing_requirements": [
+          "authentic_publication_evidence_missing",
+          "authenticated_revision_history_missing",
+          "decision_time_availability_unestablished",
+          "independent_availability_evidence_missing",
+          "independent_timestamp_verifier_unavailable",
+          "original_capture_receipt_missing"
+        ],
+        "pit_qualified": false,
+        "session_date": "2024-06-26",
+        "source_lineage_verified": true,
+        "timestamps": {
+          "actual_first_observed_at": null,
+          "evidence_available_at": null,
+          "exchange_session_at": null,
+          "independently_authenticated_at": null,
+          "original_artifact_capture_at": null,
+          "provider_ingestion_at": null,
+          "source_correction_at": null,
+          "source_publication_at": null,
+          "strategy_safe_available_at": null
+        },
+        "unverified_evidence": []
+      },
+      {
+        "bar_hash": "9db43c9e4ecf8c338efd2c03595e6731626c2ea1ff940ead1060a42f4dc02087",
+        "instrument": {
+          "currency": "KRW",
+          "exchange": "KOSPI",
+          "symbol": "005930"
+        },
+        "local_capture_receipts": [],
+        "locally_retained_retrievals": [
+          {
+            "local_retrieval_at": "2026-09-29T06:26:02.288638+00:00",
+            "origin": "raw_pages/649.collected_at",
+            "raw_id": 649,
+            "source_hash": "239ae4d83d6fe92757c1d24cdb2a90eaf204a256cfa08aead8b8a01adecbec22"
+          }
+        ],
+        "missing_requirements": [
+          "authentic_publication_evidence_missing",
+          "authenticated_revision_history_missing",
+          "decision_time_availability_unestablished",
+          "independent_availability_evidence_missing",
+          "independent_timestamp_verifier_unavailable",
+          "original_capture_receipt_missing"
+        ],
+        "pit_qualified": false,
+        "session_date": "2024-06-27",
+        "source_lineage_verified": true,
+        "timestamps": {
+          "actual_first_observed_at": null,
+          "evidence_available_at": null,
+          "exchange_session_at": null,
+          "independently_authenticated_at": null,
+          "original_artifact_capture_at": null,
+          "provider_ingestion_at": null,
+          "source_correction_at": null,
+          "source_publication_at": null,
+          "strategy_safe_available_at": null
+        },
+        "unverified_evidence": []
+      },
+      {
+        "bar_hash": "57371e07b6747f42b5a4edefcd2e41d349974b9500f188c14236830212a62a83",
+        "instrument": {
+          "currency": "KRW",
+          "exchange": "KOSPI",
+          "symbol": "005930"
+        },
+        "local_capture_receipts": [],
+        "locally_retained_retrievals": [
+          {
+            "local_retrieval_at": "2026-09-29T06:26:03.362532+00:00",
+            "origin": "raw_pages/650.collected_at",
+            "raw_id": 650,
+            "source_hash": "a012919307676c8c3f0853f5b56d125bff2cf9100bb50dc8ae9c3a1055c63a37"
+          }
+        ],
+        "missing_requirements": [
+          "authentic_publication_evidence_missing",
+          "authenticated_revision_history_missing",
+          "decision_time_availability_unestablished",
+          "independent_availability_evidence_missing",
+          "independent_timestamp_verifier_unavailable",
+          "original_capture_receipt_missing"
+        ],
+        "pit_qualified": false,
+        "session_date": "2024-06-28",
+        "source_lineage_verified": true,
+        "timestamps": {
+          "actual_first_observed_at": null,
+          "evidence_available_at": null,
+          "exchange_session_at": null,
+          "independently_authenticated_at": null,
+          "original_artifact_capture_at": null,
+          "provider_ingestion_at": null,
+          "source_correction_at": null,
+          "source_publication_at": null,
+          "strategy_safe_available_at": null
+        },
+        "unverified_evidence": []
+      }
+    ],
+    "operational_eligible": false,
+    "original_approval_state": {
+      "eligible_for_historical_replay": false,
+      "oos_approved": false,
+      "operational_eligible": false,
+      "strict_pit_approved": false
+    },
+    "original_readiness_blockers": [
+      "authoritative_strategy_historical_replay_authorization_unavailable",
+      "corporate_action_coverage_not_verified",
+      "historical_observation_timestamp_missing",
+      "historical_security_identity_not_verified",
+      "independent_historical_availability_missing",
+      "independent_historical_custody_unverified",
+      "strict_pit_qualification_unavailable"
+    ],
+    "pit_approved": false,
+    "readiness_report_hash": "99d697a2b45372ac4ade46b98d59c31c749e3c1cff7fd2a09a5042152c9c4733",
+    "scope_hash": "a5ae546fbb65c76e34762e1895c3c3553d03e546b20d67227e46302290e13121",
+    "source_url_origin": "provider_endpoint_contract_not_independently_retained_request_url",
+    "source_url_reference": "https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd",
+    "unprojectable_reason": null,
+    "version": "historical_pit_availability_assessment_v1"
+  },
+  "content_fingerprint": "c3055825d864a1746949bd3bb08ffdfff7b0328e54b76085856ed6c0caf7717e",
+  "evidence_manifest": {
+    "evidence": [],
+    "version": "historical_availability_input_manifest_v1"
+  },
+  "evidence_manifest_hash": "0e0e3e96a5f90d58bac2ceea5f5db49d674eb8eb0c07c41fdb81461a18ddc296",
+  "execution_gate": {
+    "approval_granted": false,
+    "assessment_hash": "e29bc93932db980d2160337d52beca014ba372a9bac3757f0cd67fa80589ded7",
+    "fills": 0,
+    "orders": 0,
+    "reasons": [
+      "authentic_publication_evidence_missing",
+      "authenticated_revision_history_missing",
+      "authoritative_strategy_historical_replay_authorization_unavailable",
+      "corporate_action_coverage_not_verified",
+      "decision_time_availability_unestablished",
+      "historical_observation_timestamp_missing",
+      "historical_security_identity_not_verified",
+      "independent_availability_evidence_missing",
+      "independent_historical_availability_missing",
+      "independent_historical_custody_unverified",
+      "independent_timestamp_verifier_unavailable",
+      "original_capture_receipt_missing",
+      "strict_pit_qualification_unavailable"
+    ],
+    "status": "blocked",
+    "strategy_execution_started": false,
+    "version": "historical_pit_execution_gate_v1"
+  },
+  "note": "No new raw pages or timestamp attestations acquired; all authentic availability counts zero",
+  "parent_fingerprint": "1310f9d3f554b11118de5be0bd4e3fba86a620ec46af9827e5786de5f702242b",
+  "parent_readiness_artifact": "docs/evidence/historical-market-readiness.json",
+  "version": "historical_pit_availability_local_inspection_v1"
+}
