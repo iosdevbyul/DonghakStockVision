@@ -62,6 +62,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.forward_capture_cli import add_commands as add_capture
 
     add_capture(sub)
+    from donghak_stock_vision.market_data_cli import add_commands as add_market_data
+
+    add_market_data(sub)
     return root
 
 
@@ -72,6 +75,10 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
+        if args.command == "market-data":
+            from donghak_stock_vision.market_data_cli import run as run_market_data
+
+            return run_market_data(args)
         if args.command == "forward-capture":
             from donghak_stock_vision.forward_capture_cli import run as run_capture
 
