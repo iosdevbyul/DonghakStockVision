@@ -65,6 +65,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.market_data_cli import add_commands as add_market_data
 
     add_market_data(sub)
+    from donghak_stock_vision.forward_signal_cli import add_commands as add_forward_signal
+
+    add_forward_signal(sub)
     return root
 
 
@@ -75,6 +78,10 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
+        if args.command == "forward-signal":
+            from donghak_stock_vision.forward_signal_cli import run as run_forward_signal
+
+            return run_forward_signal(args)
         if args.command == "market-data":
             from donghak_stock_vision.market_data_cli import run as run_market_data
 
