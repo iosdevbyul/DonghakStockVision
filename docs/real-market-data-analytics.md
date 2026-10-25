@@ -221,3 +221,7 @@ publication, scheduler or network requests. PR #142 is not implemented here.
 Existing PIT/OOS, Corporate Actions, frozen holdout and operational gates remain
 unchanged; historical price presence is never treated as evidence of availability
 to a strategy at a historical decision time.
+
+For bounded retrospective SMA indicator series within an explicit original
+training/tuning partition, see [Historical SMA analysis](historical-sma-analysis.md).
+This separate mode does not grant forward-signal or historical PIT eligibility.
