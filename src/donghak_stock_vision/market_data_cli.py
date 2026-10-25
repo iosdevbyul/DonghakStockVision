@@ -17,7 +17,7 @@ from donghak_stock_vision.storage.market_analytics import analyze_market_data, v
 def add_commands(sub: Any) -> None:
     group = sub.add_parser("market-data", help="bounded, offline, read-only descriptive analytics")
     views = group.add_subparsers(dest="market_view", required=True)
-    for name in ("summary", "history", "quality"):
+    for name in ("summary", "history", "quality", "sma-analysis"):
         cmd = views.add_parser(name)
         cmd.add_argument("--db", dest="market_db", type=Path, required=True)
         cmd.add_argument("--db-sha256", required=True)
@@ -32,6 +32,10 @@ def add_commands(sub: Any) -> None:
         cmd.add_argument("--calendar-source", type=Path)
         cmd.add_argument("--calendar-raw", type=Path)
         cmd.add_argument("--calendar-pin")
+        if name == "sma-analysis":
+            cmd.add_argument("--fast", type=int, required=True)
+            cmd.add_argument("--slow", type=int, required=True)
+            cmd.add_argument("--partition", choices=("training", "tuning"), required=True)
 
 
 def run(args: argparse.Namespace) -> int:
@@ -42,6 +46,21 @@ def run(args: argparse.Namespace) -> int:
     metadata = json.loads(args.split.read_text())
     split = ExplicitResearchSplit.from_dict(metadata.get("split", metadata))
     validate_access(args.symbol, args.start, args.end, split, args.split_pin, args.max_rows)
+    if args.market_view == "sma-analysis":
+        from donghak_stock_vision.storage.historical_sma import validate_sma_access
+
+        validate_sma_access(
+            args.symbol,
+            args.start,
+            args.end,
+            split,
+            args.split_pin,
+            args.partition,
+            args.fast,
+            args.slow,
+            args.max_rows,
+            args.market,
+        )
     calendars: tuple[CalendarMonthSource, ...] = ()
     configured = (
         args.calendar_source is not None,
@@ -58,6 +77,27 @@ def run(args: argparse.Namespace) -> int:
             raw = stream.read(1024 * 1024 + 1)
         require(len(raw) <= 1024 * 1024, "calendar_raw_limit")
         calendars = (CalendarMonthSource(raw, FrozenJSON.freeze(source), args.calendar_pin),)
+    if args.market_view == "sma-analysis":
+        from donghak_stock_vision.storage.historical_sma import analyze_historical_sma
+
+        report = analyze_historical_sma(
+            args.market_db,
+            args.symbol,
+            args.start,
+            args.end,
+            expected_sha256=args.db_sha256,
+            split=split,
+            split_pin=args.split_pin,
+            partition=args.partition,
+            data_origin=args.data_origin,
+            fast=args.fast,
+            slow=args.slow,
+            max_rows=args.max_rows,
+            market=args.market,
+            calendars=calendars,
+        )
+        print(report.payload_json)
+        return 0
     report = analyze_market_data(
         args.market_db,
         args.symbol,
