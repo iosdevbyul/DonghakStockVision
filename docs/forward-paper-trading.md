@@ -5,6 +5,10 @@ existing Risk Engine and `DeterministicPaperBroker`. It is a functional syntheti
 integration for KOSPI 005930 / KRW, not a live brokerage interface, a retrospective
 backtest, a profitability claim, or operational authorization.
 
+For the additive v2 path using independently reviewed provider captures, see
+[Authorized KRX forward observations to PAPER](authorized-krx-forward-paper.md).
+The restrictions below describe the original v1 synthetic workflow.
+
 ## Reused components and boundaries
 
 `storage.forward_paper` composes the original forward capture verifier, signal
