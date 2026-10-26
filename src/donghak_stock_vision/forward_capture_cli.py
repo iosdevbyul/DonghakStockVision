@@ -57,6 +57,12 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--allow-network", action="store_true")
     cmd.add_argument("--authorization-root", type=Path)
     cmd.add_argument("--authorization-pin")
+    cmd.add_argument(
+        "--authorization-policy",
+        choices=("independent_review_v1", "operator_read_only_pilot_v1"),
+        default="independent_review_v1",
+    )
+    cmd.add_argument("--confirm-operator-authorization", action="store_true")
     from donghak_stock_vision.storage.krx_authorization import add_trust_arguments
 
     add_trust_arguments(cmd)
@@ -137,9 +143,17 @@ def run(args: argparse.Namespace) -> int:
         from donghak_stock_vision.forward_custody_cli import run as run_custody
 
         return run_custody(args, plan)
-    from donghak_stock_vision.storage.krx_authorization import cli_trust, readiness
+    from donghak_stock_vision.storage.krx_authorization import (
+        cli_trust,
+        operator_readiness,
+        readiness,
+    )
 
     trust = cli_trust(args)
+    operator_policy = args.authorization_policy == "operator_read_only_pilot_v1"
+    if args.confirm_operator_authorization and not operator_policy:
+        raise ValueError("operator_confirmation_requires_explicit_operator_policy")
+    assess = operator_readiness if operator_policy else readiness
     authorization = None
     if args.authorization_root is not None or args.authorization_pin is not None:
         if args.authorization_root is None or args.authorization_pin is None:
@@ -151,7 +165,7 @@ def run(args: argparse.Namespace) -> int:
         args.action == "dry-run" and plan.mode == "authorized_provider"
     ):
         print(
-            readiness(
+            assess(
                 plan,
                 args.attempt,
                 authorization,
@@ -215,7 +229,7 @@ def run(args: argparse.Namespace) -> int:
             print(owner.payload_json)
         return 0
     if plan.mode == "authorized_provider":
-        assessed = readiness(
+        assessed = assess(
             plan,
             args.attempt,
             authorization,
@@ -229,6 +243,8 @@ def run(args: argparse.Namespace) -> int:
             raise ValueError(",".join(assessed["blockers"]))
         if not args.allow_network:
             raise ValueError("explicit_network_permission_required")
+        if operator_policy and not args.confirm_operator_authorization:
+            raise ValueError("explicit_operator_authorization_confirmation_required")
         if assessed["origin"] != "provider_https":
             raise ValueError("mock_review_is_test_only_no_cli_provider_request")
     transport = fixture_transport(plan) if plan.mode == "offline_fixture" else None
@@ -248,6 +264,8 @@ def run(args: argparse.Namespace) -> int:
             allow_network=args.allow_network,
             authorization=authorization,
             authorization_trust=trust,
+            authorization_policy=args.authorization_policy,
+            operator_confirmed=args.confirm_operator_authorization,
             **kwargs,
         )
     assessment = None
@@ -267,21 +285,41 @@ def run(args: argparse.Namespace) -> int:
         ).report.to_dict()
     extra: dict[str, Any] = {}
     if plan.mode == "authorized_provider":
-        from donghak_stock_vision.storage.forward_capture import verify_capture_authorization
+        from donghak_stock_vision.storage.forward_capture import (
+            verify_capture_authorization,
+            verify_operator_capture_authorization,
+        )
 
         assert authorization is not None
-        extra = {
-            "version": "authorized_forward_capture_result_v1",
-            "verified_origin": verify_capture_authorization(
-                args.root,
-                plan,
-                args.attempt,
-                result.identifier,
-                authorization,
-                trust,
-                datetime.now(UTC),
-            ),
-        }
+        if operator_policy:
+            extra = {
+                "version": "operator_read_only_capture_result_v1",
+                "authorization_policy": args.authorization_policy,
+                "independent_authorization_verified": False,
+                "forward_signal_eligible": False,
+                "paper_execution_eligible": False,
+                "verified_origin": verify_operator_capture_authorization(
+                    args.root,
+                    plan,
+                    args.attempt,
+                    result.identifier,
+                    authorization,
+                    datetime.now(UTC),
+                ),
+            }
+        else:
+            extra = {
+                "version": "authorized_forward_capture_result_v1",
+                "verified_origin": verify_capture_authorization(
+                    args.root,
+                    plan,
+                    args.attempt,
+                    result.identifier,
+                    authorization,
+                    trust,
+                    datetime.now(UTC),
+                ),
+            }
     print(
         FrozenJSON.freeze(
             {

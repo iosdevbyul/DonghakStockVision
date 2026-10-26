@@ -370,12 +370,26 @@ def run_capture(
     allow_network: bool = False,
     authorization: FrozenJSON | None = None,
     authorization_trust: FrozenJSON | None = None,
+    authorization_policy: str = "independent_review_v1",
+    operator_confirmed: bool = False,
     cancelled: Callable[[], bool] = lambda: False,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     monotonic: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
 ) -> FrozenJSON:
     capture_id = identity(plan, attempt)
+    require(
+        authorization_policy in ("independent_review_v1", "operator_read_only_pilot_v1"),
+        "unknown_capture_authorization_policy",
+    )
+    require(
+        not operator_confirmed or authorization_policy == "operator_read_only_pilot_v1",
+        "operator_confirmation_requires_explicit_operator_policy",
+    )
+    require(
+        authorization_policy != "operator_read_only_pilot_v1" or plan.mode == "authorized_provider",
+        "operator_policy_requires_provider_plan",
+    )
     observed = clock()
     require(observed.utcoffset() is not None, "naive_capture_clock")
     require(plan.day < observed.astimezone(SEOUL).date(), "final_daily_bar_unavailable")
@@ -394,12 +408,29 @@ def run_capture(
         from donghak_stock_vision.storage.krx_authorization import (
             verify_authorization,
             verify_credential,
+            verify_operator_authorization,
         )
 
-        require(authorization is not None, "original_permission_terms_and_signed_review_required")
+        operator_policy = authorization_policy == "operator_read_only_pilot_v1"
+        require(
+            not operator_policy or operator_confirmed is True,
+            "explicit_operator_authorization_confirmation_required",
+        )
+        verifier = verify_operator_authorization if operator_policy else verify_authorization
+        require(
+            authorization is not None,
+            "original_permission_terms_specification_and_operator_policy_required"
+            if operator_policy
+            else "original_permission_terms_and_signed_review_required",
+        )
         assert authorization is not None
-        grant = verify_authorization(plan, attempt, authorization, authorization_trust, observed)
+        grant = verifier(plan, attempt, authorization, authorization_trust, observed)
         verify_credential(grant, api_key)
+        if operator_policy:
+            require(
+                len(api_key) <= 1024 and api_key.isascii() and api_key.isprintable(),
+                "invalid_operator_credential_header",
+            )
         transport_kind = grant.to_dict()["transport"]
         transport = client._transport_for_url(httpx.URL(_endpoint(plan)))
         if transport_kind == "mock_fixture":
@@ -421,9 +452,7 @@ def run_capture(
                 "verified_direct_https_transport_required",
             )
             # Live permission/freshness/deadlines cannot be backdated with fixture clocks.
-            verify_authorization(
-                plan, attempt, authorization, authorization_trust, datetime.now(UTC)
-            )
+            verifier(plan, attempt, authorization, authorization_trust, datetime.now(UTC))
 
             def actual_clock() -> datetime:
                 return datetime.now(UTC)
@@ -443,8 +472,11 @@ def run_capture(
             "mixed_capture_origins_forbidden",
         )
         if grant is not None:
-            assert authorization_trust is not None
-            binding = _authorization_binding(plan, attempt, grant, authorization_trust)
+            if authorization_policy == "operator_read_only_pilot_v1":
+                binding = _operator_binding(plan, attempt, grant)
+            else:
+                assert authorization_trust is not None
+                binding = _authorization_binding(plan, attempt, grant, authorization_trust)
             existing_intent = connection.execute(
                 "SELECT 1 FROM forward_intents WHERE capture_id=?", (capture_id,)
             ).fetchone()
@@ -708,5 +740,56 @@ def verify_capture_authorization(
     return (
         "real_provider_https_local_capture"
         if grant.to_dict()["transport"] == "provider_https"
+        else "authorized_provider_mock_fixture"
+    )
+
+
+def _operator_binding(plan: ForwardCapturePlan, attempt: str, policy: FrozenJSON) -> FrozenJSON:
+    return FrozenJSON.freeze(
+        {
+            "version": "krx_operator_read_only_capture_binding_v1",
+            "policy": "operator_read_only_pilot_v1",
+            "capture_id": identity(plan, attempt),
+            "plan_pin": plan.document.identifier,
+            "policy_pin": policy.identifier,
+            "transport": policy.to_dict()["transport"],
+            "independent_authorization_verified": False,
+            "forward_signal_eligible": False,
+            "paper_execution_eligible": False,
+            "publication_authenticated": False,
+        }
+    )
+
+
+def verify_operator_capture_authorization(
+    root: Path,
+    plan: ForwardCapturePlan,
+    attempt: str,
+    capture_pin: str,
+    reference: FrozenJSON,
+    at: datetime,
+) -> str:
+    """Verify original read-only capture evidence, without promoting its trust basis."""
+    from donghak_stock_vision.backtest.validation import utc
+    from donghak_stock_vision.storage.krx_authorization import (
+        capture_root_check,
+        verify_operator_authorization,
+    )
+
+    policy = verify_operator_authorization(plan, attempt, reference, None, at)
+    capture_root_check(policy, root)
+    owner = verify_capture(root, plan, attempt, capture_pin)
+    with closing(_connection(root)) as connection:
+        _authorization_row(
+            connection, identity(plan, attempt), _operator_binding(plan, attempt, policy)
+        )
+    for response in owner.to_dict()["responses"]:
+        for key in ("request_started_at", "response_completed_at"):
+            verify_operator_authorization(
+                plan, attempt, reference, None, utc(response["metadata"][key])
+            )
+    return (
+        "real_provider_https_local_capture"
+        if policy.to_dict()["transport"] == "provider_https"
         else "authorized_provider_mock_fixture"
     )
