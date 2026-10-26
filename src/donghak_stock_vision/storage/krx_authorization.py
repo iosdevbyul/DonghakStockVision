@@ -361,3 +361,228 @@ def capture_root_check(grant: FrozenJSON, root: Path) -> None:
         not root.is_symlink() and str(root.resolve()) == grant.to_dict()["capture_root"],
         "capture_root_outside_reviewed_request_budget",
     )
+
+
+INDEPENDENT = "independent_review_v1"
+OPERATOR = "operator_read_only_pilot_v1"
+OPERATOR_ACK = "private_operator_review_not_independent_authorization"
+
+
+def verify_operator_authorization(
+    plan: ForwardCapturePlan,
+    attempt: str,
+    reference: FrozenJSON,
+    trust: FrozenJSON | None,
+    at: datetime,
+) -> FrozenJSON:
+    """Owner-local permission review; never independent/PIT/signal/PAPER authority.
+
+    The operator is trusted to examine originals. Hashes prove integrity, not issuer
+    authenticity. This deliberately separate policy is limited to one read-only call.
+    """
+    from datetime import date, timedelta
+
+    plan.__post_init__()  # Exclude protected partitions before reading even policy files.
+    require(plan.mode == "authorized_provider", "operator_policy_requires_provider_plan")
+    require(trust is None, "operator_policy_cannot_replace_independent_reviewer_trust")
+    require(
+        plan.market == "KOSPI"
+        and plan.ticker == "005930"
+        and plan.max_requests == 1
+        and plan.daily_limit == 1
+        and plan.max_seconds <= 30,
+        "operator_one_request_kospi_005930_budget_required",
+    )
+    ref = fields(reference.to_dict(), "root grant_pin")
+    root = Path(ref["root"])
+    require(
+        root.is_dir() and not root.is_symlink() and root.stat().st_mode & 0o077 == 0,
+        "private_authorization_root_required",
+    )
+    policy = FrozenJSON(bounded(root / "operator-policy.json", 32768).decode())
+    require(policy.identifier == sha(ref["grant_pin"]), "operator_policy_pin_mismatch")
+    d = fields(
+        policy.to_dict(),
+        "version operator_id acknowledgement reviewed_at valid_from valid_until "
+        "approved_from approved_through service_id method permission terms specification "
+        "captures endpoint capture_root transport document_origin max_observation_lag_days "
+        "credential_sha256 uses",
+    )
+    require(d["version"] == "krx_operator_read_only_pilot_v1", "operator_policy_version")
+    text(d["operator_id"])
+    require(d["acknowledgement"] == OPERATOR_ACK, "explicit_owner_local_review_required")
+    require(d["service_id"] == "stk_bydd_trd" and d["method"] == "GET", "wrong_operator_service")
+    require(d["endpoint"] == endpoint(plan), "operator_endpoint_mismatch")
+    require(
+        d["uses"] == {"private_capture": True, "forward_signal": False, "paper": False}
+        and all(type(v) is bool for v in d["uses"].values()),
+        "operator_policy_read_only_no_signal_or_paper",
+    )
+    require(
+        (d["transport"], d["document_origin"])
+        in (
+            ("provider_https", "operator_supplied_provider_originals"),
+            ("mock_fixture", "synthetic_test_fixture"),
+        ),
+        "explicit_operator_document_origin_required",
+    )
+    start, end, reviewed = (utc(d[n]) for n in ("valid_from", "valid_until", "reviewed_at"))
+    require(
+        start <= reviewed < end
+        and end - start <= timedelta(hours=24)
+        and all(
+            utc(d[n]).isoformat() == d[n] for n in ("valid_from", "valid_until", "reviewed_at")
+        ),
+        "operator_pilot_window_invalid_or_excessive",
+    )
+    approved_from = date.fromisoformat(d["approved_from"])
+    approved_through = date.fromisoformat(d["approved_through"])
+    require(
+        approved_from <= approved_through
+        and approved_from <= start.astimezone(SEOUL).date() <= approved_through
+        and approved_from
+        <= (end - timedelta(microseconds=1)).astimezone(SEOUL).date()
+        <= approved_through
+        and approved_from <= plan.day <= approved_through,
+        "operator_service_approval_outside_validity",
+    )
+    require(
+        type(d["captures"]) is list and len(d["captures"]) == 1,
+        "operator_exactly_one_capture_required",
+    )
+    c = fields(d["captures"][0], "plan attempt")
+    template = ForwardCapturePlan.from_dict(c["plan"])
+    require(
+        template.authorization_reference is None
+        and template.terms_reference is None
+        and scope_pin(template) == scope_pin(plan)
+        and c["attempt"] == attempt
+        and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", text(attempt)) is not None,
+        "operator_capture_scope_mismatch",
+    )
+    require(
+        type(d["max_observation_lag_days"]) is int and 1 <= d["max_observation_lag_days"] <= 7,
+        "operator_observation_lag_budget",
+    )
+    for name in ("permission", "terms", "specification"):
+        evidence = fields(d[name], "issuer source_url sha256")
+        require(evidence["issuer"] == "KRX", "operator_document_issuer_mismatch")
+        _official(evidence["source_url"])
+        raw = bounded(root / f"{name}.bin", 2 * 1024 * 1024)
+        require(
+            hashlib.sha256(raw).hexdigest() == sha(evidence["sha256"]),
+            f"operator_{name}_hash_mismatch",
+        )
+        require(
+            len(raw) >= 32
+            and evidence["sha256"]
+            != "120f225f7f86042485433a7af2f941736eea2314f56b4417a3c4a219447955c4"
+            and not re.search(rb"<title[^>]*>[^<]*(?:403|error|forbidden|access denied)", raw, re.I)
+            and "에러페이지".encode() not in raw,
+            "failed_or_incomplete_page_is_not_operator_permission_evidence",
+        )
+    require(
+        plan.authorization_reference == policy.identifier
+        and plan.terms_reference == d["terms"]["sha256"],
+        "operator_plan_policy_binding_mismatch",
+    )
+    require(
+        Path(d["capture_root"]).is_absolute()
+        and str(Path(d["capture_root"]).resolve()) == d["capture_root"],
+        "canonical_reviewed_capture_root_required",
+    )
+    sha(d["credential_sha256"])
+    review_time(policy, at)
+    require(
+        1 <= (utc(at).astimezone(SEOUL).date() - plan.day).days <= d["max_observation_lag_days"],
+        "outside_operator_read_only_observation_lag",
+    )
+    return policy
+
+
+def operator_readiness(
+    plan: ForwardCapturePlan,
+    attempt: str,
+    reference: FrozenJSON | None,
+    trust: FrozenJSON | None,
+    at: datetime,
+    credential_present: bool,
+    *,
+    credential: str | None = None,
+    capture_root: Path | None = None,
+) -> FrozenJSON:
+    plan.__post_init__()
+    blockers = plan.blockers(credential_present)
+    policy = None
+    credential_checked = False
+    try:
+        require(
+            reference is not None,
+            "original_permission_terms_specification_and_operator_policy_required",
+        )
+        assert reference is not None
+        policy = verify_operator_authorization(plan, attempt, reference, trust, at)
+        require(capture_root is not None, "explicit_reviewed_capture_root_required")
+        assert capture_root is not None
+        capture_root_check(policy, capture_root)
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        policy = None
+        blockers.append(
+            str(error) if isinstance(error, ValueError) else "operator_evidence_unreadable"
+        )
+    if policy is not None:
+        try:
+            require(credential is not None, "credential_binding_not_checked")
+            assert credential is not None
+            require(
+                len(credential) <= 1024 and credential.isascii() and credential.isprintable(),
+                "invalid_operator_credential_header",
+            )
+            verify_credential(policy, credential)
+            credential_checked = True
+        except ValueError as error:
+            blockers.append(str(error))
+    return FrozenJSON.freeze(
+        {
+            "version": "krx_operator_capture_readiness_v1",
+            "policy": OPERATOR,
+            "plan_pin": plan.document.identifier,
+            "endpoint": endpoint(plan),
+            "method": "GET",
+            "parameters": {"basDd": plan.day.strftime("%Y%m%d")},
+            "requests_maximum": plan.max_requests,
+            "budgets": {
+                n: plan.document.to_dict()[n]
+                for n in (
+                    "max_requests",
+                    "max_response_bytes",
+                    "max_seconds",
+                    "interval_seconds",
+                    "daily_limit",
+                )
+            },
+            "concurrency": 1,
+            "valid_from": policy.to_dict()["valid_from"] if policy else None,
+            "valid_until": policy.to_dict()["valid_until"] if policy else None,
+            "approved_from": policy.to_dict()["approved_from"] if policy else None,
+            "approved_through": policy.to_dict()["approved_through"] if policy else None,
+            "operator_id": policy.to_dict()["operator_id"] if policy else None,
+            "operator_policy_integrity_verified": policy is not None,
+            "authorization_basis": "explicit_owner_local_original_document_review",
+            "independent_authorization_verified": False,
+            "provider_signature_verified": False,
+            "credential_present": credential_present,
+            "credential_binding_verified": credential_checked,
+            "policy_pin": policy.identifier if policy else None,
+            "origin": policy.to_dict()["transport"] if policy else None,
+            "blockers": list(dict.fromkeys(blockers)),
+            "ready_for_explicit_read_only_capture": not blockers,
+            "explicit_operator_confirmation_still_required": True,
+            "explicit_network_opt_in_still_required": True,
+            "network_requests": 0,
+            "forward_signal_eligible": False,
+            "paper_execution_eligible": False,
+            "pit_qualified": False,
+            "live_orders_authorized": False,
+        }
+    )
