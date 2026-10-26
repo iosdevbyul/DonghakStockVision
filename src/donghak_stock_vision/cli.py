@@ -68,6 +68,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.forward_signal_cli import add_commands as add_forward_signal
 
     add_forward_signal(sub)
+    from donghak_stock_vision.paper_trade_cli import add_commands as add_paper_trade
+
+    add_paper_trade(sub)
     return root
 
 
@@ -78,6 +81,10 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
+        if args.command == "paper-trade":
+            from donghak_stock_vision.paper_trade_cli import run as run_paper_trade
+
+            return run_paper_trade(args)
         if args.command == "forward-signal":
             from donghak_stock_vision.forward_signal_cli import run as run_forward_signal
 
