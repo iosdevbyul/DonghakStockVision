@@ -19,6 +19,9 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--journal-pin")
     cmd.add_argument("--signal-id")
     cmd.add_argument("--limit", type=int, default=50)
+    from donghak_stock_vision.storage.krx_authorization import add_trust_arguments
+
+    add_trust_arguments(cmd)
     cmd.add_argument("--outcome", choices=("BUY", "SELL", "HOLD"), default="BUY")
 
 
@@ -49,8 +52,13 @@ def run(args: argparse.Namespace) -> int:
         )
         print(demonstrate(args.capture_root, args.journal, args.outcome).payload_json)
         return 0
+    from donghak_stock_vision.storage.krx_authorization import cli_trust
+
+    trust = cli_trust(args)
     if args.action == "dry-run":
-        decision = generate_signal(args.capture_root, _request(args), args.request_pin)
+        decision = generate_signal(
+            args.capture_root, _request(args), args.request_pin, authorization_trust=trust
+        )
         print(
             FrozenJSON.freeze(
                 {
@@ -77,6 +85,7 @@ def run(args: argparse.Namespace) -> int:
                 args.request_pin,
                 args.journal_pin,
                 datetime.now(UTC),
+                authorization_trust=trust,
             ).payload_json
         )
     else:
@@ -94,6 +103,7 @@ def run(args: argparse.Namespace) -> int:
             args.request_pin,
             FrozenJSON.freeze(entry["decision"]),
             entry["decision_pin"],
+            authorization_trust=trust,
         )
         print(
             FrozenJSON.freeze(

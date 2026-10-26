@@ -59,9 +59,15 @@ def amount(value: Any) -> Money:
 def initial(config: FrozenJSON, pin: str) -> DeterministicPaperBroker:
     require(config.identifier == sha(pin), "paper_configuration_pin_mismatch")
     require(len(config.payload_json.encode()) <= 8192, "paper_configuration_budget")
-    d = fields(config.to_dict(), "version mode account_id initial_cash initial_at risk mechanics")
+    provider = config.to_dict().get("version") == "forward_paper_account_v2"
+    d = fields(
+        config.to_dict(),
+        "version mode account_id initial_cash initial_at risk mechanics"
+        + (" authorization_trust" if provider else ""),
+    )
     require(
-        d["version"] == "forward_paper_account_v1" and d["mode"] == "PAPER_SYNTHETIC",
+        (d["version"] == "forward_paper_account_v1" and d["mode"] == "PAPER_SYNTHETIC")
+        or (provider and d["mode"] == "PAPER_AUTHORIZED_CAPTURE"),
         "explicit_synthetic_paper_configuration_required",
     )
     r = fields(
@@ -120,7 +126,7 @@ def initial(config: FrozenJSON, pin: str) -> DeterministicPaperBroker:
     return DeterministicPaperBroker(account, mechanics, PaperFrame(pin, at, (), (), (), (), False))
 
 
-def source(job: FrozenJSON) -> dict[str, Any]:
+def source(job: FrozenJSON, *, authorization_trust: FrozenJSON | None = None) -> dict[str, Any]:
     require(len(job.payload_json.encode()) <= 256 * 1024, "paper_action_byte_budget")
     d = fields(
         job.to_dict(),
@@ -128,12 +134,21 @@ def source(job: FrozenJSON) -> dict[str, Any]:
         "signal_journal_pin signal_id quantity at fill_at session_open trading_enabled daily_pnl",
     )
     require(
-        d["version"] == "forward_paper_action_v1" and d["mode"] == "PAPER_SYNTHETIC",
+        (d["version"] == "forward_paper_action_v1" and d["mode"] == "PAPER_SYNTHETIC")
+        or (d["version"] == "forward_paper_action_v2" and d["mode"] == "PAPER_AUTHORIZED_CAPTURE"),
         "prospective_synthetic_signal_required",
     )
     request = FrozenJSON.freeze(d["request"])
     request_contract(request, d["request_pin"])  # Protected partitions checked before file I/O.
-    require(d["request"]["mode"] == "offline_fixture", "provider_execution_not_authorized")
+    provider = d["version"] == "forward_paper_action_v2"
+    if provider:
+        require(
+            authorization_trust is not None
+            and d["request"]["version"] == "forward_signal_request_v2",
+            "independent_provider_paper_configuration_required",
+        )
+    else:
+        require(d["request"]["mode"] == "offline_fixture", "provider_execution_not_authorized")
     integer(d["quantity"], positive=True)
     require(d["quantity"] <= 10000, "position_sizing_budget")
     flag(d["session_open"])
@@ -163,9 +178,35 @@ def source(job: FrozenJSON) -> dict[str, Any]:
     require(utc(entry["inserted_at"]) <= at, "execution_before_signal_journaling")
     decision = FrozenJSON.freeze(entry["decision"])
     verify_signal(
-        Path(d["capture_root"]), request, d["request_pin"], decision, entry["decision_pin"]
+        Path(d["capture_root"]),
+        request,
+        d["request_pin"],
+        decision,
+        entry["decision_pin"],
+        authorization_trust=authorization_trust,
     )
     verified = decision.to_dict()
+    if provider:
+        from donghak_stock_vision.storage.krx_authorization import (
+            review,
+            review_time,
+            verify_authorization,
+        )
+
+        review_time(
+            review(FrozenJSON.freeze(d["request"]["authorization"]), authorization_trust), at
+        )
+
+        for plan, item in zip(
+            request_contract(request, d["request_pin"]), d["request"]["sources"], strict=True
+        ):
+            verify_authorization(
+                plan,
+                item["attempt"],
+                FrozenJSON.freeze(d["request"]["authorization"]),
+                authorization_trust,
+                at,
+            )
     observations = verified["inputs"]["observations"]
     if observations:
         require(
@@ -203,9 +244,12 @@ def portfolio(broker: DeterministicPaperBroker, price: Money | None = None) -> d
 
 
 def process(
-    broker: DeterministicPaperBroker, job: FrozenJSON
+    broker: DeterministicPaperBroker,
+    job: FrozenJSON,
+    *,
+    authorization_trust: FrozenJSON | None = None,
 ) -> tuple[DeterministicPaperBroker, FrozenJSON]:
-    decision = source(job)
+    decision = source(job, authorization_trust=authorization_trust)
     d = job.to_dict()
     at, fill_at = utc(d["at"]), utc(d["fill_at"])
     require(at >= broker.checkpoint().initial_frame.now, "clock_before_account")
@@ -215,9 +259,11 @@ def process(
     observations = decision["inputs"]["observations"]
     price = amount(str(observations[-1]["bar"]["close"])) if observations else None
     result: dict[str, Any] = {
-        "version": "forward_paper_result_v1",
+        "version": "forward_paper_result_v2"
+        if d["version"] == "forward_paper_action_v2"
+        else "forward_paper_result_v1",
         "mode": "PAPER",
-        "origin": "offline_fixture",
+        "origin": decision["origin"],
         "signal_id": decision["signal_id"],
         "decision_pin": FrozenJSON.freeze(decision).identifier,
         "input_fingerprint": decision["input_fingerprint"],
@@ -317,3 +363,13 @@ def process(
         result["after"] = portfolio(broker, price)
     result["checkpoint_state_id"] = broker.state_id
     return broker, FrozenJSON.freeze(result)
+
+
+def paper_trust(config: FrozenJSON) -> FrozenJSON | None:
+    # The separately pinned account configuration owns trust, not the signal report.
+    d = config.to_dict()
+    return (
+        FrozenJSON.freeze(d["authorization_trust"])
+        if d.get("version") == "forward_paper_account_v2"
+        else None
+    )

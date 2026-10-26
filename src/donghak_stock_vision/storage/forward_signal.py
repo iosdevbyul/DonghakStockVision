@@ -38,27 +38,34 @@ def _request_contract(request: FrozenJSON, trusted_pin: str) -> list[ForwardCapt
     require(request.identifier == sha(trusted_pin), "signal_request_pin_mismatch")
     d = request.to_dict()
     require(
+        d["version"] in ("forward_signal_request_v1", "forward_signal_request_v2"),
+        "unsupported_signal_request_or_policy",
+    )
+    require(
         set(d)
-        == {
-            "version",
-            "symbol",
-            "market",
-            "currency",
-            "mode",
-            "start",
-            "end",
-            "calculated_at",
-            "fast",
-            "slow",
-            "policy",
-            "max_latest_age_seconds",
-            "database_pin",
-            "sources",
-        },
+        == (
+            {
+                "version",
+                "symbol",
+                "market",
+                "currency",
+                "mode",
+                "start",
+                "end",
+                "calculated_at",
+                "fast",
+                "slow",
+                "policy",
+                "max_latest_age_seconds",
+                "database_pin",
+                "sources",
+            }
+            | ({"authorization"} if d["version"] == "forward_signal_request_v2" else set())
+        ),
         "signal_request_fields",
     )
     require(
-        d["version"] == "forward_signal_request_v1" and d["policy"] == POLICY,
+        d["policy"] == POLICY,
         "unsupported_signal_request_or_policy",
     )
     instrument = Instrument(d["symbol"], Exchange(d["market"]), Currency(d["currency"]))
@@ -68,6 +75,10 @@ def _request_contract(request: FrozenJSON, trusted_pin: str) -> list[ForwardCapt
     )
     require(
         d["mode"] in ("offline_fixture", "authorized_provider"), "explicit_signal_mode_required"
+    )
+    require(
+        d["version"] != "forward_signal_request_v2" or d["mode"] == "authorized_provider",
+        "provider_request_requires_versioned_authorization",
     )
     parameters(d["fast"], d["slow"])
     start, end = date.fromisoformat(d["start"]), date.fromisoformat(d["end"])
@@ -109,11 +120,47 @@ def _request_contract(request: FrozenJSON, trusted_pin: str) -> list[ForwardCapt
     return plans
 
 
-def generate_signal(root: Path, request: FrozenJSON, trusted_pin: str) -> FrozenJSON:
+def generate_signal(
+    root: Path,
+    request: FrozenJSON,
+    trusted_pin: str,
+    *,
+    authorization_trust: FrozenJSON | None = None,
+) -> FrozenJSON:
     plans = request_contract(request, trusted_pin)
     d = request.to_dict()
     # Existing operator reference strings cannot authenticate provider service approval.
-    require(d["mode"] == "offline_fixture", "provider_authorization_not_independently_verified")
+    provider = d["mode"] == "authorized_provider"
+    origin = d["mode"]
+    if provider:
+        from donghak_stock_vision.storage.krx_authorization import (
+            capture_root_check,
+            review,
+            review_time,
+            verify_authorization,
+        )
+
+        require(
+            d["version"] == "forward_signal_request_v2",
+            "provider_authorization_not_independently_verified",
+        )
+        authorization = FrozenJSON.freeze(d["authorization"])
+        grant = review(authorization, authorization_trust)
+        capture_root_check(grant, root)
+        review_time(grant, timestamp(d["calculated_at"]))
+        for plan, item in zip(plans, d["sources"], strict=True):
+            verify_authorization(
+                plan,
+                item["attempt"],
+                authorization,
+                authorization_trust,
+                timestamp(d["calculated_at"]),
+            )
+        origin = (
+            "real_provider_https_local_capture"
+            if grant.to_dict()["transport"] == "provider_https"
+            else "authorized_provider_mock_fixture"
+        )
     path = root / DB
     require(
         not root.is_symlink() and path.is_file() and not path.is_symlink(), "pilot_archive_missing"
@@ -126,6 +173,19 @@ def generate_signal(root: Path, request: FrozenJSON, trusted_pin: str) -> Frozen
     observations: list[dict[str, Any]] = []
     for plan, source in zip(plans, d["sources"], strict=True):
         owner = verify_capture(root, plan, source["attempt"], source["capture_pin"])
+        if provider:
+            from donghak_stock_vision.storage.forward_capture import verify_capture_authorization
+
+            verified_origin = verify_capture_authorization(
+                root,
+                plan,
+                source["attempt"],
+                source["capture_pin"],
+                authorization,
+                authorization_trust,
+                timestamp(d["calculated_at"]),
+            )
+            require(verified_origin == origin, "capture_origin_conflict")
         manifest = owner.to_dict()
         require(
             manifest["ingestion"] == [["success", 1, None]] and manifest["stop_reason"] is None,
@@ -189,7 +249,7 @@ def generate_signal(root: Path, request: FrozenJSON, trusted_pin: str) -> Frozen
     identity = FrozenJSON.freeze({"request_pin": trusted_pin, "strategy": reference()}).identifier
     return FrozenJSON.freeze(
         {
-            "version": "forward_signal_decision_v1",
+            "version": "forward_signal_decision_v2" if provider else "forward_signal_decision_v1",
             "signal_id": identity,
             "request_pin": trusted_pin,
             "instrument": {"symbol": d["symbol"], "market": d["market"], "currency": d["currency"]},
@@ -206,12 +266,12 @@ def generate_signal(root: Path, request: FrozenJSON, trusted_pin: str) -> Frozen
             "eligibility": {
                 "policy": POLICY,
                 "eligible": True,
-                "assurance": "synthetic_functional_validation_only",
+                "assurance": origin if provider else "synthetic_functional_validation_only",
                 "session_completeness": "unverified_observed_bars_only",
                 "historical_pit_qualified": False,
                 "execution_authorized": False,
             },
-            "origin": d["mode"],
+            "origin": origin,
             "calculation": calculation.to_dict(),
             "usage": "research_signal_only_no_order_or_profitability_claim",
         }
@@ -219,7 +279,17 @@ def generate_signal(root: Path, request: FrozenJSON, trusted_pin: str) -> Frozen
 
 
 def verify_signal(
-    root: Path, request: FrozenJSON, request_pin: str, decision: FrozenJSON, decision_pin: str
+    root: Path,
+    request: FrozenJSON,
+    request_pin: str,
+    decision: FrozenJSON,
+    decision_pin: str,
+    *,
+    authorization_trust: FrozenJSON | None = None,
 ) -> None:
     require(decision.identifier == sha(decision_pin), "decision_pin_mismatch")
-    require(generate_signal(root, request, request_pin) == decision, "signal_semantic_mismatch")
+    require(
+        generate_signal(root, request, request_pin, authorization_trust=authorization_trust)
+        == decision,
+        "signal_semantic_mismatch",
+    )

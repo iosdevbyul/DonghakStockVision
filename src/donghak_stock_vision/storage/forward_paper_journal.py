@@ -12,7 +12,13 @@ from typing import Any
 
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require, sha, utc
-from donghak_stock_vision.storage.forward_paper import MAX_ACTIONS, initial, portfolio, process
+from donghak_stock_vision.storage.forward_paper import (
+    MAX_ACTIONS,
+    initial,
+    paper_trust,
+    portfolio,
+    process,
+)
 from donghak_stock_vision.trading.paper import DeterministicPaperBroker
 
 GENESIS = FrozenJSON.freeze({"version": "forward_paper_journal_v1", "entries": []}).identifier
@@ -129,8 +135,15 @@ def _replay(
             and d["job"]["signal_id"] == signal_id,
             "paper_journal_integrity_mismatch",
         )
+        require(
+            (paper_trust(config) is not None)
+            == (d["job"].get("version") == "forward_paper_action_v2"),
+            "paper_account_action_mode_mismatch",
+        )
         _chronology(entries, d["job"], d["result"])
-        broker, expected = process(broker, FrozenJSON.freeze(d["job"]))
+        broker, expected = process(
+            broker, FrozenJSON.freeze(d["job"]), authorization_trust=paper_trust(config)
+        )
         require(expected.to_dict() == d["result"], "paper_semantic_replay_mismatch")
         entries.append({"entry": d, "entry_pin": pin})
         previous = pin
@@ -172,12 +185,18 @@ def execute(
     from donghak_stock_vision.storage.forward_paper import source
 
     initial(config, config_pin)
-    decision = source(job)
+    require(
+        (paper_trust(config) is not None)
+        == (job.to_dict().get("version") == "forward_paper_action_v2"),
+        "paper_account_action_mode_mismatch",
+    )
+    decision = source(job, authorization_trust=paper_trust(config))
     if not path.exists():
         require(head == GENESIS, "paper_head_pin_mismatch_unknown_commit_reconcile_required")
     if dry_run and not path.exists():
+        _current_action(decision, job)
         broker = initial(config, config_pin)
-        _, result = process(broker, job)
+        _, result = process(broker, job, authorization_trust=paper_trust(config))
         return FrozenJSON.freeze(
             {
                 "version": "forward_paper_processing_v1",
@@ -203,9 +222,10 @@ def execute(
                             "head_pin": head,
                         }
                     )
+            _current_action(decision, job)
             require(len(entries) < MAX_ACTIONS, "paper_action_capacity")
             _chronology(entries, job.to_dict(), decision)
-            _, result = process(broker, job)
+            _, result = process(broker, job, authorization_trust=paper_trust(config))
             owner = FrozenJSON.freeze(
                 {
                     "version": "forward_paper_entry_v1",
@@ -266,3 +286,9 @@ def reconcile(
             "journal_written": False,
         }
     )
+
+
+def _current_action(decision: dict[str, Any], job: FrozenJSON) -> None:
+    from donghak_stock_vision.storage.krx_authorization import current_operation
+
+    current_operation(decision["origin"], utc(job.to_dict()["at"]))

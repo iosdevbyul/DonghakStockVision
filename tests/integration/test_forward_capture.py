@@ -654,18 +654,20 @@ def test_raw_metadata_commit_interruption_stops_resume(tmp_path: Path) -> None:
 
 def test_synthetic_and_provider_archives_do_not_mix(tmp_path: Path) -> None:
     execute(tmp_path)
-    plan = replace(
-        offline_plan(),
-        mode="authorized_provider",
-        authorization_reference="operator-approved",
-        terms_reference="private-use",
+    from tests.integration.test_krx_forward_authorization import KEY, permission_fixture
+
+    plans, authorization, trust = permission_fixture(
+        tmp_path, [replace(offline_plan(), mode="authorized_provider")], archive_root=tmp_path
     )
+    plan = plans[0]
     with pytest.raises(ValueError, match="mixed_capture_origins_forbidden"):
         execute(
             tmp_path,
             plan,
-            attempt="real",
-            api_key="private-key",
+            attempt="a",
+            authorization=authorization,
+            authorization_trust=trust,
+            api_key=KEY,
             allow_network=True,
             transport=httpx.MockTransport(lambda r: pytest.fail("HTTP before origin validation")),
         )

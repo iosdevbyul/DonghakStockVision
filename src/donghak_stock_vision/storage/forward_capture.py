@@ -10,6 +10,7 @@ import json
 import logging
 import re
 import sqlite3
+import ssl
 import time
 from collections.abc import Callable, Iterator
 from contextlib import closing, contextmanager
@@ -367,6 +368,8 @@ def run_capture(
     trusted_resume_pin: str | None = None,
     api_key: str = "",
     allow_network: bool = False,
+    authorization: FrozenJSON | None = None,
+    authorization_trust: FrozenJSON | None = None,
     cancelled: Callable[[], bool] = lambda: False,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     monotonic: Callable[[], float] = time.monotonic,
@@ -385,6 +388,52 @@ def run_capture(
             "offline_transport_required",
         )
     require(not blockers, ",".join(blockers))
+    grant = None
+    transport_kind = None
+    if plan.mode == "authorized_provider":
+        from donghak_stock_vision.storage.krx_authorization import (
+            verify_authorization,
+            verify_credential,
+        )
+
+        require(authorization is not None, "original_permission_terms_and_signed_review_required")
+        assert authorization is not None
+        grant = verify_authorization(plan, attempt, authorization, authorization_trust, observed)
+        verify_credential(grant, api_key)
+        transport_kind = grant.to_dict()["transport"]
+        transport = client._transport_for_url(httpx.URL(_endpoint(plan)))
+        if transport_kind == "mock_fixture":
+            require(
+                type(transport) is httpx.MockTransport, "review_requires_explicit_mock_transport"
+            )
+        else:
+            pool = getattr(transport, "_pool", None)
+            context = getattr(pool, "_ssl_context", None)
+            require(
+                type(transport) is httpx.HTTPTransport
+                and type(pool).__name__ == "ConnectionPool"
+                and isinstance(context, ssl.SSLContext)
+                and context.verify_mode == ssl.CERT_REQUIRED
+                and context.check_hostname
+                and not client.trust_env
+                and not client.follow_redirects
+                and not any(client.event_hooks.values()),
+                "verified_direct_https_transport_required",
+            )
+            # Live permission/freshness/deadlines cannot be backdated with fixture clocks.
+            verify_authorization(
+                plan, attempt, authorization, authorization_trust, datetime.now(UTC)
+            )
+
+            def actual_clock() -> datetime:
+                return datetime.now(UTC)
+
+            clock = actual_clock
+            monotonic, sleep = time.monotonic, time.sleep
+    if grant is not None:
+        from donghak_stock_vision.storage.krx_authorization import capture_root_check
+
+        capture_root_check(grant, root)
     with _writer(root) as store:
         connection = store.connection
         origins = connection.execute("SELECT plan FROM forward_intents LIMIT 33").fetchall()
@@ -393,6 +442,30 @@ def run_capture(
             all(FrozenJSON(row[0]).to_dict()["mode"] == plan.mode for row in origins),
             "mixed_capture_origins_forbidden",
         )
+        if grant is not None:
+            assert authorization_trust is not None
+            binding = _authorization_binding(plan, attempt, grant, authorization_trust)
+            existing_intent = connection.execute(
+                "SELECT 1 FROM forward_intents WHERE capture_id=?", (capture_id,)
+            ).fetchone()
+            if existing_intent:
+                _authorization_row(connection, capture_id, binding)
+            else:
+                with connection:
+                    connection.execute(
+                        "CREATE TABLE IF NOT EXISTS forward_authorizations "
+                        "(capture_id TEXT PRIMARY KEY, document TEXT NOT NULL, pin TEXT NOT NULL)"
+                    )
+                    for operation in ("UPDATE", "DELETE"):
+                        connection.execute(
+                            f"CREATE TRIGGER IF NOT EXISTS forward_auth_no_{operation.lower()} "
+                            f"BEFORE {operation} ON forward_authorizations "
+                            "BEGIN SELECT RAISE(ABORT,'forward authorization immutable'); END"
+                        )
+                    connection.execute(
+                        "INSERT INTO forward_authorizations VALUES(?,?,?)",
+                        (capture_id, binding.payload_json, binding.identifier),
+                    )
         existing = connection.execute(
             "SELECT pin FROM forward_manifests WHERE capture_id=?", (capture_id,)
         ).fetchone()
@@ -456,6 +529,9 @@ def run_capture(
                 plan,
                 record,
                 cancelled=cancelled,
+                authorization_check=(
+                    lambda: _permission_clock(grant, clock()) if grant is not None else None
+                ),
                 clock=clock,
                 monotonic=monotonic,
                 sleep=sleep,
@@ -559,4 +635,78 @@ def assess_capture_pit(
 
     return assess_historical_pit(
         root / DB, scope, scope_pin, (), availability_manifest(()).identifier, calendars
+    )
+
+
+def _permission_clock(grant: FrozenJSON, at: datetime) -> None:
+    from donghak_stock_vision.backtest.validation import utc
+
+    d = grant.to_dict()
+    if not utc(d["valid_from"]) <= utc(at) < utc(d["valid_until"]):
+        raise ProviderError("provider_permission_expired_during_capture")
+
+
+def _authorization_binding(
+    plan: ForwardCapturePlan, attempt: str, grant: FrozenJSON, trust: FrozenJSON
+) -> FrozenJSON:
+    return FrozenJSON.freeze(
+        {
+            "version": "krx_forward_capture_authorization_v1",
+            "capture_id": identity(plan, attempt),
+            "plan_pin": plan.document.identifier,
+            "grant_pin": grant.identifier,
+            "reviewer_registry_pin": trust.to_dict()["registry_sha256"],
+            "transport": grant.to_dict()["transport"],
+            "publication_authenticated": False,
+        }
+    )
+
+
+def _authorization_row(
+    connection: sqlite3.Connection, capture_id: str, expected: FrozenJSON
+) -> None:
+    require(
+        connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='forward_authorizations'"
+        ).fetchone()
+        is not None,
+        "original_capture_authorization_binding_missing",
+    )
+    rows = connection.execute(
+        "SELECT document,pin FROM forward_authorizations WHERE capture_id=?", (capture_id,)
+    ).fetchall()
+    require(
+        len(rows) == 1 and rows[0] == (expected.payload_json, expected.identifier),
+        "capture_authorization_binding_mismatch",
+    )
+
+
+def verify_capture_authorization(
+    root: Path,
+    plan: ForwardCapturePlan,
+    attempt: str,
+    capture_pin: str,
+    reference: FrozenJSON,
+    trust: FrozenJSON | None,
+    at: datetime,
+) -> str:
+    from donghak_stock_vision.backtest.validation import utc
+    from donghak_stock_vision.storage.krx_authorization import verify_authorization
+
+    grant = verify_authorization(plan, attempt, reference, trust, at)
+    from donghak_stock_vision.storage.krx_authorization import capture_root_check
+
+    capture_root_check(grant, root)
+    assert trust is not None
+    owner = verify_capture(root, plan, attempt, capture_pin)
+    expected = _authorization_binding(plan, attempt, grant, trust)
+    with closing(_connection(root)) as connection:
+        _authorization_row(connection, identity(plan, attempt), expected)
+    for response in owner.to_dict()["responses"]:
+        for key in ("request_started_at", "response_completed_at"):
+            verify_authorization(plan, attempt, reference, trust, utc(response["metadata"][key]))
+    return (
+        "real_provider_https_local_capture"
+        if grant.to_dict()["transport"] == "provider_https"
+        else "authorized_provider_mock_fixture"
     )

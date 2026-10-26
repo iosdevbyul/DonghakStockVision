@@ -33,6 +33,7 @@ def add_commands(sub: Any) -> None:
         "action",
         choices=(
             "dry-run",
+            "authorization-readiness",
             "capture",
             "status",
             "verify",
@@ -54,6 +55,11 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--sequence", type=int, default=0)
     cmd.add_argument("--output", type=Path)
     cmd.add_argument("--allow-network", action="store_true")
+    cmd.add_argument("--authorization-root", type=Path)
+    cmd.add_argument("--authorization-pin")
+    from donghak_stock_vision.storage.krx_authorization import add_trust_arguments
+
+    add_trust_arguments(cmd)
     for name in ("operations-config", "binding", "acknowledgement", "returned-readback"):
         cmd.add_argument(f"--{name}", type=Path)
         cmd.add_argument(f"--{name}-pin")
@@ -131,6 +137,32 @@ def run(args: argparse.Namespace) -> int:
         from donghak_stock_vision.forward_custody_cli import run as run_custody
 
         return run_custody(args, plan)
+    from donghak_stock_vision.storage.krx_authorization import cli_trust, readiness
+
+    trust = cli_trust(args)
+    authorization = None
+    if args.authorization_root is not None or args.authorization_pin is not None:
+        if args.authorization_root is None or args.authorization_pin is None:
+            raise ValueError("explicit_authorization_root_and_pin_required")
+        authorization = FrozenJSON.freeze(
+            {"root": str(args.authorization_root), "grant_pin": args.authorization_pin}
+        )
+    if args.action == "authorization-readiness" or (
+        args.action == "dry-run" and plan.mode == "authorized_provider"
+    ):
+        print(
+            readiness(
+                plan,
+                args.attempt,
+                authorization,
+                trust,
+                datetime.now(UTC),
+                bool(os.environ.get("KRX_API_KEY", "").strip()),
+                credential=os.environ.get("KRX_API_KEY"),
+                capture_root=args.root,
+            ).payload_json
+        )
+        return 0
     if args.action == "dry-run":
         print(
             FrozenJSON.freeze(
@@ -182,6 +214,23 @@ def run(args: argparse.Namespace) -> int:
         else:
             print(owner.payload_json)
         return 0
+    if plan.mode == "authorized_provider":
+        assessed = readiness(
+            plan,
+            args.attempt,
+            authorization,
+            trust,
+            datetime.now(UTC),
+            bool(os.environ.get("KRX_API_KEY", "").strip()),
+            credential=os.environ.get("KRX_API_KEY"),
+            capture_root=args.root,
+        ).to_dict()
+        if assessed["blockers"]:
+            raise ValueError(",".join(assessed["blockers"]))
+        if not args.allow_network:
+            raise ValueError("explicit_network_permission_required")
+        if assessed["origin"] != "provider_https":
+            raise ValueError("mock_review_is_test_only_no_cli_provider_request")
     transport = fixture_transport(plan) if plan.mode == "offline_fixture" else None
     with httpx.Client(
         transport=transport, trust_env=False, follow_redirects=False, timeout=20
@@ -197,6 +246,8 @@ def run(args: argparse.Namespace) -> int:
             trusted_resume_pin=args.pin,
             api_key=os.environ.get("KRX_API_KEY", "") if plan.mode == "authorized_provider" else "",
             allow_network=args.allow_network,
+            authorization=authorization,
+            authorization_trust=trust,
             **kwargs,
         )
     assessment = None
@@ -214,9 +265,27 @@ def run(args: argparse.Namespace) -> int:
         assessment = assess_capture_pit(
             args.root, plan, args.attempt, result.identifier, scope, scope.document.identifier
         ).report.to_dict()
+    extra: dict[str, Any] = {}
+    if plan.mode == "authorized_provider":
+        from donghak_stock_vision.storage.forward_capture import verify_capture_authorization
+
+        assert authorization is not None
+        extra = {
+            "version": "authorized_forward_capture_result_v1",
+            "verified_origin": verify_capture_authorization(
+                args.root,
+                plan,
+                args.attempt,
+                result.identifier,
+                authorization,
+                trust,
+                datetime.now(UTC),
+            ),
+        }
     print(
         FrozenJSON.freeze(
             {
+                **extra,
                 "pit_assessment": assessment,
                 "manifest": result.to_dict(),
                 "capture_pin": result.identifier,

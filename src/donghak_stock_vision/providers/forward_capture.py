@@ -27,17 +27,20 @@ class CaptureHTTP(RetryingHTTP):
         record: Callable[[dict[str, Any], bytes], None],
         *,
         cancelled: Callable[[], bool] = lambda: False,
+        authorization_check: Callable[[], None] = lambda: None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         monotonic: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         super().__init__(client, gate, attempts=plan.max_requests, sleep=sleep)
         self.plan, self.record, self.cancelled = plan, record, cancelled
+        self.authorization_check = authorization_check
         self.clock, self.monotonic = clock, monotonic
         self.deadline = monotonic() + plan.max_seconds
         self.completed_at: datetime | None = None
 
     def guard(self) -> None:
+        self.authorization_check()
         if self.cancelled():
             raise ProviderError("capture_cancelled")
         if self.monotonic() >= self.deadline:

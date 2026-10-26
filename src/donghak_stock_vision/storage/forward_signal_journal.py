@@ -154,10 +154,31 @@ def append_signal(
     request_pin: str,
     expected_head: str,
     inserted_at: datetime,
+    *,
+    authorization_trust: FrozenJSON | None = None,
 ) -> FrozenJSON:
-    decision = generate_signal(root, request, request_pin)  # Never append arbitrary summary JSON.
+    decision = generate_signal(
+        root, request, request_pin, authorization_trust=authorization_trust
+    )  # Never append arbitrary summary JSON.
     require(len(decision.payload_json.encode()) <= MAX_ENTRY - 2048, "decision_output_budget")
     inserted_at = timestamp(inserted_at)
+    if decision.to_dict()["version"] == "forward_signal_decision_v2":
+        from donghak_stock_vision.storage.krx_authorization import (
+            current_operation,
+            review,
+            review_time,
+        )
+
+        current_operation(decision.to_dict()["origin"], inserted_at)
+        review_time(
+            review(FrozenJSON.freeze(request.to_dict()["authorization"]), authorization_trust),
+            inserted_at,
+        )
+        require(
+            (inserted_at - timestamp(decision.to_dict()["calculated_at"])).total_seconds()
+            <= request.to_dict()["max_latest_age_seconds"],
+            "stale_forward_decision_at_insertion",
+        )
     require(
         inserted_at >= timestamp(decision.to_dict()["calculated_at"]),
         "insertion_before_calculation",
