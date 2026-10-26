@@ -426,6 +426,15 @@ def run_capture(
         assert authorization is not None
         grant = verifier(plan, attempt, authorization, authorization_trust, observed)
         verify_credential(grant, api_key)
+        # A caller-supplied client must not change the reviewed request scope.
+        require(
+            not client.params
+            and not client.cookies
+            and not {"host", "cookie", "authorization", "proxy-authorization"}.intersection(
+                client.headers
+            ),
+            "provider_client_default_parameters_or_cookies_forbidden",
+        )
         if operator_policy:
             require(
                 len(api_key) <= 1024 and api_key.isascii() and api_key.isprintable(),
@@ -443,6 +452,7 @@ def run_capture(
             require(
                 type(transport) is httpx.HTTPTransport
                 and type(pool).__name__ == "ConnectionPool"
+                and getattr(pool, "_retries", None) == 0
                 and isinstance(context, ssl.SSLContext)
                 and context.verify_mode == ssl.CERT_REQUIRED
                 and context.check_hostname

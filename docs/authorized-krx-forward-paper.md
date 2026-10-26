@@ -485,3 +485,205 @@ No automatic key rotation, evidence migration, approval issuance, public redistr
 independent custody, PIT qualification, OOS approval, scheduler or brokerage is added.
 Local clocks/TLS capture receipts are not independently authenticated exchange
 publication timestamps. All existing historical approval gates remain unchanged.
+
+## First real read-only pilot readiness (#147)
+
+This is a preparation step, **not a completed collection**. Base main for this audit is
+`85672b2e2ace6ea008f363d21054fe0abc90d3e0` (#146 merged). No KRX data API, sample TEST,
+broker or external custody request was made. The next collection step requires a
+separately authorized single real request; further synthetic development is not a
+substitute for locating the original documents below.
+
+### Confirmed prerequisites and remaining material
+
+Inspection on 2026-10-26 confirmed existing local approval-reference records and
+credential presence only. Known daily-trading approval is 2026-09-29 through
+2027-09-28; basic-information approval is a different service and does not authorize
+`stk_bydd_trd`. This acknowledges the operator's approval history, without presenting
+local records as provider-authenticated permission. Existing private scope records,
+raw 403 receipts and prior contract-review records were preserved. No usable original
+permission/terms/specification or operator-policy package was found in the scoped
+repository private evidence. The earlier `/tmp` security-pilot report is still absent.
+Do not publish original documents, account identifiers, document hashes or credentials.
+
+| Required original | Exact expected source and purpose | Current finding |
+|---|---|---|
+| Service permission | Operator's original KRX My Page / API key issuance history and approved service application record, or original KRX approval notification; identify the daily-trading service, account/key association and approved dates privately | Existing operator-confirmed history; original export/notification not located |
+| Applicable terms | [Official Korean terms](https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO002.jsp); preserve the actual successful original response/export, review applicability to this account and private retention | Public text reviewed; original applicable successful bytes not in the private package |
+| Developer specification | “Development specification download” on the [official KOSPI daily service page](https://openapi.krx.co.kr/contents/OPP/USES/service/OPPUSES002_S2.cmd?BO_ID=JvJFzlAENzZlPBDNGAWC); retain the original download and review method, host/path, parameters, outputs and all-market scope | Download document not obtained; exact original download URL unavailable in retrieved text |
+| Scope and policy | Existing `forward_capture_plan_v1` and `operator-policy.json`, reviewed private originals, credential binding and separately retained policy/plan pins | No production package created; blocked until originals and concrete scope are reviewed |
+
+The public [usage procedure](https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO003.jsp)
+confirms separate key and service approval. The official service page identifies KOSPI
+daily trading and describes market-listed equity coverage from 2010-01-04; AUTH_KEY
+header instructions are visible. The table and sample URL/method/parameters are empty
+in retrieved text. A direct documentation-only GET returned HTTP 403. No bypass,
+repeated direct download, sample TEST or endpoint experiment was attempted. That error
+body is not a specification or terms acceptance.
+
+Consequently the following remain **repository implementation assumptions awaiting the
+original official specification**, not newly verified provider guarantees:
+
+- GET `https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd`.
+- `AUTH_KEY` header; `basDd` formatted `YYYYMMDD` (header instruction independently visible).
+- JSON object with `OutBlock_1` array. Existing parser requires string `ISU_CD` short
+  code, `BAS_DD`, `MKT_NM`, `TDD_OPNPRC`, `TDD_HGPRC`, `TDD_LWPRC`, `TDD_CLSPRC`,
+  `ACC_TRDVOL`, `ACC_TRDVAL`, and validates exact KRW/share integers and OHLC relations.
+- Market-wide daily response rather than a server-side 005930 filter. No undocumented
+  symbol parameter is added. Verify exact instrument-code, market and date semantics
+  from the original specification before approving this mapping.
+
+Published terms currently state noncommercial use, at most 10,000 requests/key/day,
+source attribution, no provision to third parties, and no continued use after contract
+termination. No more precise service-specific rate or retention duration was verified.
+Do not turn these into indefinite retention/redistribution permission. Review any
+service-specific conditions and how expiry affects private archives before collection.
+The project's one-request/day archive limit is much tighter but cannot account for
+traffic from other clients sharing the key.
+
+### Capture audit and scoped correction
+
+The original collector already preserves full response bytes before parsing, uses
+`follow_redirects=False`, verified direct TLS and no environment proxies, and records
+request/response instants in UTC. The operator policy permits one request and zero
+retries. The existing CLI constructs a default HTTPX transport with zero connection
+retries. This audit also closes two caller-injection gaps: provider capture now rejects
+client-level default query parameters/cookies and Host/Cookie/Authorization/Proxy-Authorization
+headers, and real transport preflight rejects
+nonzero internal connection retries. A reviewed request must not acquire hidden scope
+parameters, session data or retry attempts from an injected client.
+
+Offline synthetic full-market tests verify that valid unrelated rows are preserved in
+the original private raw response but **only 005930** is ingested/projected. An invalid
+unrelated row invalidates the complete page; missing/duplicate Samsung rows, malformed
+fields, wrong dates/markets or invalid numeric values cannot produce a successful
+scoped bar. Unexpected responses are retained as failed evidence, not silently accepted
+as empty success. A committed failure can be inspected without another HTTP request.
+The complete market page may contain unrelated records: keep it private and ensure the
+original permission permits retention; do not pretend only Samsung bytes were collected.
+
+Original `forward_capture_manifest_v1`, receipts, policy and independent-review
+contracts are unchanged. Completed capture reuse requires its separately retained pin
+and never repeats HTTP. Unknown interrupted request outcomes must not be automatically
+retried: inspect the original status/receipts and seek separate operator review.
+The archive request gate is durable locally, not a distributed or deletion-proof limit.
+
+### Canonical plan and policy-pin preparation (offline)
+
+After reviewing actual originals, prepare the private 0700 package using the existing
+checklist and exact operator schema above. Select a recent **actually completed session**
+only at authorization time, within 1–7 calendar days and the existing approved unprotected
+training/tuning split. A weekday alone does not establish a trading session. Do not
+fabricate a split to reach protected data. Do not preselect a date in this guide.
+
+The policy contains the complete **unbound** plan, with both references null. Its
+canonical `FrozenJSON.identifier` is the policy pin. The bound plan replaces only
+`authorization_reference` with that pin and `terms_reference` with the reviewed original
+terms hash; its own canonical identifier is the plan pin. These are canonical evidence
+fingerprints, not `sha256sum` of pretty-printed JSON. Retain both pins outside the mutable
+package. Changing originals, credential, scope, date, attempt, limits or archive root
+requires a fresh explicit review; never automatically rehash changed evidence as approved.
+
+This offline Python example derives a bound plan **from an already reviewed package**.
+It does not create permission, invent missing fields, choose a date or generate a grant.
+Set `DSV_PILOT_PACKAGE` and `DSV_PILOT_PINS` to actual private absolute paths. The latter
+is an existing separate 0700 directory containing the independently retained
+`operator-policy.pin`. Never copy a pin from an untrusted report as the trust root.
+
+```sh
+python - <<'PY'
+import os
+from dataclasses import replace
+from datetime import UTC, datetime
+from pathlib import Path
+from dotenv import load_dotenv
+from donghak_stock_vision.backtest.data import FrozenJSON
+from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
+from donghak_stock_vision.storage.krx_authorization import (
+    bounded, operator_readiness, verify_operator_authorization,
+)
+
+package = Path(os.environ['DSV_PILOT_PACKAGE'])
+pins = Path(os.environ['DSV_PILOT_PINS'])
+assert all(p.is_absolute() and p.is_dir() and not p.is_symlink()
+           and p.stat().st_mode & 0o077 == 0 for p in (package, pins))
+assert package.resolve() != pins.resolve()
+policy = FrozenJSON(bounded(package / 'operator-policy.json', 32768).decode())
+assert policy.identifier == (pins / 'operator-policy.pin').read_text().strip()
+p = policy.to_dict()
+assert len(p['captures']) == 1
+c = p['captures'][0]
+unbound = ForwardCapturePlan.from_dict(c['plan'])
+assert unbound.authorization_reference is None and unbound.terms_reference is None
+plan = replace(unbound, authorization_reference=policy.identifier,
+               terms_reference=p['terms']['sha256'])
+reference = FrozenJSON.freeze({'root': str(package), 'grant_pin': policy.identifier})
+now = datetime.now(UTC)
+verify_operator_authorization(plan, c['attempt'], reference, None, now)
+load_dotenv(Path.cwd() / '.env', override=False)
+key = os.environ.get('KRX_API_KEY', '')
+readiness = operator_readiness(plan, c['attempt'], reference, None, now, bool(key.strip()),
+                              credential=key, capture_root=Path(p['capture_root']))
+assert readiness.to_dict()['ready_for_explicit_read_only_capture'], 'Readiness blocked'
+for path, content in ((package / 'plan.json', plan.document.payload_json),
+                      (pins / 'plan.pin', plan.document.identifier + '\n')):
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, 'w') as stream:
+        stream.write(content)
+        stream.flush()
+        os.fsync(stream.fileno())
+print('Offline package verified; plan written. No network request performed.')
+PY
+```
+
+Exclusive creation prevents overwriting an earlier plan/pin. This preparation snippet is
+not a transactional multi-file store: if interrupted, inspect existing files and compare
+their canonical identities before continuing. Do not collect on a partially prepared
+package. Original permission/terms/specification bytes remain unmodified.
+
+Then use the actual reviewed attempt and archive root with the existing non-network
+`authorization-readiness` and `dry-run` commands shown above. Keep their JSON private.
+Exit code 0 means the assessment was produced, **not** that all requirements passed:
+check `blockers=[]`, policy/credential binding, endpoint, basDd, budgets and
+`ready_for_explicit_read_only_capture=true`. Independent authorization, signal/PAPER,
+PIT and live-order eligibility must remain false. The verifier enforces local owner
+review; locating a policy cannot authenticate an arbitrary document's issuer.
+
+### Single-request proposal, stop rules and readback
+
+Only after the developer contract and originals are reviewed, ask the operator to
+separately authorize the exact plan pin, policy pin, date, attempt and private archive.
+Propose **one GET**, concurrency one, no retries/redirects, <=30 seconds, <=2 MiB,
+archive daily limit one, read-only/no signal/no PAPER/no real orders. The existing
+execution interface requires both `--allow-network` and
+`--confirm-operator-authorization`; this task does not execute it or create a valid
+production package from placeholders.
+
+Stop on every missing original/pin, expiry, wrong endpoint/service/credential/split,
+quota uncertainty, non-200 response (including 403), parse error, byte/time budget or
+interruption. Do not try another date, endpoint, key or attempt automatically. The
+collector may commit a failed manifest; inspect response completeness, HTTP status,
+parse error and `ingestion`, rather than calling any manifest a successful capture.
+
+After a future authorized capture, retain the original manifest pin privately. Existing
+commands below are all local; replace the uppercase arguments with the actual reviewed
+values. `readback` creates a new 0600 file and refuses overwrite.
+
+```sh
+dsv forward-capture status --root PRIVATE_CAPTURE_ROOT
+dsv forward-capture verify --root PRIVATE_CAPTURE_ROOT --plan PLAN.json \
+  --plan-pin TRUSTED_PLAN_PIN --attempt REVIEWED_ATTEMPT --pin TRUSTED_CAPTURE_PIN
+dsv forward-capture history --root PRIVATE_CAPTURE_ROOT --plan PLAN.json \
+  --plan-pin TRUSTED_PLAN_PIN --attempt REVIEWED_ATTEMPT --pin TRUSTED_CAPTURE_PIN
+dsv forward-capture readback --root PRIVATE_CAPTURE_ROOT --plan PLAN.json \
+  --plan-pin TRUSTED_PLAN_PIN --attempt REVIEWED_ATTEMPT --pin TRUSTED_CAPTURE_PIN \
+  --sequence 0 --output NEW_PRIVATE_READBACK_FILE
+```
+
+Also use the existing `verify_operator_capture_authorization(...)` interface at the
+original retained capture instant to verify policy/source binding. Passing a later time
+after policy expiry is not a renewal of authorization. Original raw receipt integrity
+and local HTTPS origin do not establish exchange publication time, independent custody,
+PIT safety or downstream signal/PAPER eligibility. No collection is marked complete in
+this preparation PR. **First real pilot status: blocked on original documents and
+verified developer contract; live KRX data requests: zero.**
