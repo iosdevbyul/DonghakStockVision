@@ -34,6 +34,7 @@ def add_commands(sub: Any) -> None:
         choices=(
             "dry-run",
             "authorization-readiness",
+            "recover",
             "capture",
             "status",
             "verify",
@@ -161,6 +162,52 @@ def run(args: argparse.Namespace) -> int:
         authorization = FrozenJSON.freeze(
             {"root": str(args.authorization_root), "grant_pin": args.authorization_pin}
         )
+    if args.action == "recover":
+        from donghak_stock_vision.storage.krx_capture_recovery import recover_capture
+
+        if (
+            not operator_policy
+            or authorization is None
+            or args.authorization_root is None
+            or trust is not None
+            or args.pin is None
+            or args.output is None
+            or args.allow_network
+            or args.confirm_operator_authorization
+        ):
+            raise ValueError("offline_recovery_requires_operator_policy_and_original_pins")
+        output = args.output
+        if (
+            not output.is_absolute()
+            or output.resolve() != output
+            or not output.parent.is_dir()
+            or output.parent.stat().st_mode & 0o077
+            or output.is_relative_to(args.root.resolve())
+            or output.is_relative_to(args.authorization_root.resolve())
+        ):
+            raise ValueError("separate_private_recovery_output_required")
+        artifact = recover_capture(args.root, plan, args.attempt, args.pin, authorization)
+        try:
+            fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            raise ValueError("recovery_output_already_exists") from None
+        with os.fdopen(fd, "w") as stream:
+            stream.write(artifact.payload_json)
+            stream.flush()
+            os.fsync(stream.fileno())
+        print(
+            FrozenJSON.freeze(
+                {
+                    "version": "krx_capture_recovery_result_v1",
+                    "recovery_pin": artifact.identifier,
+                    "derived_observations": len(artifact.to_dict()["observations"]),
+                    "market_row_count": artifact.to_dict()["market_row_count"],
+                    "original_capture_changed": False,
+                    "network_requests": 0,
+                }
+            ).payload_json
+        )
+        return 0
     if args.action == "authorization-readiness" or (
         args.action == "dry-run" and plan.mode == "authorized_provider"
     ):
