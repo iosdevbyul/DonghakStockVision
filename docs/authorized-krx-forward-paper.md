@@ -1,5 +1,67 @@
 # Authorized KRX forward observations to PAPER
 
+## Compressed capture processing and offline recovery (#149)
+
+The recorder retains exact streamed response bytes, including gzip compression.
+Parsing now decodes `Content-Encoding: gzip` separately, with both retained and
+decoded bodies bounded by the reviewed response budget (at most 2 MiB). Corrupt
+headers/CRC, truncated gzip, unsupported encodings, oversized decoded content and
+invalid JSON fail closed. No magic-byte fallback silently changes an unlabelled
+body into JSON. Standard uncompressed JSON remains supported.
+
+New response metadata records `body_representation=wire` or `httpx_decoded`.
+The latter covers already-consumed HTTPX responses, principally in-memory test
+responses; these must not be decompressed twice. The approved real HTTPS path uses
+streamed wire bytes. New manifests identify `KRXProvider-daily-unadjusted-v2`.
+Both normal ingestion and cleaned-source verification use the same bounded decode
+boundary and existing whole-market KRX parser. Only the exact approved ticker is
+normalized, and its provenance continues to reference the original compressed raw
+receipt. No raw source bytes or source hashes are replaced with decoded bytes.
+
+Missing representation metadata deliberately retains original v1 parsing semantics.
+In particular, an already sealed gzip capture that failed JSON parsing remains a
+failed original ingestion with its exact original manifest hash. It is not silently
+upgraded when a newer application reads it.
+
+Use a separate, private, canonical output directory for a derived recovery artifact:
+
+```sh
+dsv forward-capture recover --root "$CAPTURE_ROOT" \
+  --plan "$PLAN_JSON" --plan-pin "$TRUSTED_PLAN_PIN" \
+  --attempt "$ORIGINAL_ATTEMPT" --pin "$TRUSTED_CAPTURE_PIN" \
+  --authorization-policy operator_read_only_pilot_v1 \
+  --authorization-root "$PRIVATE_PACKAGE" --authorization-pin "$TRUSTED_POLICY_PIN" \
+  --output "$PRIVATE_DERIVED_ROOT/recovered-observation.json"
+```
+
+The output parent must already exist with 0700 permissions, outside the original
+capture and policy directories. The command creates a new 0600 file exclusively;
+it never overwrites an output. Network opt-in/confirmation flags are rejected.
+No HTTP client, signal, broker, source-archive writer or new market DB is used.
+
+Recovery first verifies the original capture pin, receipt/raw SHA-256, semantic
+projection and original operator-policy binding at the retained response instant.
+This permits read-only verification after expiry, not renewed collection permission.
+It requires one complete HTTP 200 response without transport errors. Only then does
+it decode and validate every market row and require exactly one scoped observation.
+An unmarked legacy gzip source must actually contain valid compressed bytes; a
+guessed or ambiguous representation is not a reason to bypass decoding checks.
+
+The immutable `krx_capture_recovery_v1` document contains source capture/plan/policy
+references, receipt identity, original ingestion/error state, encoded/decoded sizes,
+market-row count and the single normalized `DailyBar` observation. It is a derived
+dataset artifact, **not a successful original ingestion**, and never updates the
+old pilot DB. Its canonical `FrozenJSON.identifier` is the separately retained
+recovery pin. No rendering time is added to its identity. Repeated recovery of the
+same verified owners produces identical bytes and hash.
+
+`storage.krx_capture_recovery.verify_recovery` requires separately trusted source
+and recovery pins and reconstructs the artifact from the original source owners;
+self-rehashed altered observations or provenance fail semantic verification.
+Keep the private source, authorization package and trusted pins available for replay.
+Independent authorization, PIT, signal/PAPER and execution eligibility remain false.
+No private provider response belongs in Git or CI; regression fixtures are synthetic.
+
 This workflow closes the provider eligibility gap between original forward capture,
 SMA signals and paper execution. It does not issue KRX permissions, authenticate
 historical publication times, enable brokerage, approve a strategy, or change fees,

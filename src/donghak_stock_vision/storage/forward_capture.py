@@ -34,6 +34,7 @@ from donghak_stock_vision.providers.base import ProviderError, RawPage, krx_mark
 from donghak_stock_vision.providers.forward_capture import CaptureHTTP
 from donghak_stock_vision.providers.http import RequestGate
 from donghak_stock_vision.providers.krx import ENDPOINTS, KRXProvider
+from donghak_stock_vision.providers.krx_response import decode_response
 from donghak_stock_vision.storage.capture_evidence_sink import _receipt_bytes
 from donghak_stock_vision.storage.sqlite import SQLiteStore
 
@@ -138,6 +139,19 @@ class _RecordedProvider(KRXProvider):
         return self.page
 
 
+def _response_page(plan: ForwardCapturePlan, body: bytes, metadata: dict[str, Any]) -> RawPage:
+    # Missing representation means the original v1 parser semantics, including failures.
+    # Never reinterpret an already sealed legacy gzip capture as successful ingestion.
+    if "body_representation" in metadata:
+        body = decode_response(
+            body,
+            metadata["headers"].get("content-encoding", ""),
+            metadata["body_representation"],
+            plan.max_response_bytes,
+        )
+    return RawPage(body, datetime.fromisoformat(metadata["response_completed_at"]), plan.day)
+
+
 class _ArchiveReuse(SQLiteStore):
     def __init__(self, store: SQLiteStore, capture_id: str, raw_id: int, page: RawPage) -> None:
         self.connection = store.connection
@@ -211,8 +225,8 @@ def _project(
         parsed = None
         parse_error = None
         if metadata["complete"] and metadata["http_status"] == 200 and metadata["error"] is None:
-            page = RawPage(body, end, plan.day)
             try:
+                page = _response_page(plan, body, metadata)
                 values = _RecordedProvider(plan, page).parse_market(page)
                 selected = [b.to_dict() for b in values if b.ticker == plan.ticker]
                 require(len(selected) <= 1, "duplicate_scoped_rows")
@@ -269,7 +283,11 @@ def _project(
             "responses": attempts,
             "ingestion": [list(r) for r in ingestion],
             "software": "donghak-stock-vision-2.0.0a3",
-            "parser": "KRXProvider-daily-unadjusted-v1",
+            "parser": (
+                "KRXProvider-daily-unadjusted-v2"
+                if any("body_representation" in r["metadata"] for r in attempts)
+                else "KRXProvider-daily-unadjusted-v1"
+            ),
             "clock_source": "local_system_utc_unverified",
             "origin": plan.mode,
             "publication_at": None,
@@ -332,16 +350,24 @@ def verify_capture(
             )
             # Reconstruct the mutable cleaned projection from original linked source owners.
             sources = connection.execute(
-                "SELECT r.body,r.collected_at,r.source_date FROM raw_pages r JOIN bar_sources s "
-                "ON r.id=s.raw_id WHERE s.ticker=? AND s.trading_date=? "
+                "SELECT r.body,r.collected_at,r.source_date,f.metadata FROM raw_pages r "
+                "JOIN bar_sources s ON r.id=s.raw_id "
+                "LEFT JOIN forward_responses f ON r.id=f.raw_id "
+                "WHERE s.ticker=? AND s.trading_date=? "
                 "ORDER BY r.collected_at,r.id",
                 (plan.ticker, plan.day.isoformat()),
             ).fetchall()
             require(0 < len(sources) <= 96, "ingestion_source_budget")
             latest = None
-            for body, observed, source_day in sources:
-                source_page = RawPage(
-                    body, datetime.fromisoformat(observed), date.fromisoformat(source_day)
+            for body, observed, source_day, metadata in sources:
+                require(source_day == plan.day.isoformat(), "ingestion_source_binding")
+                source_metadata = json.loads(metadata) if metadata else {}
+                require(
+                    source_metadata.get("response_completed_at", observed) == observed,
+                    "ingestion_source_timestamp_mismatch",
+                )
+                source_page = _response_page(
+                    plan, body, source_metadata | {"response_completed_at": observed}
                 )
                 values = _RecordedProvider(plan, source_page).parse_market(source_page)
                 selected = [b for b in values if b.ticker == plan.ticker]
@@ -595,9 +621,7 @@ def run_capture(
             body = connection.execute(
                 "SELECT body FROM raw_pages WHERE id=?", (raw_id,)
             ).fetchone()[0]
-            page = RawPage(
-                body, datetime.fromisoformat(source["metadata"]["response_completed_at"]), plan.day
-            )
+            page = _response_page(plan, body, source["metadata"])
             bridge = _ArchiveReuse(store, capture_id, raw_id, page)
             KRXMarketPipeline(_RecordedProvider(plan, page), bridge).collect(
                 plan.day, plan.day, tickers=[plan.ticker]

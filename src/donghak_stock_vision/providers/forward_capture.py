@@ -69,6 +69,7 @@ class CaptureHTTP(RetryingHTTP):
                 "headers": {},
                 "complete": False,
                 "error": None,
+                "body_representation": "wire",
             }
             try:
                 timeout = max(0.01, min(20.0, self.deadline - self.monotonic()))
@@ -97,6 +98,8 @@ class CaptureHTTP(RetryingHTTP):
                     if sum(len(v.encode()) for v in metadata["headers"].values()) > 8192:
                         metadata["headers"] = {}
                         raise ProviderError("response_header_budget")
+                    if response.is_stream_consumed:
+                        metadata["body_representation"] = "httpx_decoded"
                     chunks = (
                         (response.content,) if response.is_stream_consumed else response.iter_raw()
                     )
