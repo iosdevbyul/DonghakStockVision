@@ -660,6 +660,7 @@ def assess_capture_pit(
     calendars: tuple[CalendarMonthSource, ...] = (),
 ) -> "HistoricalPITAssessment":
     # Original scope validates final-test/holdout restrictions before any archive read.
+    require(plan.observation_scope is None, "read_only_forward_scope_not_pit_eligible")
     scope.__post_init__()
     require(
         scope.document.identifier == scope_pin

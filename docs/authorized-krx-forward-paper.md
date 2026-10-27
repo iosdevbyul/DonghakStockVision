@@ -488,6 +488,100 @@ publication timestamps. All existing historical approval gates remain unchanged.
 
 ## First real read-only pilot readiness (#147)
 
+### Scope separation audit (#148)
+
+Before this change, `ForwardCapturePlan.__post_init__` required an
+`ExplicitResearchSplit`, its exact pin, and training/tuning membership for every
+capture. The retained historical training/tuning windows end in 2023/2024. They
+cannot represent a recent completed observation within the operator policy's
+one-to-seven-day limit. Extending those frozen windows would change research
+evidence and is not an acceptable collection configuration.
+
+The additive v2 plan below separates prospective read-only collection from research
+membership. Existing v1 documents, hashes and training/tuning validation retain
+their meaning. No research split is generated, extended or reclassified.
+
+`forward_capture_plan_v2` replaces the v1 `partition`, `split`, and `split_pin`
+wire fields with `observation_scope`. It is deliberately limited to the existing
+`operator_read_only_pilot_v1` policy: KOSPI, 005930, one request, one archive request
+per day, at most 30 seconds and 2 MiB. The scope version is
+`prospective_read_only_observation_v1`; its UTC `valid_from` and `valid_until` must
+span at most 24 hours and match the original reviewed operator policy exactly.
+The explicit observation date must be a weekday, precede the scope's start date
+in Asia/Seoul, and be at most seven calendar days old. The policy's possibly tighter
+lag and actual approval period remain authoritative at capture time. Weekday/lag
+checks do not prove that an exchange session occurred or that data is published.
+The operator must separately review the completed session, original documents,
+quota headroom and the response's instrument representation.
+
+The scope does not automatically approve a recent date. Its exact date, window,
+request budgets and source identity enter the unbound plan hash, existing policy,
+final plan pin and original capture identity. A different date/window needs a new
+explicit review and pins. On real HTTPS, the existing verifier rechecks actual UTC
+time and replaces caller-supplied fixture clocks. An old scope/policy cannot be
+backdated to request protected historical dates. Readback verifies the original
+capture at its retained timestamps; it does not authorize a new request.
+
+For a reviewed collection-only plan, construct the existing owner explicitly:
+
+```python
+from datetime import date, datetime
+from donghak_stock_vision.data.forward_capture import (
+    ForwardCapturePlan, ForwardObservationScope,
+)
+
+# These three values come from the concrete operator review, not a synthetic fixture.
+scope = ForwardObservationScope(
+    datetime.fromisoformat(reviewed_valid_from_utc),
+    datetime.fromisoformat(reviewed_valid_until_utc),
+)
+unbound = ForwardCapturePlan(
+    market="KOSPI", ticker="005930", day=date.fromisoformat(reviewed_completed_date),
+    partition="forward_observation", split=None, split_pin=None,
+    max_requests=1, max_response_bytes=2 * 1024 * 1024, max_seconds=30,
+    interval_seconds=1, daily_limit=1, mode="authorized_provider",
+    authorization_reference=None, terms_reference=None, observation_scope=scope,
+)
+```
+
+This creates no research split. Do not convert an old v1 plan by renaming its
+partition: v2 rejects mixed research/scope fields and v1 still rejects final-test,
+OOS and holdout partitions. Recent collection uses only a fresh, explicitly reviewed
+pilot archive; it never reads or reclassifies historical databases or partitions.
+Retain the known historical split pin unchanged:
+`6d4fa516227f13640cdb785f029359134d51b074468be543654c8873f9296150`.
+
+Then follow the existing private original-document package, credential binding and
+canonical policy/plan pin procedure below. The operator policy wire version is
+unchanged; its `captures[0].plan` contains the v2 unbound document. Keep the policy
+and scope validity windows identical. Use only the existing non-network commands:
+
+```sh
+dsv forward-capture authorization-readiness --root PRIVATE_CAPTURE_ROOT \
+  --plan PLAN.json --plan-pin TRUSTED_PLAN_PIN --attempt REVIEWED_ATTEMPT \
+  --authorization-policy operator_read_only_pilot_v1 \
+  --authorization-root PRIVATE_PACKAGE --authorization-pin OWNER_POLICY_PIN
+dsv forward-capture dry-run --root PRIVATE_CAPTURE_ROOT \
+  --plan PLAN.json --plan-pin TRUSTED_PLAN_PIN --attempt REVIEWED_ATTEMPT \
+  --authorization-policy operator_read_only_pilot_v1 \
+  --authorization-root PRIVATE_PACKAGE --authorization-pin OWNER_POLICY_PIN
+```
+
+For v2, readiness also exposes `observation_scope` and `research_partition: null`.
+Require empty blockers, verified policy integrity and credential binding, but do not
+interpret them as independent authorization, authenticated publication, custody,
+PIT/OOS, signals or PAPER approval. The default independent-review path rejects
+v2 rather than reinterpreting old signed grants. Signal requests and historical PIT
+assessment reject this read-only scope before reading source evidence; PAPER cannot
+obtain an eligible signal through it. No new execution path or broker is introduced.
+
+Existing archive/manifest, receipt, readback and custody plumbing remains shared.
+The plan's new content hash changes the new capture identity, while existing v1
+plan, journal and manifest hashes remain unchanged. Local custody staging still
+does not constitute external submission or independent custody. This PR executes
+no real capture and creates no private production authorization package. Separate
+explicit approval of the actual pinned one-request plan remains necessary.
+
 This is a preparation step, **not a completed collection**. Base main for this audit is
 `85672b2e2ace6ea008f363d21054fe0abc90d3e0` (#146 merged). No KRX data API, sample TEST,
 broker or external custody request was made. The next collection step requires a
