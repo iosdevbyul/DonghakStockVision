@@ -197,6 +197,7 @@ def verify_authorization(
     at: datetime,
 ) -> FrozenJSON:
     plan.__post_init__()
+    require(plan.observation_scope is None, "forward_scope_requires_operator_read_only_policy")
     require(plan.mode == "authorized_provider", "provider_plan_required")
     grant = review(reference, trust)
     d = grant.to_dict()
@@ -427,6 +428,12 @@ def verify_operator_authorization(
         "explicit_operator_document_origin_required",
     )
     start, end, reviewed = (utc(d[n]) for n in ("valid_from", "valid_until", "reviewed_at"))
+    if plan.observation_scope is not None:
+        require(
+            plan.observation_scope.valid_from == start
+            and plan.observation_scope.valid_until == end,
+            "forward_scope_policy_window_mismatch",
+        )
     require(
         start <= reviewed < end
         and end - start <= timedelta(hours=24)
@@ -546,6 +553,14 @@ def operator_readiness(
         {
             "version": "krx_operator_capture_readiness_v1",
             "policy": OPERATOR,
+            **(
+                {
+                    "observation_scope": plan.observation_scope.to_dict(),
+                    "research_partition": None,
+                }
+                if plan.observation_scope is not None
+                else {}
+            ),
             "plan_pin": plan.document.identifier,
             "endpoint": endpoint(plan),
             "method": "GET",

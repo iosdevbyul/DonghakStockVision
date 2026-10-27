@@ -258,6 +258,7 @@ def test_forbidden_scope_before_disk_and_http(tmp_path: Path, partition: str) ->
 
 def test_final_test_date_not_authorized(tmp_path: Path) -> None:
     plan = offline_plan()
+    assert plan.split is not None
     with pytest.raises(ValueError, match="outside_authorized_partition"):
         replace(plan, day=plan.split.final_test.start)
     assert not list(tmp_path.iterdir())
@@ -403,6 +404,7 @@ def test_missing_archive_and_unknown_request_outcome(tmp_path: Path) -> None:
 
 def test_pit_assessment_preserves_original_blocked_gate(tmp_path: Path) -> None:
     plan = offline_plan()
+    assert plan.split is not None and plan.split_pin is not None
     owner = execute(tmp_path)
     pin = hashlib.sha256((tmp_path / DB).read_bytes()).hexdigest()
     scope = HistoricalReadScope(
@@ -546,6 +548,7 @@ def test_stream_disconnect_retains_only_explicit_partial_bytes(tmp_path: Path) -
 
 def test_final_scope_rejected_by_pit_bridge_before_disk(tmp_path: Path) -> None:
     plan = offline_plan()
+    assert plan.split is not None and plan.split_pin is not None
     scope = HistoricalReadScope(
         Instrument(plan.ticker, Exchange.KOSPI, Currency.KRW),
         ResearchDateRange(plan.day, plan.day),

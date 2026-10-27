@@ -270,6 +270,7 @@ def run(args: argparse.Namespace) -> int:
         )
     assessment = None
     if args.action == "offline-pilot":
+        assert plan.split is not None and plan.split_pin is not None
         with (args.root / DB).open("rb") as stream:
             database_pin = hashlib.file_digest(stream, "sha256").hexdigest()
         scope = HistoricalReadScope(
