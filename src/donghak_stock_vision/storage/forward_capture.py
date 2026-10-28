@@ -8,6 +8,7 @@ import fcntl
 import hashlib
 import json
 import logging
+import math
 import re
 import sqlite3
 import ssl
@@ -25,7 +26,7 @@ from donghak_stock_vision.backtest.historical_readiness import (
     CalendarMonthSource,
     HistoricalReadScope,
 )
-from donghak_stock_vision.backtest.validation import require, sha
+from donghak_stock_vision.backtest.validation import require, sha, utc
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.data.schema import SEOUL
@@ -228,8 +229,15 @@ def _project(
             try:
                 page = _response_page(plan, body, metadata)
                 values = _RecordedProvider(plan, page).parse_market(page)
-                selected = [b.to_dict() for b in values if b.ticker == plan.ticker]
-                require(len(selected) <= 1, "duplicate_scoped_rows")
+                if plan.full_market_scope is not None:
+                    require(
+                        0 < len(values) <= 10000 and len({b.ticker for b in values}) == len(values),
+                        "invalid_full_market_membership",
+                    )
+                    selected = [b.to_dict() for b in values]
+                else:
+                    selected = [b.to_dict() for b in values if b.ticker == plan.ticker]
+                    require(len(selected) <= 1, "duplicate_scoped_rows")
                 require(bool(selected), "scoped_instrument_missing")
                 parsed = selected
             except (ProviderError, ValueError):
@@ -263,7 +271,7 @@ def _project(
         (capture_id,),
     ):
         prior = FrozenJSON(serialized_plan).to_dict()
-        if all(prior[k] == plan.document.to_dict()[k] for k in ("market", "ticker", "day")):
+        if all(prior.get(k) == plan.document.to_dict().get(k) for k in ("market", "ticker", "day")):
             hashes = [
                 json.loads(_receipt_bytes(connection, r[0]))["rawSha256"]
                 for r in connection.execute(
@@ -274,7 +282,16 @@ def _project(
             previous.append({"capture_id": previous_id, "pin": previous_pin, "raw_hashes": hashes})
     return FrozenJSON.freeze(
         {
-            "version": "forward_capture_manifest_v1",
+            "version": (
+                "forward_capture_manifest_v2"
+                if plan.full_market_scope is not None
+                else "forward_capture_manifest_v1"
+            ),
+            **(
+                {"normalization": "operational_store_only", "scope": "full_market"}
+                if plan.full_market_scope is not None
+                else {}
+            ),
             "previous_captures": previous,
             "stop_reason": stop[0] if stop else None,
             "capture_id": capture_id,
@@ -314,6 +331,9 @@ def verify_capture(
         require(_project(connection, plan, capture_id) == owner, "capture_semantic_mismatch")
         doc = owner.to_dict()
         successes = [r for r in doc["responses"] if r["parsed_bars"] is not None]
+        if plan.full_market_scope is not None:
+            require(doc["ingestion"] == [], "full_market_capture_must_not_write_research_bars")
+            return owner
         require(len(doc["ingestion"]) == (1 if successes else 0), "ingestion_lineage_mismatch")
         if successes:
             outcome = doc["ingestion"][0]
@@ -405,16 +425,28 @@ def run_capture(
 ) -> FrozenJSON:
     capture_id = identity(plan, attempt)
     require(
-        authorization_policy in ("independent_review_v1", "operator_read_only_pilot_v1"),
+        authorization_policy
+        in (
+            "independent_review_v1",
+            "operator_read_only_pilot_v1",
+            "operator_full_market_recurring_v1",
+        ),
         "unknown_capture_authorization_policy",
     )
     require(
-        not operator_confirmed or authorization_policy == "operator_read_only_pilot_v1",
+        not operator_confirmed
+        or authorization_policy
+        in ("operator_read_only_pilot_v1", "operator_full_market_recurring_v1"),
         "operator_confirmation_requires_explicit_operator_policy",
     )
     require(
         authorization_policy != "operator_read_only_pilot_v1" or plan.mode == "authorized_provider",
         "operator_policy_requires_provider_plan",
+    )
+    recurring = plan.full_market_scope is not None
+    require(
+        (authorization_policy == "operator_full_market_recurring_v1") == recurring,
+        "full_market_requires_distinct_recurring_policy",
     )
     observed = clock()
     require(observed.utcoffset() is not None, "naive_capture_clock")
@@ -437,12 +469,19 @@ def run_capture(
             verify_operator_authorization,
         )
 
-        operator_policy = authorization_policy == "operator_read_only_pilot_v1"
+        operator_policy = authorization_policy in (
+            "operator_read_only_pilot_v1",
+            "operator_full_market_recurring_v1",
+        )
         require(
             not operator_policy or operator_confirmed is True,
             "explicit_operator_authorization_confirmation_required",
         )
         verifier = verify_operator_authorization if operator_policy else verify_authorization
+        if recurring:
+            from donghak_stock_vision.storage.krx_recurring import verify_recurring_authorization
+
+            verifier = verify_recurring_authorization
         require(
             authorization is not None,
             "original_permission_terms_specification_and_operator_policy_required"
@@ -502,13 +541,55 @@ def run_capture(
     with _writer(root) as store:
         connection = store.connection
         origins = connection.execute("SELECT plan FROM forward_intents LIMIT 33").fetchall()
-        require(len(origins) <= 32, "pilot_capture_budget")
+        require(recurring or len(origins) <= 32, "pilot_capture_budget")
+        if recurring:
+            require(
+                all(
+                    FrozenJSON(row[0]).to_dict()["version"] == "forward_capture_plan_v3"
+                    for row in origins
+                ),
+                "recurring_archive_cannot_mix_legacy_pilot",
+            )
+            other = connection.execute(
+                "SELECT capture_id FROM forward_intents WHERE json_extract(plan,'$.day')=? "
+                "AND capture_id<>? LIMIT 1",
+                (plan.day.isoformat(), capture_id),
+            ).fetchone()
+            require(other is None, "duplicate_collection_date")
+            if (
+                connection.execute(
+                    "SELECT 1 FROM forward_intents WHERE capture_id=?", (capture_id,)
+                ).fetchone()
+                is None
+            ):
+                require(
+                    (root / DB).stat().st_size + plan.max_response_bytes * 8 + 65536
+                    <= 256 * 1024**2,
+                    "recurring_capture_archive_headroom_exhausted",
+                )
+                state = _recurring_state(root, plan, clock())
+                require(
+                    state["locally_used_requests"] < plan.daily_limit,
+                    "local_daily_budget_exhausted",
+                )
+                _recurring_running(root)
+        else:
+            require(
+                all(
+                    FrozenJSON(row[0]).to_dict()["version"] != "forward_capture_plan_v3"
+                    for row in origins
+                ),
+                "legacy_pilot_cannot_mix_recurring_archive",
+            )
         require(
             all(FrozenJSON(row[0]).to_dict()["mode"] == plan.mode for row in origins),
             "mixed_capture_origins_forbidden",
         )
         if grant is not None:
-            if authorization_policy == "operator_read_only_pilot_v1":
+            if authorization_policy in (
+                "operator_read_only_pilot_v1",
+                "operator_full_market_recurring_v1",
+            ):
                 binding = _operator_binding(plan, attempt, grant)
             else:
                 assert authorization_trust is not None
@@ -553,7 +634,8 @@ def run_capture(
             )
         else:
             require(
-                connection.execute("SELECT COUNT(*) FROM forward_intents").fetchone()[0] < 32,
+                connection.execute("SELECT COUNT(*) FROM forward_intents").fetchone()[0]
+                < (366 if recurring else 32),
                 "pilot_capture_budget",
             )
             with connection:
@@ -591,15 +673,20 @@ def run_capture(
                 clock=lambda: clock().timestamp(),
                 sleep=sleep,
             )
+
+            def permission_guard() -> None:
+                if grant is not None:
+                    _permission_clock(grant, clock())
+                if recurring:
+                    _recurring_running(root)
+
             http = CaptureHTTP(
                 client,
                 gate,
                 plan,
                 record,
                 cancelled=cancelled,
-                authorization_check=(
-                    lambda: _permission_clock(grant, clock()) if grant is not None else None
-                ),
+                authorization_check=permission_guard,
                 clock=clock,
                 monotonic=monotonic,
                 sleep=sleep,
@@ -615,7 +702,7 @@ def run_capture(
                 logger.warning("forward_capture_stopped capture=%s reason=%s", capture_id, error)
         projected = _project(connection, plan, capture_id).to_dict()
         successes = [r for r in projected["responses"] if r["parsed_bars"] is not None]
-        if successes and not projected["ingestion"]:
+        if successes and not projected["ingestion"] and not recurring:
             source = successes[-1]
             raw_id = source["raw_id"]
             body = connection.execute(
@@ -640,12 +727,17 @@ def capture_status(root: Path) -> FrozenJSON:
     with closing(_connection(root)) as connection:
         rows = connection.execute(
             "SELECT i.capture_id,i.attempt,m.pin FROM forward_intents i "
-            "LEFT JOIN forward_manifests m USING(capture_id) ORDER BY i.rowid LIMIT 33"
+            "LEFT JOIN forward_manifests m USING(capture_id) ORDER BY i.rowid LIMIT 367"
         ).fetchall()
-        require(len(rows) <= 32, "pilot_capture_budget")
+        versions = [
+            FrozenJSON(r[0]).to_dict()["version"]
+            for r in connection.execute("SELECT plan FROM forward_intents ORDER BY rowid LIMIT 367")
+        ]
+        full = bool(versions) and all(v == "forward_capture_plan_v3" for v in versions)
+        require(len(rows) <= (366 if full else 32), "pilot_capture_budget")
         return FrozenJSON.freeze(
             {
-                "version": "forward_capture_status_v1",
+                "version": "forward_capture_status_v2" if full else "forward_capture_status_v1",
                 "captures": [
                     {
                         "capture_id": i,
@@ -684,7 +776,10 @@ def assess_capture_pit(
     calendars: tuple[CalendarMonthSource, ...] = (),
 ) -> "HistoricalPITAssessment":
     # Original scope validates final-test/holdout restrictions before any archive read.
-    require(plan.observation_scope is None, "read_only_forward_scope_not_pit_eligible")
+    require(
+        plan.observation_scope is None and plan.full_market_scope is None,
+        "read_only_forward_scope_not_pit_eligible",
+    )
     scope.__post_init__()
     require(
         scope.document.identifier == scope_pin
@@ -782,8 +877,16 @@ def verify_capture_authorization(
 def _operator_binding(plan: ForwardCapturePlan, attempt: str, policy: FrozenJSON) -> FrozenJSON:
     return FrozenJSON.freeze(
         {
-            "version": "krx_operator_read_only_capture_binding_v1",
-            "policy": "operator_read_only_pilot_v1",
+            "version": (
+                "krx_recurring_read_only_capture_binding_v1"
+                if plan.full_market_scope is not None
+                else "krx_operator_read_only_capture_binding_v1"
+            ),
+            "policy": (
+                "operator_full_market_recurring_v1"
+                if plan.full_market_scope is not None
+                else "operator_read_only_pilot_v1"
+            ),
             "capture_id": identity(plan, attempt),
             "plan_pin": plan.document.identifier,
             "policy_pin": policy.identifier,
@@ -811,7 +914,12 @@ def verify_operator_capture_authorization(
         verify_operator_authorization,
     )
 
-    policy = verify_operator_authorization(plan, attempt, reference, None, at)
+    verifier = verify_operator_authorization
+    if plan.full_market_scope is not None:
+        from donghak_stock_vision.storage.krx_recurring import verify_recurring_authorization
+
+        verifier = verify_recurring_authorization
+    policy = verifier(plan, attempt, reference, None, at)
     capture_root_check(policy, root)
     owner = verify_capture(root, plan, attempt, capture_pin)
     with closing(_connection(root)) as connection:
@@ -820,11 +928,222 @@ def verify_operator_capture_authorization(
         )
     for response in owner.to_dict()["responses"]:
         for key in ("request_started_at", "response_completed_at"):
-            verify_operator_authorization(
-                plan, attempt, reference, None, utc(response["metadata"][key])
-            )
+            verifier(plan, attempt, reference, None, utc(response["metadata"][key]))
     return (
         "real_provider_https_local_capture"
         if policy.to_dict()["transport"] == "provider_https"
         else "authorized_provider_mock_fixture"
+    )
+
+
+def _recurring_state(root: Path, plan: ForwardCapturePlan, at: datetime) -> dict[str, Any]:
+    """Read-only preview; absence is zero use, never an implicit archive initialization."""
+
+    require(not root.is_symlink(), "capture_symlink_forbidden")
+    state: dict[str, Any] = dict(paused=False, duplicate=False, locally_used_requests=0)
+    if not (root / DB).exists():
+        return state
+    with closing(_connection(root)) as connection:
+
+        def exists(name: str) -> bool:
+            return (
+                connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)
+                ).fetchone()
+                is not None
+            )
+
+        require(
+            all(exists(n) for n in ("forward_intents", "forward_responses", "forward_manifests")),
+            "recurring_archive_schema_missing",
+        )
+        versions = connection.execute("SELECT plan FROM forward_intents LIMIT 367").fetchall()
+        require(
+            len(versions) <= 366
+            and all(
+                FrozenJSON(row[0]).to_dict()["version"] == "forward_capture_plan_v3"
+                for row in versions
+            ),
+            "recurring_archive_cannot_mix_legacy_pilot",
+        )
+        if exists("forward_recurring_control"):
+            row = connection.execute(
+                "SELECT paused FROM forward_recurring_control ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            if row:
+                require(type(row[0]) is int and row[0] in (0, 1), "invalid_recurring_control")
+                state["paused"] = bool(row[0])
+        if exists("forward_intents"):
+            state["duplicate"] = (
+                connection.execute(
+                    "SELECT 1 FROM forward_intents "
+                    "WHERE json_extract(plan,'$.version')='forward_capture_plan_v3' "
+                    "AND json_extract(plan,'$.day')=? LIMIT 1",
+                    (plan.day.isoformat(),),
+                ).fetchone()
+                is not None
+            )
+        if exists("request_budget"):
+            row = connection.execute(
+                "SELECT count FROM request_budget WHERE day=?",
+                (utc(at).astimezone(SEOUL).date().isoformat(),),
+            ).fetchone()
+            state["locally_used_requests"] = row[0] if row else 0
+            slot = connection.execute("SELECT MAX(last_slot) FROM request_budget").fetchone()[0]
+            require(
+                slot is None
+                or (
+                    type(slot) in (int, float)
+                    and math.isfinite(slot)
+                    and slot + plan.interval_seconds <= utc(at).timestamp() + plan.max_seconds
+                ),
+                "invalid_or_unbounded_request_slot",
+            )
+        require(
+            type(state["locally_used_requests"]) is int and state["locally_used_requests"] >= 0,
+            "invalid_local_request_usage",
+        )
+    return state
+
+
+def _recurring_running(root: Path) -> None:
+    """Pause is checked during cooperative transport guards as well as before acceptance."""
+
+    with closing(_connection(root)) as c:
+        if c.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='forward_recurring_control'"
+        ).fetchone():
+            row = c.execute(
+                "SELECT paused FROM forward_recurring_control ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            require(row is None or row[0] == 0, "recurring_collection_paused")
+
+
+def recurring_control(
+    root: Path, plan: ForwardCapturePlan, reference: FrozenJSON, at: datetime, paused: bool
+) -> FrozenJSON:
+    from donghak_stock_vision.storage.krx_authorization import capture_root_check
+    from donghak_stock_vision.storage.krx_recurring import verify_recurring_authorization
+
+    require(type(paused) is bool, "pause_boolean_required")
+    policy = verify_recurring_authorization(plan, "control", reference, None, at)
+    capture_root_check(policy, root)
+    _recurring_state(root, plan, at)  # Reject legacy/unknown archives before writable open.
+
+    with _writer(root) as store:
+        _recurring_state(root, plan, at)  # Recheck under the original capture lock.
+        with store.connection:
+            store.connection.execute(
+                "CREATE TABLE IF NOT EXISTS forward_recurring_control "
+                "(id INTEGER PRIMARY KEY,paused INTEGER NOT NULL,"
+                "at TEXT NOT NULL,policy_pin TEXT NOT NULL)"
+            )
+            for operation in ("UPDATE", "DELETE"):
+                store.connection.execute(
+                    f"CREATE TRIGGER IF NOT EXISTS recurring_no_{operation} "
+                    f"BEFORE {operation} ON forward_recurring_control "
+                    "BEGIN SELECT RAISE(ABORT,'immutable control history'); END"
+                )
+            store.connection.execute(
+                "INSERT INTO forward_recurring_control(paused,at,policy_pin) VALUES(?,?,?)",
+                (int(paused), utc(at).isoformat(), policy.identifier),
+            )
+    return FrozenJSON.freeze(
+        dict(version="krx_recurring_control_v1", paused=paused, network_requests=0)
+    )
+
+
+def recurring_preview(
+    plan: ForwardCapturePlan,
+    attempt: str,
+    reference: FrozenJSON | None,
+    trust: FrozenJSON | None,
+    at: datetime,
+    credential_present: bool,
+    *,
+    credential: str | None = None,
+    capture_root: Path | None = None,
+) -> FrozenJSON:
+    from donghak_stock_vision.storage.krx_authorization import capture_root_check, verify_credential
+    from donghak_stock_vision.storage.krx_recurring import POLICY, verify_recurring_authorization
+
+    plan.__post_init__()
+    require(plan.full_market_scope is not None, "explicit_full_market_plan_required")
+    credential_checked = False
+    blockers = plan.blockers(credential_present)
+    policy = None
+    state: dict[str, Any] = dict(paused=None, duplicate=None, locally_used_requests=None)
+    try:
+        require(
+            reference is not None and capture_root is not None,
+            "recurring_policy_and_archive_required",
+        )
+        assert reference is not None and capture_root is not None
+        policy = verify_recurring_authorization(plan, attempt, reference, trust, at)
+        capture_root_check(policy, capture_root)
+        require(
+            credential is not None and bool(credential.strip()), "credential_binding_not_checked"
+        )
+        assert credential is not None
+        require(
+            len(credential) <= 1024 and credential.isascii() and credential.isprintable(),
+            "invalid_operator_credential_header",
+        )
+        verify_credential(policy, credential)
+        credential_checked = True
+        state = _recurring_state(capture_root, plan, at)
+        for flag, reason in (
+            (state["paused"], "recurring_collection_paused"),
+            (state["duplicate"], "duplicate_collection_date"),
+            (state["locally_used_requests"] >= plan.daily_limit, "local_daily_budget_exhausted"),
+        ):
+            if flag:
+                blockers.append(reason)
+    except (ValueError, OSError, sqlite3.Error, KeyError, TypeError) as error:
+        blockers.append(
+            str(error) if isinstance(error, ValueError) else "recurring_evidence_unreadable"
+        )
+    d = policy.to_dict() if policy else {}
+    return FrozenJSON.freeze(
+        dict(
+            version="krx_recurring_preview_v1",
+            policy=POLICY,
+            scope="full_market",
+            market="KOSPI",
+            endpoint=_endpoint(plan),
+            method="GET",
+            parameters={"basDd": plan.day.strftime("%Y%m%d")},
+            approved_from=d.get("approved_from"),
+            approved_through=d.get("approved_through"),
+            valid_from=d.get("valid_from"),
+            valid_until=d.get("valid_until"),
+            policy_integrity_verified=policy is not None,
+            credential_binding_verified=credential_checked,
+            authorization_basis="explicit_owner_local_full_market_document_review",
+            requests_maximum=1,
+            retries=0,
+            concurrency=1,
+            max_response_bytes=plan.max_response_bytes,
+            max_seconds=plan.max_seconds,
+            configured_daily_limit=plan.daily_limit,
+            verified_service_daily_limit=d.get("verified_service_daily_limit"),
+            remaining_local_allowance=(
+                max(0, plan.daily_limit - state["locally_used_requests"])
+                if state["locally_used_requests"] is not None
+                else None
+            ),
+            **state,
+            blockers=list(dict.fromkeys(blockers)),
+            ready_for_explicit_read_only_capture=not blockers,
+            origin=d.get("transport"),
+            independent_authorization_verified=False,
+            provider_signature_verified=False,
+            forward_signal_eligible=False,
+            paper_execution_eligible=False,
+            pit_qualified=False,
+            execution_authorized=False,
+            network_requests=0,
+            explicit_network_opt_in_still_required=True,
+            explicit_operator_confirmation_still_required=True,
+        )
     )

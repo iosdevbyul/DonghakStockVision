@@ -239,17 +239,19 @@ Neither approves importing other instruments from a whole-market response. The
 bridge rejects such real-provider inputs with
 `full_market_ingestion_not_authorized_by_single_ticker_plan`, after checking the
 original authorization. No authorization rule or plan schema is relaxed here.
-The real 2026-10-26 pilot's retained 940 rows are **not imported**. A future approved
-full-market plan/policy contract is required before this bridge can ingest a genuine
-whole-market capture. This PR does not create that approval authority.
+The real 2026-10-26 pilot's retained 940 rows are **not imported**. A separately reviewed `operator_full_market_recurring_v1` policy and
+`forward_capture_plan_v3` can now authorize prospective whole-market ingestion; see
+[the recurring operator guide](krx-full-market-recurring.md). They never broaden
+prior pilot captures. No existing private pilot is imported.
 
 A real-provider capture containing only its authorized ticker may be imported with
 its original independent-review or operator-policy package. All eligibility remains
 false. Mock-provider authorization fixtures remain identified as
 `authorized_provider_mock_fixture`; they are not genuine provider captures.
 
-Full-market integration is currently demonstrated only with explicit synthetic
-capture fixtures. The fixture acknowledgment cannot relabel an authorized-provider
+Full-market integration is verified offline using explicit synthetic capture
+fixtures, including authorized-provider mocks of the separately reviewed recurring
+policy. No genuine whole-market capture has been performed by these changes. The fixture acknowledgment cannot relabel an authorized-provider
 capture as synthetic. It also does not grant permission to collect anything:
 
 ```sh

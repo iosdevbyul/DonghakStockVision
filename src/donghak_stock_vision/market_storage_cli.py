@@ -28,7 +28,11 @@ def add_commands(sub: Any) -> None:
     command.add_argument("--authorization-pin")
     command.add_argument(
         "--authorization-policy",
-        choices=("independent_review_v1", "operator_read_only_pilot_v1"),
+        choices=(
+            "independent_review_v1",
+            "operator_read_only_pilot_v1",
+            "operator_full_market_recurring_v1",
+        ),
         default="independent_review_v1",
     )
     command.add_argument("--allow-synthetic-fixture", action="store_true")
