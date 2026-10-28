@@ -65,6 +65,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.market_data_cli import add_commands as add_market_data
 
     add_market_data(sub)
+    from donghak_stock_vision.market_storage_cli import add_commands as add_market_storage
+
+    add_market_storage(sub)
     from donghak_stock_vision.forward_signal_cli import add_commands as add_forward_signal
 
     add_forward_signal(sub)
@@ -81,6 +84,10 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
+        if args.command == "market-storage":
+            from donghak_stock_vision.market_storage_cli import run as run_market_storage
+
+            return run_market_storage(args)
         if args.command == "paper-trade":
             from donghak_stock_vision.paper_trade_cli import run as run_paper_trade
 
