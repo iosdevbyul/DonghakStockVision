@@ -53,6 +53,72 @@ class ForwardObservationScope:
 
 
 @dataclass(frozen=True)
+class FullMarketScope:
+    """Explicit prospective collection allowlist, not a research or calendar approval."""
+
+    valid_from: datetime
+    valid_until: datetime
+    permitted_days: tuple[date, ...]
+
+    def __post_init__(self) -> None:
+        require(
+            all(
+                type(t) is datetime and t.utcoffset() == timedelta(0)
+                for t in (self.valid_from, self.valid_until)
+            )
+            and self.valid_from < self.valid_until
+            and self.valid_until - self.valid_from <= timedelta(days=366),
+            "recurring_collection_window_invalid",
+        )
+        require(
+            type(self.permitted_days) is tuple
+            and 0 < len(self.permitted_days) <= 366
+            and all(
+                type(d) is date
+                and d.weekday() < 5
+                and self.valid_from.astimezone(SEOUL).date() - timedelta(days=7)
+                <= d
+                < self.valid_until.astimezone(SEOUL).date()
+                for d in self.permitted_days
+            )
+            and tuple(sorted(set(self.permitted_days))) == self.permitted_days,
+            "explicit_ordered_prospective_collection_days_required",
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        self.__post_init__()
+        return dict(
+            version="kospi_full_market_scope_v1",
+            service_id="stk_bydd_trd",
+            method="GET",
+            endpoint="https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd",
+            market="KOSPI",
+            scope="full_market",
+            valid_from=self.valid_from.isoformat(),
+            valid_until=self.valid_until.isoformat(),
+            permitted_days=[d.isoformat() for d in self.permitted_days],
+        )
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "FullMarketScope":
+        d = fields(
+            value,
+            "version service_id method endpoint market scope valid_from valid_until permitted_days",
+        )
+        require(
+            type(d["permitted_days"]) is list and len(d["permitted_days"]) <= 366,
+            "recurring_day_budget",
+        )
+        owner = cls(
+            utc(d["valid_from"]),
+            utc(d["valid_until"]),
+            tuple(date.fromisoformat(x) for x in d["permitted_days"]),
+        )
+        require(owner.to_dict() == d, "full_market_scope_contract")
+        return owner
+
+
+@dataclass(frozen=True)
 class ForwardCapturePlan:
     market: str
     ticker: str
@@ -69,12 +135,30 @@ class ForwardCapturePlan:
     authorization_reference: str | None
     terms_reference: str | None
     observation_scope: ForwardObservationScope | None = None
+    full_market_scope: FullMarketScope | None = None
 
     def __post_init__(self) -> None:
         require(self.market in ("KOSPI", "KOSDAQ", "KONEX"), "unsupported_market")
-        validate_ticker(self.ticker)
+        if self.full_market_scope is None:
+            validate_ticker(self.ticker)
         require(type(self.day) is date and self.day.weekday() < 5, "invalid_session_date")
-        if self.observation_scope is None:
+        if self.full_market_scope is not None:
+            require(type(self.full_market_scope) is FullMarketScope, "full_market_scope_owner")
+            self.full_market_scope.__post_init__()
+            require(
+                self.market == "KOSPI"
+                and self.ticker == ""
+                and self.partition == "forward_market_observation"
+                and self.split is None
+                and self.split_pin is None
+                and self.observation_scope is None
+                and self.mode == "authorized_provider"
+                and self.max_requests == 1
+                and self.max_seconds <= 30
+                and self.day in self.full_market_scope.permitted_days,
+                "full_market_requires_prospective_read_only_scope",
+            )
+        elif self.observation_scope is None:
             require(type(self.split) is ExplicitResearchSplit, "split_owner_required")
             assert self.split is not None
             self.split.__post_init__()
@@ -114,6 +198,31 @@ class ForwardCapturePlan:
 
     @property
     def document(self) -> FrozenJSON:
+        if self.full_market_scope is not None:
+            return FrozenJSON.freeze(
+                {
+                    "version": "forward_capture_plan_v3",
+                    "provider": "krx",
+                    "currency": "KRW",
+                    "market": self.market,
+                    "day": self.day.isoformat(),
+                    "full_market_scope": self.full_market_scope.to_dict(),
+                    **{
+                        n: getattr(self, n)
+                        for n in (
+                            "max_requests",
+                            "max_response_bytes",
+                            "max_seconds",
+                            "interval_seconds",
+                            "daily_limit",
+                            "mode",
+                            "authorization_reference",
+                            "terms_reference",
+                        )
+                    },
+                    "concurrency": 1,
+                }
+            )
         research = (
             {
                 "partition": self.partition,
@@ -152,9 +261,24 @@ class ForwardCapturePlan:
     def from_dict(cls, value: dict[str, Any]) -> "ForwardCapturePlan":
         require(type(value) is dict, "plan_object_required")
         version = value.get("version")
-        require(version in ("forward_capture_plan_v1", "forward_capture_plan_v2"), "plan_contract")
+        require(
+            version
+            in ("forward_capture_plan_v1", "forward_capture_plan_v2", "forward_capture_plan_v3"),
+            "plan_contract",
+        )
+        require(
+            version != "forward_capture_plan_v3"
+            or (
+                "full_market_scope" in value
+                and not {"ticker", "partition", "split", "observation_scope"}.intersection(value)
+            ),
+            "plan_contract",
+        )
         forward = version == "forward_capture_plan_v2"
-        fields = set(cls.__dataclass_fields__) - {"observation_scope"}
+        fields = set(cls.__dataclass_fields__) - {"observation_scope", "full_market_scope"}
+        full = version == "forward_capture_plan_v3"
+        if full:
+            fields = fields - {"ticker", "partition", "split", "split_pin"} | {"full_market_scope"}
         if forward:
             fields = fields - {"partition", "split", "split_pin"} | {"observation_scope"}
         require(
@@ -168,7 +292,15 @@ class ForwardCapturePlan:
             "plan_contract",
         )
         args = {name: value[name] for name in fields}
-        if forward:
+        if full:
+            args.update(
+                ticker="",
+                partition="forward_market_observation",
+                split=None,
+                split_pin=None,
+                full_market_scope=FullMarketScope.from_dict(value["full_market_scope"]),
+            )
+        elif forward:
             args.update(
                 partition="forward_observation",
                 split=None,

@@ -101,7 +101,10 @@ def _request_contract(request: FrozenJSON, trusted_pin: str) -> list[ForwardCapt
             "source_reference_fields",
         )
         plan = ForwardCapturePlan.from_dict(s["plan"])  # Partition guard before ANY source I/O.
-        require(plan.observation_scope is None, "read_only_forward_scope_not_signal_eligible")
+        require(
+            plan.observation_scope is None and plan.full_market_scope is None,
+            "read_only_forward_scope_not_signal_eligible",
+        )
         require(plan.document.identifier == sha(s["plan_pin"]), "source_plan_pin_mismatch")
         sha(s["capture_pin"])
         require(

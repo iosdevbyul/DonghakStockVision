@@ -885,3 +885,11 @@ and local HTTPS origin do not establish exchange publication time, independent c
 PIT safety or downstream signal/PAPER eligibility. No collection is marked complete in
 this preparation PR. **First real pilot status: blocked on original documents and
 verified developer contract; live KRX data requests: zero.**
+
+## Separate full-market recurring collection
+
+See [KOSPI recurring read-only policy](krx-full-market-recurring.md) for the explicit
+`operator_full_market_recurring_v1` scope and plan v3. It reuses operator document
+review for private read-only collection, without reinterpreting the old 24-hour
+005930 pilot or independent-review grants. No real request or new private approval
+was issued during implementation. Existing service approval history remains intact.

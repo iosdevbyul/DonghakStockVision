@@ -33,6 +33,8 @@ def add_commands(sub: Any) -> None:
         "action",
         choices=(
             "dry-run",
+            "recurring-pause",
+            "recurring-resume",
             "authorization-readiness",
             "recover",
             "inspect-recovery",
@@ -63,7 +65,11 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--authorization-pin")
     cmd.add_argument(
         "--authorization-policy",
-        choices=("independent_review_v1", "operator_read_only_pilot_v1"),
+        choices=(
+            "independent_review_v1",
+            "operator_read_only_pilot_v1",
+            "operator_full_market_recurring_v1",
+        ),
         default="independent_review_v1",
     )
     cmd.add_argument("--confirm-operator-authorization", action="store_true")
@@ -154,10 +160,17 @@ def run(args: argparse.Namespace) -> int:
     )
 
     trust = cli_trust(args)
-    operator_policy = args.authorization_policy == "operator_read_only_pilot_v1"
+    operator_policy = args.authorization_policy in (
+        "operator_read_only_pilot_v1",
+        "operator_full_market_recurring_v1",
+    )
     if args.confirm_operator_authorization and not operator_policy:
         raise ValueError("operator_confirmation_requires_explicit_operator_policy")
     assess = operator_readiness if operator_policy else readiness
+    if args.authorization_policy == "operator_full_market_recurring_v1":
+        from donghak_stock_vision.storage.forward_capture import recurring_preview
+
+        assess = recurring_preview
     authorization = None
     if args.authorization_root is not None or args.authorization_pin is not None:
         if args.authorization_root is None or args.authorization_pin is None:
@@ -165,6 +178,23 @@ def run(args: argparse.Namespace) -> int:
         authorization = FrozenJSON.freeze(
             {"root": str(args.authorization_root), "grant_pin": args.authorization_pin}
         )
+    if args.action in ("recurring-pause", "recurring-resume"):
+        from donghak_stock_vision.storage.forward_capture import recurring_control
+        from donghak_stock_vision.storage.krx_recurring import POLICY
+
+        if (
+            args.authorization_policy != POLICY
+            or authorization is None
+            or trust is not None
+            or args.allow_network
+        ):
+            raise ValueError("explicit_offline_recurring_policy_control_required")
+        print(
+            recurring_control(
+                args.root, plan, authorization, datetime.now(UTC), args.action == "recurring-pause"
+            ).payload_json
+        )
+        return 0
     if args.action == "inspect-recovery":
         from donghak_stock_vision.storage.krx_capture_recovery import inspect_recovery
 

@@ -32,8 +32,8 @@ def ingest_capture(
 ) -> FrozenJSON:
     """Verify original owners before opening the destination for an atomic batch write.
 
-    Current real plans authorize one ticker, not the whole returned market. Full-market
-    ingestion is therefore available for explicitly acknowledged offline fixtures only.
+    Legacy real plans authorize one ticker. Full-market provider ingestion requires
+    the distinct recurring scope and original full-market operator review.
     Real captures with extra tickers fail closed, including the original operator pilot.
     Reinvocation independently re-verifies the original archive even on idempotent retries.
     """
@@ -46,8 +46,18 @@ def ingest_capture(
         "separate_operational_storage_required",
     )
     require(
-        authorization_policy in ("independent_review_v1", "operator_read_only_pilot_v1"),
+        authorization_policy
+        in (
+            "independent_review_v1",
+            "operator_read_only_pilot_v1",
+            "operator_full_market_recurring_v1",
+        ),
         "unknown_authorization_policy",
+    )
+    require(
+        (plan.full_market_scope is not None)
+        == (authorization_policy == "operator_full_market_recurring_v1"),
+        "full_market_requires_distinct_recurring_policy",
     )
     owner = verify_capture(capture_root, plan, attempt, capture_pin)
     doc = owner.to_dict()
@@ -72,7 +82,10 @@ def ingest_capture(
         require(authorization is not None, "original_authorization_required")
         assert authorization is not None
         at = utc(metadata["response_completed_at"])
-        if authorization_policy == "operator_read_only_pilot_v1":
+        if authorization_policy in (
+            "operator_read_only_pilot_v1",
+            "operator_full_market_recurring_v1",
+        ):
             require(trust is None, "operator_policy_cannot_use_reviewer_trust")
             origin = verify_operator_capture_authorization(
                 capture_root, plan, attempt, capture_pin, authorization, at
@@ -88,7 +101,7 @@ def ingest_capture(
     # Validate the WHOLE response before any writable destination access. No row filtering.
     bars, _, _ = _parse(page, plan.market, encoding, representation, 10000)
     require(bool(bars), "nonempty_market_response_required")
-    if plan.mode == "authorized_provider":
+    if plan.mode == "authorized_provider" and plan.full_market_scope is None:
         require(
             all(bar.ticker == plan.ticker for bar in bars),
             "full_market_ingestion_not_authorized_by_single_ticker_plan",

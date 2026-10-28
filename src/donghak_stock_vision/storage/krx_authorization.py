@@ -198,6 +198,7 @@ def verify_authorization(
 ) -> FrozenJSON:
     plan.__post_init__()
     require(plan.observation_scope is None, "forward_scope_requires_operator_read_only_policy")
+    require(plan.full_market_scope is None, "full_market_requires_recurring_read_only_policy")
     require(plan.mode == "authorized_provider", "provider_plan_required")
     grant = review(reference, trust)
     d = grant.to_dict()
@@ -471,23 +472,7 @@ def verify_operator_authorization(
         type(d["max_observation_lag_days"]) is int and 1 <= d["max_observation_lag_days"] <= 7,
         "operator_observation_lag_budget",
     )
-    for name in ("permission", "terms", "specification"):
-        evidence = fields(d[name], "issuer source_url sha256")
-        require(evidence["issuer"] == "KRX", "operator_document_issuer_mismatch")
-        _official(evidence["source_url"])
-        raw = bounded(root / f"{name}.bin", 2 * 1024 * 1024)
-        require(
-            hashlib.sha256(raw).hexdigest() == sha(evidence["sha256"]),
-            f"operator_{name}_hash_mismatch",
-        )
-        require(
-            len(raw) >= 32
-            and evidence["sha256"]
-            != "120f225f7f86042485433a7af2f941736eea2314f56b4417a3c4a219447955c4"
-            and not re.search(rb"<title[^>]*>[^<]*(?:403|error|forbidden|access denied)", raw, re.I)
-            and "에러페이지".encode() not in raw,
-            "failed_or_incomplete_page_is_not_operator_permission_evidence",
-        )
+    verify_operator_documents(d, root)
     require(
         plan.authorization_reference == policy.identifier
         and plan.terms_reference == d["terms"]["sha256"],
@@ -601,3 +586,24 @@ def operator_readiness(
             "live_orders_authorized": False,
         }
     )
+
+
+def verify_operator_documents(d: dict[str, Any], root: Path) -> None:
+    """Shared original-byte checks; this authenticates no provider issuer."""
+    for name in ("permission", "terms", "specification"):
+        evidence = fields(d[name], "issuer source_url sha256")
+        require(evidence["issuer"] == "KRX", "operator_document_issuer_mismatch")
+        _official(evidence["source_url"])
+        raw = bounded(root / f"{name}.bin", 2 * 1024 * 1024)
+        require(
+            hashlib.sha256(raw).hexdigest() == sha(evidence["sha256"]),
+            f"operator_{name}_hash_mismatch",
+        )
+        require(
+            len(raw) >= 32
+            and evidence["sha256"]
+            != "120f225f7f86042485433a7af2f941736eea2314f56b4417a3c4a219447955c4"
+            and not re.search(rb"<title[^>]*>[^<]*(?:403|error|forbidden|access denied)", raw, re.I)
+            and "에러페이지".encode() not in raw,
+            "failed_or_incomplete_page_is_not_operator_permission_evidence",
+        )
