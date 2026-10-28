@@ -99,3 +99,54 @@ def verify_recovery(
         recover_capture(root, plan, attempt, capture_pin, authorization) == artifact,
         "recovery_semantic_mismatch",
     )
+
+
+def inspect_recovery(
+    artifact: FrozenJSON,
+    artifact_pin: str,
+    root: Path,
+    plan: ForwardCapturePlan,
+    attempt: str,
+    capture_pin: str,
+    authorization: FrozenJSON,
+) -> FrozenJSON:
+    """Project an allowlisted observation only after original-source semantic verification."""
+    verify_recovery(artifact, artifact_pin, root, plan, attempt, capture_pin, authorization)
+    doc = artifact.to_dict()
+    from donghak_stock_vision.data.schema import DailyBar
+
+    bar = DailyBar.from_dict(doc["observations"][0])
+    return FrozenJSON.freeze(
+        {
+            "version": "krx_recovered_observation_query_v1",
+            "basDd": bar.trading_date.strftime("%Y%m%d"),
+            "observation_count": 1,
+            "observation": bar.to_dict(),
+            "provenance": {
+                "capture_attempt": attempt,
+                "receipt_id": doc["source_receipt"]["raw_id"],
+                "origin": doc["source_origin"],
+                "response_at": doc["source_response_at"],
+                "capture_parser": doc["original_parser"],
+                "recovery_parser": doc["parser"],
+                "recovery_version": doc["version"],
+                "verification": "original_source_semantic_replay",
+            },
+            "original_capture": {
+                "ingestion": doc["original_ingestion"],
+                "parse_error": doc["original_parse_error"],
+                "changed": doc["original_capture_changed"],
+            },
+            "recovery_status": doc["recovery_status"],
+            **{
+                key: doc[key]
+                for key in (
+                    "pit_qualified",
+                    "forward_signal_eligible",
+                    "paper_execution_eligible",
+                    "execution_authorized",
+                )
+            },
+            "network_requests": 0,
+        }
+    )
