@@ -35,6 +35,7 @@ def add_commands(sub: Any) -> None:
             "dry-run",
             "authorization-readiness",
             "recover",
+            "inspect-recovery",
             "capture",
             "status",
             "verify",
@@ -55,6 +56,8 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--pin")
     cmd.add_argument("--sequence", type=int, default=0)
     cmd.add_argument("--output", type=Path)
+    cmd.add_argument("--recovery", type=Path)
+    cmd.add_argument("--recovery-pin")
     cmd.add_argument("--allow-network", action="store_true")
     cmd.add_argument("--authorization-root", type=Path)
     cmd.add_argument("--authorization-pin")
@@ -162,6 +165,41 @@ def run(args: argparse.Namespace) -> int:
         authorization = FrozenJSON.freeze(
             {"root": str(args.authorization_root), "grant_pin": args.authorization_pin}
         )
+    if args.action == "inspect-recovery":
+        from donghak_stock_vision.storage.krx_capture_recovery import inspect_recovery
+
+        if (
+            not operator_policy
+            or authorization is None
+            or trust is not None
+            or args.pin is None
+            or args.recovery is None
+            or args.recovery_pin is None
+            or args.output is not None
+            or args.allow_network
+            or args.confirm_operator_authorization
+        ):
+            raise ValueError("offline_inspection_requires_recovery_and_original_trusted_pins")
+        with args.recovery.open("rb") as stream:
+            raw = stream.read(32769)
+        if len(raw) > 32768:
+            raise ValueError("recovery_artifact_byte_limit")
+        try:
+            artifact = FrozenJSON(raw.decode("utf-8"))
+        except ValueError:
+            raise ValueError("invalid_recovery_artifact") from None
+        print(
+            inspect_recovery(
+                artifact,
+                args.recovery_pin,
+                args.root,
+                plan,
+                args.attempt,
+                args.pin,
+                authorization,
+            ).payload_json
+        )
+        return 0
     if args.action == "recover":
         from donghak_stock_vision.storage.krx_capture_recovery import recover_capture
 

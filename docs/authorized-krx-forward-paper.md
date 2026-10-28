@@ -62,8 +62,50 @@ Keep the private source, authorization package and trusted pins available for re
 Independent authorization, PIT, signal/PAPER and execution eligibility remain false.
 No private provider response belongs in Git or CI; regression fixtures are synthetic.
 
-This workflow closes the provider eligibility gap between original forward capture,
-SMA signals and paper execution. It does not issue KRX permissions, authenticate
+### Verified read-only observation query (#150)
+
+Inspect an existing artifact without regenerating it or importing it into a market DB:
+
+```sh
+dsv forward-capture inspect-recovery --root "$CAPTURE_ROOT" \
+  --plan "$PLAN_JSON" --plan-pin "$TRUSTED_PLAN_PIN" \
+  --attempt "$ORIGINAL_ATTEMPT" --pin "$TRUSTED_CAPTURE_PIN" \
+  --authorization-policy operator_read_only_pilot_v1 \
+  --authorization-root "$PRIVATE_PACKAGE" --authorization-pin "$TRUSTED_POLICY_PIN" \
+  --recovery "$EXISTING_RECOVERY_JSON" --recovery-pin "$TRUSTED_RECOVERY_PIN"
+```
+
+Keep the recovery pin independently retained, as with the original source pins.
+The command reads at most 32 KiB of recovery JSON and invokes the existing
+`verify_recovery` semantic reconstruction before emitting any observation. Missing
+files, invalid JSON/UTF-8, wrong pins, modified original evidence and self-rehashed
+alterations fail closed. It requires the original operator policy; verification at
+the original capture instant does not renew expired collection permission.
+Network opt-in/confirmation and output-file flags are rejected. All reads are local;
+there is no capture, artifact writer, journal, signal, broker or training DB operation.
+
+The canonical `krx_recovered_observation_query_v1` response includes `basDd`, one
+`DailyBar` observation with its actual OHLCV/trading value, provider, market,
+adjustment semantics and UTC collection timestamp. It also includes original
+ingestion/error state, derived recovery status, parser versions and verified origin.
+The allowlisted provenance identifiers are the capture attempt and receipt ID,
+scoped to the operator-supplied archive. They do not replace trusted pins. No policy
+pin, credential, source/content hash or filesystem path is serialized. The query
+does not print the complete recovery document or whole-market provider response.
+
+An empty original ingestion list with a parse error remains an unsuccessful
+original ingestion, even though a derived observation can now be inspected.
+Legacy parser-v1 evidence and new parser-v2 evidence retain their distinct original
+states. Real HTTPS origin and synthetic mock origin remain distinguishable.
+`pit_qualified`, `forward_signal_eligible`, `paper_execution_eligible` and
+`execution_authorized` remain false. A local capture/collection timestamp is not
+an independently authenticated exchange publication timestamp. This read-only
+summary grants no historical PIT, signal, PAPER or brokerage eligibility.
+
+The authorized-provider integration below connects original forward capture,
+SMA signals and paper execution under their separate eligibility requirements;
+the read-only recovery query does not enable that path. The integration does not
+issue KRX permissions, authenticate
 historical publication times, enable brokerage, approve a strategy, or change fees,
 risk checks or SMA semantics. PAPER fills remain explicit simulations even when their
 input observations were genuinely received over verified KRX HTTPS.
