@@ -180,6 +180,52 @@ def _parse(
     return bars, rows, decoded
 
 
+def _validate_capture_reference(request: FrozenJSON) -> None:
+    """Local binding only; original archive/authorization replay lives in the adapter."""
+    from donghak_stock_vision.backtest.validation import fields, sha
+
+    value = request.to_dict()
+    if "source_capture" not in value:
+        return
+    source = fields(
+        value["source_capture"],
+        "version capture_id capture_pin plan_pin authorization_pin trust_pin "
+        "sequence raw_id receipt_pin raw_sha256 market day response_at origin",
+    )
+    require(source["version"] == "operational_capture_reference_v1", "capture_reference_version")
+    for key in ("capture_id", "capture_pin", "plan_pin", "receipt_pin", "raw_sha256"):
+        sha(source[key])
+    for key in ("authorization_pin", "trust_pin"):
+        if source[key] is not None:
+            sha(source[key])
+    require(
+        type(source["sequence"]) is int
+        and 0 <= source["sequence"] < 3
+        and type(source["raw_id"]) is int
+        and source["raw_id"] > 0
+        and source["market"] == value["market"] == "KOSPI"
+        and source["day"] == value["source_date"]
+        and source["response_at"] == value["collected_at"]
+        and source["raw_sha256"] == value["raw_sha256"],
+        "capture_reference_binding_mismatch",
+    )
+    require(
+        (
+            source["origin"] == "offline_fixture"
+            and value["declared_origin"] == "synthetic_fixture"
+            and source["authorization_pin"] is None
+            and source["trust_pin"] is None
+        )
+        or (
+            source["origin"]
+            in {"real_provider_https_local_capture", "authorized_provider_mock_fixture"}
+            and source["authorization_pin"] is not None
+            and value["declared_origin"] == "local_response_unqualified"
+        ),
+        "capture_reference_origin_mismatch",
+    )
+
+
 class OperationalMarketStore:
     """One connection per worker. No provider calls or recovery-artifact import API."""
 
@@ -323,7 +369,11 @@ class OperationalMarketStore:
     def _manifest(self, batch: str, raw_id: int, request: FrozenJSON, count: int) -> FrozenJSON:
         return FrozenJSON.freeze(
             {
-                "version": "operational_krx_batch_v1",
+                "version": (
+                    "operational_krx_batch_v2"
+                    if "source_capture" in request.to_dict()
+                    else "operational_krx_batch_v1"
+                ),
                 "batch_id": batch,
                 "request": request.to_dict(),
                 "raw_receipt": json.loads(_receipt_bytes(self.connection, raw_id)),
@@ -341,6 +391,7 @@ class OperationalMarketStore:
         source_kind: str,
         content_encoding: str = "identity",
         representation: str = "wire",
+        source_capture: FrozenJSON | None = None,
     ) -> FrozenJSON:
         require(self.writable, "explicit_writable_operational_store_required")
         require(
@@ -364,8 +415,12 @@ class OperationalMarketStore:
                 "content_encoding": content_encoding,
                 "representation": representation,
                 "declared_origin": source_kind,
+                **({"source_capture": source_capture.to_dict()} if source_capture else {}),
             }
         )
+        _validate_capture_reference(request)
+        if source_capture is not None:
+            require(batch_id == source_capture.identifier, "capture_batch_identity_mismatch")
         with self.connection:
             self.connection.execute("BEGIN IMMEDIATE")
             existing = self.connection.execute(
@@ -438,7 +493,7 @@ class OperationalMarketStore:
         require(request.identifier == row[2], "batch_request_mismatch")
         r = request.to_dict()
         require(
-            set(r)
+            set(r) - {"source_capture"}
             == {
                 "market",
                 "source_date",
@@ -454,6 +509,12 @@ class OperationalMarketStore:
             r["declared_origin"] in {"synthetic_fixture", "local_response_unqualified"},
             "invalid_origin",
         )
+        _validate_capture_reference(request)
+        if "source_capture" in r:
+            require(
+                batch == FrozenJSON.freeze(r["source_capture"]).identifier,
+                "capture_batch_identity_mismatch",
+            )
         raw = self.connection.execute(
             "SELECT substr(body,1,2097153),collected_at,source_date,run_id,provider,ticker,"
             "length(body) FROM raw_pages WHERE id=?",

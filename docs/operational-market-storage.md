@@ -128,8 +128,9 @@ alone does not prove universe completeness or trading-calendar coverage.
 
 ## Explicit ingestion API for a future approved collector
 
-There is deliberately no live collection, arbitrary artifact import or recovery
-import CLI. A future separately authorized collector can compose the synchronous
+There is no live collection, arbitrary artifact import or recovery import CLI.
+The verified capture bridge below composes this synchronous API.
+A future separately authorized collector can compose the synchronous
 API with the existing capture pipeline. It must retain every attempted original
 response through that pipeline, including responses rejected by normalization.
 This ingestion API accepts structurally validated batches atomically; rejection
@@ -215,3 +216,95 @@ The DB page limit is not a hard cap on temporary journals, backups, logs or proc
 memory. Status exposes actual storage/free-space measurements; capacity errors stop
 new writes, and SQLite I/O/full errors roll back the transaction. There are no hidden
 retries, retention deletions, network requests, approvals or automatic backup claims.
+
+## Import an already verified capture (offline)
+
+`dsv market-storage ingest-capture` connects the existing immutable capture archive
+and its original trusted pins to the transaction above. It constructs no HTTP client,
+reads no key and accepts no network opt-in. Initialize a separate operational root
+first. There is no arbitrary JSON/recovery import command.
+
+The bridge checks the plan's independent canonical pin and protected partition
+before source I/O, then invokes `verify_capture`, original authorization verification
+and hash-checked `readback`. It requires a complete HTTP 200 response without a
+transport error. The entire `OutBlock_1` must pass the existing bounded decoder,
+KRX market parser, exact numeric and duplicate-row checks before the destination
+is opened for writing. Invalid rows invalidate the whole batch; nothing is filtered
+out to hide errors. An empty response is not imported as a complete market.
+Response row count does not independently prove the exchange universe is complete.
+
+**Current authorization constraint:** capture plans v1 bind a single ticker. The
+prospective v2 `operator_read_only_pilot_v1` scope is explicitly limited to 005930.
+Neither approves importing other instruments from a whole-market response. The
+bridge rejects such real-provider inputs with
+`full_market_ingestion_not_authorized_by_single_ticker_plan`, after checking the
+original authorization. No authorization rule or plan schema is relaxed here.
+The real 2026-10-26 pilot's retained 940 rows are **not imported**. A future approved
+full-market plan/policy contract is required before this bridge can ingest a genuine
+whole-market capture. This PR does not create that approval authority.
+
+A real-provider capture containing only its authorized ticker may be imported with
+its original independent-review or operator-policy package. All eligibility remains
+false. Mock-provider authorization fixtures remain identified as
+`authorized_provider_mock_fixture`; they are not genuine provider captures.
+
+Full-market integration is currently demonstrated only with explicit synthetic
+capture fixtures. The fixture acknowledgment cannot relabel an authorized-provider
+capture as synthetic. It also does not grant permission to collect anything:
+
+```sh
+# CAPTURE_ROOT and PLAN refer to an existing OFFLINE FIXTURE capture, not private
+# real pilot evidence. Pins must be retained separately by its original owner.
+dsv market-storage ingest-capture --root "$ROOT" \
+  --capture-root "$CAPTURE_ROOT" --plan "$PLAN" --plan-pin "$PLAN_PIN" \
+  --attempt "$ATTEMPT" --capture-pin "$CAPTURE_PIN" --sequence 0 \
+  --allow-synthetic-fixture
+dsv market-storage validate --root "$ROOT"
+```
+
+For an eligible single-instrument provider capture, omit the synthetic flag and add
+`--authorization-root "$AUTH_ROOT" --authorization-pin "$AUTH_PIN"`.
+Independent review (the default) additionally needs the existing
+`--reviewer-registry`, `--reviewer-registry-pin` and `--operator-id` arguments.
+Operator review instead needs explicit
+`--authorization-policy operator_read_only_pilot_v1`; it does not accept reviewer
+trust. Original permission is checked at the recorded request/response times, so
+read-only verification does not invent a new collection authorization after expiry.
+Never publish these private arguments or packages. No API key is required for import.
+
+### Retained source binding and verification levels
+
+The original archive/receipt remains authoritative and unchanged, including any
+failed original scoped ingestion. The destination retains another exact raw-byte
+copy with its own receipt/run/raw ID. Those destination receipt identities are **not**
+the original receipt identities.
+
+A separately versioned `operational_krx_batch_v2` manifest retains a bounded
+`operational_capture_reference_v1` in its request: capture ID/pin, plan pin, original
+raw ID and receipt pin, authorization and trust reference pins where applicable,
+response sequence/date/time, raw SHA and explicit origin. It contains no filesystem
+path, secret or original permission document. Every normalized row links to the
+operational raw ID, which links through this manifest to the exact original capture.
+The canonical reference fingerprint is the idempotency/batch ID. There is no new
+table, migration or custody system. Existing batch v1 bytes and validation remain
+unchanged; readers encountering v2 must understand this added source reference.
+
+`validate` checks the local reference/body/date/market/time binding and reconstructs
+all normalized values from the retained bytes. It cannot independently authenticate
+an original archive that is no longer supplied. Repeating **the original
+`ingest-capture` command with all original trusted pins** performs original-source
+and authorization semantic verification again, then verifies and returns the same
+local batch. A tampered source is rejected even if a previous import succeeded.
+This is the explicit source-to-destination verification path; a local rehash is not
+an independent trust root. The command returns a stable
+`operational_capture_ingestion_v1` summary with original ingestion state, imported
+count, batch identity, provenance classification, zero network requests and six
+false eligibility flags. It never rewrites a failed capture into original success.
+
+Tests construct 940-row synthetic plain/gzip captures with existing `run_capture`
+and `MockTransport`, then use this same bridge and CLI. They cover original pin and
+receipt verification, exact values/names, idempotency, conflicts/atomic rollback,
+interrupted captures, tampering, authorization scope and unchanged source files.
+No genuine authorization or market-data outcome is asserted from those fixtures.
+A future scheduler can call `storage.operational_capture.ingest_capture` after its
+separately approved capture; no scheduler or collection call is implemented here.
