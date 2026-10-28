@@ -10,7 +10,9 @@ from pathlib import Path
 from donghak_stock_vision.data.schema import DailyBar
 from donghak_stock_vision.providers.base import RawPage, krx_market_scope
 
-SCHEMA = """
+OPERATIONAL_APPLICATION_ID = 0x4453564F
+
+RAW_SCHEMA = """
 CREATE TABLE IF NOT EXISTS raw_pages (
     id INTEGER PRIMARY KEY, run_id TEXT NOT NULL, provider TEXT NOT NULL,
     ticker TEXT NOT NULL, collected_at TEXT NOT NULL, source_date TEXT,
@@ -32,6 +34,11 @@ BEGIN SELECT RAISE(ABORT, 'capture receipt immutable'); END;
 CREATE TRIGGER IF NOT EXISTS raw_capture_receipts_no_delete
 BEFORE DELETE ON raw_capture_receipts
 BEGIN SELECT RAISE(ABORT, 'capture receipt immutable'); END;
+"""
+
+SCHEMA = (
+    RAW_SCHEMA
+    + """
 CREATE TABLE IF NOT EXISTS bars (
     ticker TEXT NOT NULL, trading_date TEXT NOT NULL, payload TEXT NOT NULL,
     PRIMARY KEY(ticker, trading_date)
@@ -48,12 +55,54 @@ CREATE TABLE IF NOT EXISTS collection_runs (
     status TEXT NOT NULL, rows INTEGER NOT NULL, error TEXT
 );
 """
+)
+
+
+def archive_raw_page(
+    connection: sqlite3.Connection, run_id: str, provider: str, scope: str, page: RawPage
+) -> int:
+    """Reuse the original receipt contract; caller owns the transaction and commit."""
+    if page.collected_at.utcoffset() is None:
+        raise ValueError("collection timestamp must be timezone-aware")
+    observed = page.collected_at.astimezone(UTC).isoformat()
+    source_date = page.source_date.isoformat() if page.source_date else None
+    digest = hashlib.sha256(page.body).hexdigest()
+    cursor = connection.execute(
+        "INSERT INTO raw_pages "
+        "(run_id,provider,ticker,collected_at,source_date,sha256,body) "
+        "VALUES(?,?,?,?,?,?,?)",
+        (run_id, provider, scope, observed, source_date, digest, page.body),
+    )
+    assert cursor.lastrowid is not None
+    raw_id = cursor.lastrowid
+    connection.execute(
+        "INSERT INTO raw_capture_receipts "
+        "(raw_id,schema_version,run_id,provider,scope,collected_at,source_date,raw_sha256) "
+        "VALUES(?,?,?,?,?,?,?,?)",
+        (
+            raw_id,
+            "raw_capture_receipt_v1",
+            run_id,
+            provider,
+            scope,
+            observed,
+            source_date,
+            digest,
+        ),
+    )
+    return raw_id
 
 
 class SQLiteStore:
     def __init__(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(path, timeout=30)
+        if (
+            self.connection.execute("PRAGMA application_id").fetchone()[0]
+            == OPERATIONAL_APPLICATION_ID
+        ):
+            self.connection.close()
+            raise ValueError("operational_storage_is_not_a_research_database")
         self.connection.execute("PRAGMA foreign_keys=ON")
         self.connection.executescript(SCHEMA)
 
@@ -76,36 +125,8 @@ class SQLiteStore:
         return date.fromisoformat(row[0]) if row[0] else None
 
     def archive(self, run_id: str, provider: str, ticker: str, page: RawPage) -> int:
-        if page.collected_at.utcoffset() is None:
-            raise ValueError("collection timestamp must be timezone-aware")
-        observed = page.collected_at.astimezone(UTC).isoformat()
-        source_date = page.source_date.isoformat() if page.source_date else None
-        digest = hashlib.sha256(page.body).hexdigest()
         with self.connection:
-            cursor = self.connection.execute(
-                "INSERT INTO raw_pages "
-                "(run_id,provider,ticker,collected_at,source_date,sha256,body) "
-                "VALUES(?,?,?,?,?,?,?)",
-                (run_id, provider, ticker, observed, source_date, digest, page.body),
-            )
-            assert cursor.lastrowid is not None
-            raw_id = cursor.lastrowid
-            self.connection.execute(
-                "INSERT INTO raw_capture_receipts "
-                "(raw_id,schema_version,run_id,provider,scope,collected_at,source_date,raw_sha256) "
-                "VALUES(?,?,?,?,?,?,?,?)",
-                (
-                    raw_id,
-                    "raw_capture_receipt_v1",
-                    run_id,
-                    provider,
-                    ticker,
-                    observed,
-                    source_date,
-                    digest,
-                ),
-            )
-        return raw_id
+            return archive_raw_page(self.connection, run_id, provider, ticker, page)
 
     def save(self, bars: Sequence[DailyBar], raw_ids: Sequence[int]) -> int:
         changed = 0
