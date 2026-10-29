@@ -21,12 +21,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument(
         "--operational-snapshot", type=Path, help="offline operational .snapshot.sqlite3 copy"
     )
-    result.add_argument(
-        "--operational-snapshot-sha256", help="approved offline copy SHA-256"
-    )
-    result.add_argument(
-        "--security-metadata", type=Path, help="optional display metadata envelope"
-    )
+    result.add_argument("--operational-snapshot-sha256", help="approved offline copy SHA-256")
+    result.add_argument("--security-metadata", type=Path, help="optional display metadata envelope")
     result.add_argument(
         "--security-metadata-fingerprint", help="expected metadata artifact fingerprint"
     )
