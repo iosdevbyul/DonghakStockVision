@@ -283,9 +283,9 @@
       "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
     },
     {
-      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.ohlcv\",\"ImportFrom(module='donghak_stock_vision.api.ohlcv', names=[alias(name='OhlcvMarketReader'), alias(name='OhlcvSeries')], level=0)\",\"<module>\",false,false]",
+      "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.ohlcv\",\"ImportFrom(module='donghak_stock_vision.api.ohlcv', names=[alias(name='OhlcvMarketReader'), alias(name='OhlcvSeries'), alias(name='OperationalCatalog'), alias(name='PinnedOperationalReader')], level=0)\",\"<module>\",false,false]",
       "count": 1,
-      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure."
+      "reason": "API initializer eagerly re-exports create_app; imports of child DTO/readers also depend on that initializer. Retain public imports now; separate initialization in a later PR with API import smoke tests. Static cycle, not a proven runtime failure. PR #157 explicitly extends this same single import with OperationalCatalog and PinnedOperationalReader for pinned operational snapshots; module direction, runtime scope and occurrence count remain unchanged. Further symbol additions still require exact review."
     },
     {
       "key": "[\"runtime-cycle-edge\",\"donghak_stock_vision.api.app\",\"donghak_stock_vision.api.operations\",\"ImportFrom(module='donghak_stock_vision.api.operations', names=[alias(name='AlertsPayload'), alias(name='FreshnessPayload'), alias(name='OperationsReader'), alias(name='RunsPayload')], level=0)\",\"<module>\",false,false]",
