@@ -104,7 +104,9 @@ def backup_operational_database(source: Path, destination: Path) -> BackupVerifi
     target = _destination(destination, live)
     temporary: Path | None = None
     try:
-        fd, name = tempfile.mkstemp(prefix=".operational-backup-", suffix=".sqlite3", dir=target.parent)
+        fd, name = tempfile.mkstemp(
+            prefix=".operational-backup-", suffix=".sqlite3", dir=target.parent
+        )
         temporary = Path(name)
         os.fchmod(fd, 0o600)
         os.close(fd)
@@ -135,7 +137,9 @@ def restore_operational_backup(
     verified = verify_backup(source, expected_sha256=expected_sha256)
     temporary: Path | None = None
     try:
-        fd, name = tempfile.mkstemp(prefix=".operational-restore-", suffix=".sqlite3", dir=target.parent)
+        fd, name = tempfile.mkstemp(
+            prefix=".operational-restore-", suffix=".sqlite3", dir=target.parent
+        )
         temporary = Path(name)
         os.fchmod(fd, 0o600)
         os.close(fd)
