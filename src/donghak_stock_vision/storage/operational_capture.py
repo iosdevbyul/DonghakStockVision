@@ -2,6 +2,7 @@
 
 from contextlib import closing
 from pathlib import Path
+from typing import Any
 
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require, sha, utc
@@ -16,7 +17,7 @@ from donghak_stock_vision.storage.forward_capture import (
 from donghak_stock_vision.storage.operational_market import OperationalMarketStore, _parse
 
 
-def ingest_capture(
+def _verified_source(
     storage_root: Path,
     capture_root: Path,
     plan: ForwardCapturePlan,
@@ -29,14 +30,8 @@ def ingest_capture(
     trust: FrozenJSON | None = None,
     authorization_policy: str = "independent_review_v1",
     allow_synthetic_fixture: bool = False,
-) -> FrozenJSON:
-    """Verify original owners before opening the destination for an atomic batch write.
-
-    Legacy real plans authorize one ticker. Full-market provider ingestion requires
-    the distinct recurring scope and original full-market operator review.
-    Real captures with extra tickers fail closed, including the original operator pilot.
-    Reinvocation independently re-verifies the original archive even on idempotent retries.
-    """
+) -> tuple[RawPage, FrozenJSON, str, str, str, dict[str, Any], dict[str, Any], int]:
+    """Original source and authorization replay shared by write and read-only checks."""
     plan.__post_init__()  # Protected partitions rejected before any source I/O.
     require(plan.document.identifier == sha(plan_pin), "plan_pin_mismatch")
     require(plan.market == "KOSPI", "operational_capture_requires_kospi")
@@ -125,6 +120,43 @@ def ingest_capture(
         }
     )
     # Reference identity includes original receipt/manifest and scope, never filesystem paths.
+    return page, reference, origin, encoding, representation, doc, response, len(bars)
+
+
+def ingest_capture(
+    storage_root: Path,
+    capture_root: Path,
+    plan: ForwardCapturePlan,
+    plan_pin: str,
+    attempt: str,
+    capture_pin: str,
+    *,
+    sequence: int = 0,
+    authorization: FrozenJSON | None = None,
+    trust: FrozenJSON | None = None,
+    authorization_policy: str = "independent_review_v1",
+    allow_synthetic_fixture: bool = False,
+) -> FrozenJSON:
+    """Verify original owners before opening the destination for an atomic batch write.
+
+    Legacy real plans authorize one ticker. Full-market provider ingestion requires
+    the distinct recurring scope and original full-market operator review.
+    Real captures with extra tickers fail closed, including the original operator pilot.
+    Reinvocation independently re-verifies the original archive even on idempotent retries.
+    """
+    page, reference, origin, encoding, representation, doc, response, _ = _verified_source(
+        storage_root,
+        capture_root,
+        plan,
+        plan_pin,
+        attempt,
+        capture_pin,
+        sequence=sequence,
+        authorization=authorization,
+        trust=trust,
+        authorization_policy=authorization_policy,
+        allow_synthetic_fixture=allow_synthetic_fixture,
+    )
     batch_id = reference.identifier
     with closing(OperationalMarketStore(storage_root, writable=True)) as store:
         batch = store.ingest(
@@ -156,4 +188,56 @@ def ingest_capture(
             "eligibility": batch.to_dict()["eligibility"],
             "network_requests": 0,
         }
+    )
+
+
+def verify_stored_capture(
+    storage_root: Path,
+    capture_root: Path,
+    plan: ForwardCapturePlan,
+    plan_pin: str,
+    attempt: str,
+    capture_pin: str,
+    batch_pin: str,
+    *,
+    authorization: FrozenJSON | None = None,
+    trust: FrozenJSON | None = None,
+    authorization_policy: str = "independent_review_v1",
+) -> FrozenJSON:
+    """Read-only completion proof from independently pinned source and original batch.
+
+    A date/count in SQLite or scheduler JSON alone never proves completed collection.
+    No source writes, idempotent ingest or network calls occur in this interface.
+    """
+    _, reference, origin, _, _, _, _, count = _verified_source(
+        storage_root,
+        capture_root,
+        plan,
+        plan_pin,
+        attempt,
+        capture_pin,
+        authorization=authorization,
+        trust=trust,
+        authorization_policy=authorization_policy,
+    )
+    with closing(OperationalMarketStore(storage_root)) as store, store.connection:
+        store.connection.execute("BEGIN")
+        row = store.connection.execute(
+            "SELECT raw_id FROM ingestion_batches WHERE batch_id=?",
+            (reference.identifier,),
+        ).fetchone()
+        require(row is not None, "verified_capture_not_ingested")
+        batch = store._verify_batch(reference.identifier, row[0])
+        require(batch.identifier == sha(batch_pin), "stored_capture_batch_pin_mismatch")
+        require(batch.to_dict()["observation_count"] == count, "stored_capture_count_mismatch")
+    return FrozenJSON.freeze(
+        dict(
+            version="verified_operational_completion_v1",
+            day=plan.day.isoformat(),
+            observation_count=count,
+            origin=origin,
+            batch_id=reference.identifier,
+            batch_pin=batch.identifier,
+            network_requests=0,
+        )
     )

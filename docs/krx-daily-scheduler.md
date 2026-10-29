@@ -93,7 +93,7 @@ dsv krx-scheduler resume --config "$CONFIG" --config-pin "$CONFIG_PIN" \
   --apply --allow-network --confirm-operator-authorization
 
 # Same runner as launchd; still refuses work unless persistently enabled.
-dsv krx-scheduler run-once --config "$CONFIG" --config-pin "$CONFIG_PIN" --execute
+dsv krx-scheduler run-due --config "$CONFIG" --config-pin "$CONFIG_PIN" --execute
 
 dsv krx-scheduler pause --config "$CONFIG" --config-pin "$CONFIG_PIN" --apply
 dsv krx-scheduler uninstall --config "$CONFIG" --config-pin "$CONFIG_PIN" --apply
@@ -120,7 +120,7 @@ corrupt metadata fail closed instead of silently resetting state.
 
 The fixed per-user label is `com.donghakstockvision.krx-daily`. The plist lives in the
 operator's `~/Library/LaunchAgents`. ProgramArguments use the configured absolute Python
-path and `-m donghak_stock_vision krx-scheduler run-once --execute --scheduled` with the
+path and `-m donghak_stock_vision krx-scheduler run-due --execute --scheduled` with the
 private config and independently supplied config pin. Space-containing paths are plist
 array elements, not shell strings. WorkingDirectory is explicit.
 
@@ -149,17 +149,25 @@ KIND calendar artifacts are not silently relabelled as a current operational cal
 An operator may use verified calendar evidence to prepare the existing allowlist;
 weekday detection by itself never proves a KRX session.
 
-A new request occurs only on a listed current collection day. Weekends, holidays or
-other unlisted days skip without HTTP. The candidate is the latest listed date strictly
-before the current Seoul date and within the policy's existing 1–7-day lag. The runner
-never chooses an older missing date merely because the latest candidate is a duplicate.
+The default LaunchAgent now invokes the bounded `run-due` path. It processes missing
+**observation dates** in ascending order, only when they are in `permitted_days` and
+1–7 days before the actual Seoul execution date (or the policy's smaller configured
+lag). The execution date need not itself be an allowed observation date: catch-up
+on a holiday/weekend does not turn that date into a market session or request its bar.
+The installed calendar trigger remains Monday–Friday at the configured time. A wake
+or manual invocation rechecks timezone, scheduled time, policy and each requested day.
+
+`run-once` remains a compatibility interface selecting the latest eligible date with
+its previous execution-day guard. Use `backlog`/`run-due` for oldest-first collection;
+no legacy plan, policy, capture, state v1 or published response is reinterpreted.
 
 **Current policy limitation:** even at 19:00, same-day daily bars are not eligible under
 PR #153's minimum one-day lag. This PR preserves that boundary, so Monday typically
 collects the prior allowed Friday. No incomplete/current bar or unauthorized historical
 warm-up is substituted. Same-day post-close collection would require a separately
-reviewed policy/evidence change. Long holidays or downtime can exceed the lag; missed
-dates remain visible for a future explicit recovery feature.
+reviewed policy/evidence change. Long holidays or downtime can exceed the lag. These missing dates are reported as
+expired and **never fetched automatically** under this policy. No lossless historical
+backfill or unconditional gap-free coverage is claimed.
 
 ## Single-run sequence and interruption behavior
 
@@ -241,3 +249,154 @@ Use the [production readiness guide](krx-production-readiness.md) for original-d
 review, private recurring-policy provisioning, `krx-scheduler preflight`, and the explicit
 manual-first capture/verification/import sequence before enabling launchd. No private
 policy or live collection is provisioned automatically.
+
+## Bounded catch-up and verified completion
+
+New additive operations:
+
+```sh
+# Read-only; no directories, DBs, captures or permissions are created.
+dsv krx-scheduler backlog --config "$CONFIG" --config-pin "$CONFIG_PIN"
+dsv krx-scheduler run-due --config "$CONFIG" --config-pin "$CONFIG_PIN"
+
+# FUTURE operator action, after genuine policy review and persistent enablement.
+# Not executed during development; real collection remains disabled.
+dsv krx-scheduler run-due --config "$CONFIG" --config-pin "$CONFIG_PIN" \
+  --execute --max-runs 7 --max-batch-seconds 240
+```
+
+The batch holds the same runner lock as `run-once` across all dates. It delegates each
+single capture to the original locked implementation; no alternative client, database,
+policy validator or request ledger exists. Each HTTP request still has one attempt,
+zero retries, at most 30 seconds/2 MiB, direct verified TLS and the original durable
+quota/duplicate guard. A batch allows 1–7 work items and 1–300 cooperative seconds
+(default 7/240). Offline ingestion recovery consumes a work-item slot too. Validation
+or filesystem calls cannot be forcibly preempted; this is not hard process isolation.
+
+Before new captures, operational SQLite must pass its original full integrity check.
+A successful scheduler summary alone never proves completion. Each completed date is
+reconstructed from its original pinned capture/authorization and pinned ingestion
+batch, then the stored original response and normalized observations are revalidated.
+The shared read-only `verify_stored_capture` reuses the ingestion source verifier and
+authoritative batch validator; the write contract and schema remain unchanged.
+
+`krx_collection_backlog_v1` distinguishes:
+
+- `completed`: original source and actual stored batch verified; this is not PIT approval.
+- `due_dates`: unrequested missing allowed dates, oldest first, inside the current lag.
+- `expired_dates`: missing allowed dates older than the lag; never auto-requested.
+- `reserved_without_verified_completion`: an existing request intent blocks requery;
+  this includes failed captures and unregistered manual collections, not successful completion.
+- `stored_without_verified_history`: rows exist but the matching original request history
+  is missing/unregistered. New requests stop until the original history is restored and
+  explicitly verified. The DB alone is not a trusted source pin or permission to retry.
+- `not_yet_eligible_dates`: current/future observations, never substituted for completed bars.
+- `next_request_readiness`: the existing policy/key/quota preview for the oldest due date.
+  It is not a request reservation, current calendar proof or independent authorization.
+
+Missing/unavailable values are retained; completed counts do not hide reserved or expired
+observations. Dates omitted from the reviewed allowlist cannot be invented as missing
+sessions. The existing latest-date `preflight` remains compatible; it may report a
+latest-date duplicate while older allowed dates are still due. Use the per-date backlog
+preview and original execution-time checks rather than bypassing any denial.
+
+Known failed requests remain individually auditable and are excluded from automatic
+requery. A batch stops on its first failure/denial. A later invocation can process other
+unrequested dates; the failed date remains explicitly unresolved. An uncertain
+`capture_pending` blocks all automatic work until the outcome can be independently
+resolved. A trusted `ingest_pending` resumes original ingestion offline before any new
+request. No original receipt, manifest, intent, failure or quota reservation is erased.
+
+The original atomic `state.json` v1 and source archives remain authoritative for runner
+capture references. Two bounded, config-bound local metadata files reuse existing
+private/fsync/atomic-replace/lock utilities: `verified-completions.json` for explicitly
+registered external/manual references and `last-batch.json` for the last mutable batch
+summary. They survive restart; missing dates are reconstructed from the pinned policy,
+source proofs and SQLite. A missing registry does not authorize duplicate collection.
+They are not a new database, immutable economic ledger or independent custody store.
+Up to 366 combined completions and the existing 512 KiB/file limits apply; large external
+plan documents can reach the byte limit before 366 registrations. Normal runner history
+retains compact original references. No unbounded retention/crash durability is claimed.
+
+## Register an already stored manual collection (offline)
+
+This is an explicit future operator action, not performed on the real private pilot in
+this PR. Supply the original independently retained **plan, capture and batch pins**.
+The batch pin must originate from the original trusted ingestion return, not a hash
+read solely from the mutable DB. Never create a trusted capture pin from an untrusted
+archive's own manifest. Keep private values out of shell tracing, GitHub and support logs.
+
+```sh
+dsv krx-scheduler register-completion --config "$CONFIG" --config-pin "$CONFIG_PIN" \
+  --source-plan "$ORIGINAL_PLAN" --source-plan-pin "$ORIGINAL_PLAN_PIN" \
+  --source-attempt manual-first --capture-pin "$ORIGINAL_CAPTURE_PIN" \
+  --batch-pin "$ORIGINAL_BATCH_PIN"
+```
+
+Registration is read-only for the capture/SQLite and only updates private scheduler
+references. It requires an already-ingested, exactly matching full-market batch; it
+never imports an old Samsung-only response, sends HTTP, enables scheduling or grants
+service permission. Repeating an identical registration is idempotent; conflicting
+same-day identities, modified data, wrong pins and absent storage are rejected.
+
+For a new policy/config after renewal, preserve the original source policy and supply
+its original reference explicitly:
+
+```sh
+dsv krx-scheduler register-completion --config "$NEW_CONFIG" --config-pin "$NEW_CONFIG_PIN" \
+  --source-plan "$OLD_PLAN" --source-plan-pin "$OLD_PLAN_PIN" \
+  --source-attempt "$OLD_ATTEMPT" --capture-pin "$OLD_CAPTURE_PIN" \
+  --batch-pin "$OLD_BATCH_PIN" \
+  --source-authorization-root "$OLD_POLICY_ROOT" --source-authorization-pin "$OLD_POLICY_PIN"
+```
+
+The original capture archive must still be the configured shared archive. Completed
+history may remain outside a renewed allowlist; that never grants permission to request
+that date again. All new requests still require the current allowlist and lag. The old
+grant is replayed at original response
+time, even after expiry; it is never rewritten into a current grant. A matching uncertain
+runner pending entry can be cleared only by this explicit registration of the original
+already-stored successful source with all pins and the exact original runner identity.
+An unrelated registration cannot clear a pending request or conceal a failure.
+
+## Operator rollout and long-term policy procedure
+
+No real policy, pin, archive, operational SQLite or LaunchAgent was modified in this
+implementation. In particular the currently issued `daily_limit=1` policy stays one.
+For future operations:
+
+1. Review and issue a **new** policy package and pin using the existing recurring
+   procedure below; keep the capture archive shared so quota/duplicates cannot reset.
+2. Prepare a new independently pinned config. If a prior config already owns runner
+   state, use a new private runner directory and explicitly re-register original source
+   references. Never edit/re-hash old state to change its config identity.
+3. Register the already successful manual collection offline using its original pins.
+4. Inspect `backlog` and `next_request_readiness`, SQLite validation, permitted sessions,
+   capacity, expiration and any unresolved request. Do not use this feature to retry an
+   unknown outcome or fetch an expired date.
+5. Only after separate operator approval, enable application execution and later the
+   owned LaunchAgent through the original explicit resume workflow. No such enablement
+   was performed in development. A manual batch requires the same persistent consent.
+6. Future plists invoke `run-due`, not `run-once`. An existing old plist fails strict
+   ownership comparison after this upgrade: pause/uninstall it with the old reviewed
+   version/config, then preview and explicitly install the new plist. Do not overwrite
+   unrelated/changed jobs. The current real Mac has no collection job installed, so no
+   native upgrade was performed here.
+
+At 19:00 KST, same-day bars remain excluded. The allowlist fallback is operator-reviewed
+scope, not an authenticated calendar. Full historical gaps beyond seven days need a
+separate reviewed source/policy boundary; increasing the daily quota cannot remove it.
+
+Completion/history inspection deliberately replays source and batch evidence rather
+than trusting cached mutable JSON. Cost grows with retained history, and a full SQLite
+audit is performed before an executing batch. The cooperative deadline is rechecked
+after this verification and before a new capture; verification itself is not forcibly
+preempted. Large histories can exhaust a batch budget without issuing a request. This
+PR does not claim constant-time status, faster cold replay or hard memory isolation;
+review measured local audit costs before longer retention or larger deployment.
+
+A missing capture ledger alongside stored capture-derived batches also blocks new
+requests even when those stored dates fall outside the current allowlist/lag. Missing
+quota history or usage lower than recorded same-KST-day responses is rejected; absence
+is never a quota reset. Restore and independently verify original history rather than
+creating an empty archive or changing pins to bypass the failure.

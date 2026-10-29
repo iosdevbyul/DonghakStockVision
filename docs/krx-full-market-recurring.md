@@ -238,3 +238,40 @@ per-user LaunchAgent and one-shot runner. It reuses this policy and original cap
 verification. It does not issue a real private policy, perform a live request in development,
 relax the observation lag or authorize signals/PAPER. Installation and enablement require
 explicit later operator actions.
+
+## Future higher budgets and longer operation (no policy issued here)
+
+`daily_limit` is already configurable in a newly reviewed policy. For example 100 is
+valid when it is no greater than both `verified_service_daily_limit` and the project's
+9,500 ceiling. The operator-confirmed KRX ceiling is 10,000/key/day. A higher project
+limit does not authorize extra services, dates, retries or known duplicate observations;
+`run-due` still limits one batch to seven work items and each request to one attempt.
+Only a few sessions can fit in the existing seven-calendar-day lag, so 100 is an upper
+budget choice, not a target or a promise of 100 historical recoveries. Choose the
+smallest practical reviewed limit. Existing issued policies and pins are immutable.
+
+For a long-term policy, explicitly review operator identity, retained authentic/copy
+source classifications, exact daily-trading endpoint, private-only uses, credential
+binding, original document hashes and a sorted session allowlist. The UTC start/review
+and exclusive end must match the full-market scope, span at most 366 days and remain
+within the confirmed service validity **2026-09-29 through 2027-09-28**. The latest
+possible exclusive end for that existing approval is **2027-09-28 15:00 UTC** (2027-09-29
+00:00 KST). Do not extend provider entitlement by extending project JSON timestamps.
+Every permitted observation date must also fit service validity and the original scope
+rules. Never generate an approved calendar from weekdays or invent approval provenance.
+
+Create a distinct private policy package, independent canonical pin and pinned config
+only after the operator's explicit scope review. Preserve the old packages, copied
+terms provenance, pins and raw captures. Reuse the same canonical capture root and
+operational store to preserve local request counters, pauses and duplicate guards;
+creating a new archive to evade these is prohibited. A new `daily_limit=100` does not
+reset a previously used request. New runner metadata is bound to the new config; use
+explicit original-pin completion registration to carry verified source history forward.
+
+The existing approval remains real operator-confirmed history, not missing service
+permission. No independent Ed25519 signature is required by this separately named
+owner-local policy, and the independent-review path is not weakened or reinterpreted.
+Provider revocation/terms changes still require operator review and pause. There is no
+new approval authority, automatic renewal, daily reapproval, external submission or
+real-provider request in this development work. See the [scheduler guide](krx-daily-scheduler.md)
+for offline gap inspection, registration, batch limits and later explicit rollout.
