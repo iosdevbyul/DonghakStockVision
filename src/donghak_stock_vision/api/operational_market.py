@@ -2,6 +2,7 @@
 
 This transport does not grant research, training or trading eligibility.
 """
+
 import hashlib
 import json
 import sqlite3
@@ -49,8 +50,10 @@ class PinnedOperationalReader:
         with closing(self._connect()) as db:
             if db.execute("PRAGMA integrity_check").fetchone() != ("ok",):
                 raise OperationalReadError("operational snapshot integrity failure")
-            if (db.execute("PRAGMA application_id").fetchone()[0] != OPERATIONAL_APPLICATION_ID
-                    or db.execute("PRAGMA user_version").fetchone()[0] != 1):
+            if (
+                db.execute("PRAGMA application_id").fetchone()[0] != OPERATIONAL_APPLICATION_ID
+                or db.execute("PRAGMA user_version").fetchone()[0] != 1
+            ):
                 raise OperationalReadError("operational snapshot identity mismatch")
             columns = {row[1] for row in db.execute("PRAGMA table_info(market_observations)")}
             if not {"market", "ticker", "trading_date", "payload", "validation_status"} <= columns:
@@ -84,8 +87,12 @@ class PinnedOperationalReader:
             ).fetchall()
         self._verify()
         return OperationalCatalog(
-            items=tuple(OperationalTicker(ticker=ticker, latestDataDate=day) for ticker, day in rows),
-            total=total, offset=offset, limit=limit,
+            items=tuple(
+                OperationalTicker(ticker=ticker, latestDataDate=day) for ticker, day in rows
+            ),
+            total=total,
+            offset=offset,
+            limit=limit,
         )
 
     def series(self, ticker: str) -> OhlcvSeries | None:
@@ -105,8 +112,20 @@ class PinnedOperationalReader:
                 original = DailyBar.from_dict(json.loads(raw))
             except (ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
                 raise OperationalReadError("invalid operational bar") from error
-            if original.ticker != ticker or original.trading_date.isoformat() != day or original.market != "KOSPI":
+            if (
+                original.ticker != ticker
+                or original.trading_date.isoformat() != day
+                or original.market != "KOSPI"
+            ):
                 raise OperationalReadError("operational bar identity mismatch")
-            bars.append(OhlcvBar(date=day, open=original.open, high=original.high,
-                                 low=original.low, close=original.close, volume=original.volume))
+            bars.append(
+                OhlcvBar(
+                    date=day,
+                    open=original.open,
+                    high=original.high,
+                    low=original.low,
+                    close=original.close,
+                    volume=original.volume,
+                )
+            )
         return OhlcvSeries(ticker=ticker, bars=tuple(bars))
