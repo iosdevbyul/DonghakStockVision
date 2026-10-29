@@ -234,3 +234,10 @@ installed-package CLI previews. No real LaunchAgent was installed/enabled, no re
 KRX request or brokerage/PAPER action was made, and no real private recurring policy
 was issued. Native activation and genuinely authorized future collection remain
 separate operator work.
+
+## Production provisioning and first run
+
+Use the [production readiness guide](krx-production-readiness.md) for original-document
+review, private recurring-policy provisioning, `krx-scheduler preflight`, and the explicit
+manual-first capture/verification/import sequence before enabling launchd. No private
+policy or live collection is provisioned automatically.

@@ -13,7 +13,8 @@ from donghak_stock_vision.storage.krx_scheduler import inspect, load_config, run
 def add_commands(sub: Any) -> None:
     cmd = sub.add_parser("krx-scheduler", help="offline status and opt-in daily KRX collection")
     cmd.add_argument(
-        "action", choices=("install", "status", "pause", "resume", "uninstall", "run-once")
+        "action",
+        choices=("install", "status", "pause", "resume", "uninstall", "run-once", "preflight"),
     )
     cmd.add_argument("--config", type=Path, required=True)
     cmd.add_argument("--config-pin", required=True)
@@ -28,7 +29,21 @@ def run(args: argparse.Namespace) -> int:
     if args.db is not None:
         raise ValueError("scheduler_uses_explicit_config_not_research_db")
     config = load_config(args.config, args.config_pin)
-    if args.action == "status":
+    if args.action == "preflight":
+        from donghak_stock_vision.storage.krx_readiness import preflight
+
+        if any(
+            (
+                args.apply,
+                args.execute,
+                args.scheduled,
+                args.allow_network,
+                args.confirm_operator_authorization,
+            )
+        ):
+            raise ValueError("preflight_is_read_only")
+        result = preflight(config, datetime.now(UTC), args.config)
+    elif args.action == "status":
         result = FrozenJSON.freeze(
             inspect(config, datetime.now(UTC)).to_dict()
             | {"launchagent": krx_launchd.status(config, args.config)}
