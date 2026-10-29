@@ -18,9 +18,15 @@ def parser() -> argparse.ArgumentParser:
         "--market-db", type=Path, help="optional immutable market database for OHLCV"
     )
     result.add_argument("--market-db-sha256", help="approved market database SHA-256")
-    result.add_argument("--operational-snapshot", type=Path, help="offline operational .snapshot.sqlite3 copy")
-    result.add_argument("--operational-snapshot-sha256", help="approved offline copy SHA-256")
-    result.add_argument("--security-metadata", type=Path, help="optional display metadata envelope")
+    result.add_argument(
+        "--operational-snapshot", type=Path, help="offline operational .snapshot.sqlite3 copy"
+    )
+    result.add_argument(
+        "--operational-snapshot-sha256", help="approved offline copy SHA-256"
+    )
+    result.add_argument(
+        "--security-metadata", type=Path, help="optional display metadata envelope"
+    )
     result.add_argument(
         "--security-metadata-fingerprint", help="expected metadata artifact fingerprint"
     )
@@ -66,7 +72,9 @@ def main(argv: list[str] | None = None) -> None:
     if bool(args.market_db) != bool(args.market_db_sha256):
         parser().error("--market-db and --market-db-sha256 must be specified together")
     if bool(args.operational_snapshot) != bool(args.operational_snapshot_sha256):
-        parser().error("--operational-snapshot and --operational-snapshot-sha256 must be supplied together")
+        parser().error(
+            "--operational-snapshot and --operational-snapshot-sha256 must be supplied together"
+        )
     if bool(args.security_metadata) != bool(args.security_metadata_fingerprint):
         parser().error(
             "--security-metadata and --security-metadata-fingerprint must be specified together"
@@ -103,7 +111,9 @@ def main(argv: list[str] | None = None) -> None:
         if args.host not in {"127.0.0.1", "::1"}:
             parser().error("operational snapshots require loopback bind")
         from donghak_stock_vision.api.operational_market import PinnedOperationalReader
-        operational_reader = PinnedOperationalReader(args.operational_snapshot, expected_sha256=args.operational_snapshot_sha256)
+operational_reader = PinnedOperationalReader(
+            args.operational_snapshot, expected_sha256=args.operational_snapshot_sha256
+        )
     analysis_reader = None
     if args.analysis_publication:
         from donghak_stock_vision.api.stock_analysis import AnalysisPublicationReader
