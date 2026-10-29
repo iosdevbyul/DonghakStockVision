@@ -31,7 +31,7 @@ def plist_bytes(config: SchedulerConfig, config_path: Path) -> bytes:
                 "-m",
                 "donghak_stock_vision",
                 "krx-scheduler",
-                "run-once",
+                "run-due",
                 "--execute",
                 "--scheduled",
                 "--config",

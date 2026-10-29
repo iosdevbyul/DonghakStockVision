@@ -332,6 +332,7 @@ def test_launchagent_generation_dry_run_no_system_changes(
     assert body["Disabled"] and not body["RunAtLoad"] and not body["KeepAlive"]
     assert body["WorkingDirectory"] == str(tmp_path)
     assert body["ProgramArguments"][0] == sys.executable
+    assert "run-due" in body["ProgramArguments"]
     assert body["StartCalendarInterval"] == [
         dict(Weekday=i, Hour=19, Minute=0) for i in range(1, 6)
     ]

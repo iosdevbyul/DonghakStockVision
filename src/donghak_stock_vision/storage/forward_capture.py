@@ -983,6 +983,9 @@ def _recurring_state(root: Path, plan: ForwardCapturePlan, at: datetime) -> dict
                 ).fetchone()
                 is not None
             )
+        require(
+            not versions or exists("request_budget"), "recurring_request_budget_history_missing"
+        )
         if exists("request_budget"):
             row = connection.execute(
                 "SELECT count FROM request_budget WHERE day=?",
@@ -1002,6 +1005,15 @@ def _recurring_state(root: Path, plan: ForwardCapturePlan, at: datetime) -> dict
         require(
             type(state["locally_used_requests"]) is int and state["locally_used_requests"] >= 0,
             "invalid_local_request_usage",
+        )
+        recorded_today = connection.execute(
+            "SELECT COUNT(*) FROM forward_responses WHERE "
+            "date(json_extract(metadata,'$.request_started_at'),'+9 hours')=?",
+            (utc(at).astimezone(SEOUL).date().isoformat(),),
+        ).fetchone()[0]
+        require(
+            state["locally_used_requests"] >= recorded_today,
+            "recurring_request_budget_history_mismatch",
         )
     return state
 

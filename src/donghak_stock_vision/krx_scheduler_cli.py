@@ -14,10 +14,30 @@ def add_commands(sub: Any) -> None:
     cmd = sub.add_parser("krx-scheduler", help="offline status and opt-in daily KRX collection")
     cmd.add_argument(
         "action",
-        choices=("install", "status", "pause", "resume", "uninstall", "run-once", "preflight"),
+        choices=(
+            "install",
+            "status",
+            "pause",
+            "resume",
+            "uninstall",
+            "run-once",
+            "preflight",
+            "backlog",
+            "run-due",
+            "register-completion",
+        ),
     )
     cmd.add_argument("--config", type=Path, required=True)
     cmd.add_argument("--config-pin", required=True)
+    cmd.add_argument("--max-runs", type=int, default=7)
+    cmd.add_argument("--max-batch-seconds", type=int, default=240)
+    cmd.add_argument("--source-plan", type=Path)
+    cmd.add_argument("--source-plan-pin")
+    cmd.add_argument("--source-attempt")
+    cmd.add_argument("--capture-pin")
+    cmd.add_argument("--batch-pin")
+    cmd.add_argument("--source-authorization-root", type=Path)
+    cmd.add_argument("--source-authorization-pin")
     cmd.add_argument("--apply", action="store_true", help="explicitly apply LaunchAgent management")
     cmd.add_argument("--execute", action="store_true", help="run only if persistently enabled")
     cmd.add_argument("--scheduled", action="store_true")
@@ -29,7 +49,71 @@ def run(args: argparse.Namespace) -> int:
     if args.db is not None:
         raise ValueError("scheduler_uses_explicit_config_not_research_db")
     config = load_config(args.config, args.config_pin)
-    if args.action == "preflight":
+    if args.action in ("backlog", "run-due"):
+        from donghak_stock_vision.storage.krx_backlog import run_due
+
+        if args.apply or args.allow_network or args.confirm_operator_authorization:
+            raise ValueError("enable_explicitly_with_resume_before_execution")
+        if args.action == "backlog" and (args.execute or args.scheduled):
+            raise ValueError("backlog_inspection_is_read_only")
+        result = run_due(
+            config,
+            execute=args.execute if args.action == "run-due" else False,
+            scheduled=args.scheduled,
+            max_runs=args.max_runs,
+            max_seconds=args.max_batch_seconds,
+            clock=lambda: datetime.now(UTC),
+        )
+    elif args.action == "register-completion":
+        from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
+        from donghak_stock_vision.storage.krx_authorization import bounded
+        from donghak_stock_vision.storage.krx_backlog import register_completion
+
+        if any(
+            (
+                args.apply,
+                args.execute,
+                args.scheduled,
+                args.allow_network,
+                args.confirm_operator_authorization,
+            )
+        ):
+            raise ValueError("completion_registration_is_offline")
+        if not all(
+            (
+                args.source_plan,
+                args.source_plan_pin,
+                args.source_attempt,
+                args.capture_pin,
+                args.batch_pin,
+            )
+        ):
+            raise ValueError("explicit_original_source_and_batch_pins_required")
+        if bool(args.source_authorization_root) != bool(args.source_authorization_pin):
+            raise ValueError("complete_original_authorization_reference_required")
+        reference = (
+            FrozenJSON.freeze(
+                dict(
+                    root=str(args.source_authorization_root),
+                    grant_pin=args.source_authorization_pin,
+                )
+            )
+            if args.source_authorization_root
+            else config.reference
+        )
+        plan = ForwardCapturePlan.from_dict(
+            FrozenJSON(bounded(args.source_plan, 32768).decode()).to_dict()
+        )
+        result = register_completion(
+            config,
+            plan,
+            args.source_plan_pin,
+            args.source_attempt,
+            args.capture_pin,
+            args.batch_pin,
+            authorization=reference,
+        )
+    elif args.action == "preflight":
         from donghak_stock_vision.storage.krx_readiness import preflight
 
         if any(
@@ -64,4 +148,6 @@ def run(args: argparse.Namespace) -> int:
             operator_confirmed=args.confirm_operator_authorization,
         )
     print(result.payload_json)
-    return int(args.action == "run-once" and result.to_dict().get("outcome") == "failed")
+    return int(
+        args.action in ("run-once", "run-due") and result.to_dict().get("outcome") == "failed"
+    )

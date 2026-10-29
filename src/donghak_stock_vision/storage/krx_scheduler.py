@@ -342,7 +342,6 @@ def _policy(config: SchedulerConfig) -> dict[str, Any]:
 
 def _plan(config: SchedulerConfig, at: datetime) -> tuple[ForwardCapturePlan, dict[str, Any]]:
     policy = _policy(config)
-    owner = FrozenJSON.freeze(policy)
     scope = FullMarketScope.from_dict(policy["full_market_scope"])
     require(
         type(policy["max_observation_lag_days"]) is int
@@ -357,7 +356,13 @@ def _plan(config: SchedulerConfig, at: datetime) -> tuple[ForwardCapturePlan, di
     ]
     require(bool(days), "no_eligible_completed_trading_date")
     day = max(days)  # Never choose an older missed date just because latest is a duplicate.
-    plan = ForwardCapturePlan(
+    return _daily_plan(policy, day), policy
+
+
+def _daily_plan(policy: dict[str, Any], day: date) -> ForwardCapturePlan:
+    owner = FrozenJSON.freeze(policy)
+    scope = FullMarketScope.from_dict(policy["full_market_scope"])
+    return ForwardCapturePlan(
         "KOSPI",
         "",
         day,
@@ -374,7 +379,6 @@ def _plan(config: SchedulerConfig, at: datetime) -> tuple[ForwardCapturePlan, di
         policy["terms"]["sha256"],
         full_market_scope=scope,
     )
-    return plan, policy
 
 
 def _storage(config: SchedulerConfig) -> dict[str, Any]:
@@ -509,206 +513,223 @@ def run_once(
     if not execute:
         return inspect(config, clock())
     with _lock(config, ".run.lock"):
-        state = _state(config)
-        at = utc(clock())
-        plan = None
-        origin = None
-        stage = "policy"
-        blockers: list[str] = []
+        return _run_locked(
+            config,
+            scheduled=scheduled,
+            client=client,
+            clock=clock,
+            monotonic=monotonic,
+            sleep=sleep,
+        )
 
-        def finish(outcome: str, reason: str, count: int = 0) -> FrozenJSON:
-            result = dict(
-                version="krx_scheduler_run_v1",
-                at=utc(clock()).isoformat(),
-                started_at=at.isoformat(),
-                day=plan.day.isoformat() if plan else None,
-                outcome=outcome,
-                reason=reason,
-                observation_count=count,
-                origin=origin,
-                blockers=blockers,
-                pit_qualified=False,
-                forward_signal_eligible=False,
-                paper_execution_eligible=False,
-                execution_authorized=False,
-            )
-            state["last_run"] = result
-            _save(config, "state.json", state)
-            return FrozenJSON.freeze(result)
 
-        if not control(config)["enabled"]:
-            return finish("blocked", "scheduler_disabled")
-        pending = state["pending"]
-        if pending and pending["phase"] == "capture_pending":
+def _run_locked(
+    config: SchedulerConfig,
+    *,
+    scheduled: bool = False,
+    client: httpx.Client | None = None,
+    clock: Callable[[], datetime],
+    monotonic: Callable[[], float],
+    sleep: Callable[[float], None],
+    target_day: date | None = None,
+) -> FrozenJSON:
+    state = _state(config)
+    at = utc(clock())
+    plan = None
+    origin = None
+    stage = "policy"
+    blockers: list[str] = []
+
+    def finish(outcome: str, reason: str, count: int = 0) -> FrozenJSON:
+        result = dict(
+            version="krx_scheduler_run_v1",
+            at=utc(clock()).isoformat(),
+            started_at=at.isoformat(),
+            day=plan.day.isoformat() if plan else None,
+            outcome=outcome,
+            reason=reason,
+            observation_count=count,
+            origin=origin,
+            blockers=blockers,
+            pit_qualified=False,
+            forward_signal_eligible=False,
+            paper_execution_eligible=False,
+            execution_authorized=False,
+        )
+        state["last_run"] = result
+        _save(config, "state.json", state)
+        return FrozenJSON.freeze(result)
+
+    if not control(config)["enabled"]:
+        return finish("blocked", "scheduler_disabled")
+    pending = state["pending"]
+    if pending and pending["phase"] == "capture_pending":
+        plan = ForwardCapturePlan.from_dict(pending["plan"])
+        return finish("blocked", "interrupted_capture_outcome_unknown")
+    prior = None
+    try:
+        if pending:
             plan = ForwardCapturePlan.from_dict(pending["plan"])
-            return finish("blocked", "interrupted_capture_outcome_unknown")
-        prior = None
-        try:
-            if pending:
-                plan = ForwardCapturePlan.from_dict(pending["plan"])
-            else:
-                if scheduled and not host_seoul():
-                    return finish("blocked", "host_timezone_not_asia_seoul")
-                plan, policy = _plan(config, at)
-                local = at.astimezone(SEOUL)
-                d = config.document.to_dict()
-                assert plan.full_market_scope is not None
-                if local.date() not in plan.full_market_scope.permitted_days:
-                    return finish("skipped", "today_not_permitted_collection_day")
-                if scheduled and (local.hour, local.minute) < (d["hour"], d["minute"]):
-                    return finish("skipped", "scheduled_time_not_due")
-                prior = next(
-                    (r for r in state["successes"] if r["day"] == plan.day.isoformat()), None
-                )
-                if prior:
-                    # Revalidate/reimport through the same pinned offline path; no HTTP.
-                    state["pending"] = dict(
-                        phase="ingest_pending",
-                        plan=plan.document.to_dict(),
-                        capture_pin=prior["capture_pin"],
-                        started_at=at.isoformat(),
-                    )
-                    _save(config, "state.json", state)
-                else:
-                    stage = "credentials"
-                    key = _credential(config)
-                    if not key:
-                        return finish("blocked", "missing_credentials")
-                    readiness = recurring_preview(
-                        plan,
-                        ATTEMPT,
-                        config.reference,
-                        None,
-                        at,
-                        bool(key),
-                        credential=key,
-                        capture_root=config.path("capture_root"),
-                    ).to_dict()
-                    if readiness["blockers"]:
-                        blockers = readiness["blockers"]
-                        return finish("blocked", "recurring_policy_blocked")
-                    stage = "storage"
-                    storage = _storage(config)
-                    if not storage["disk_usage"]["free_space_requirement_met"]:
-                        return finish("blocked", "storage_free_space_limit")
-                    if client is None and policy["transport"] != "provider_https":
-                        return finish("blocked", "mock_policy_test_only")
-                    if not control(config)["enabled"]:
-                        return finish("blocked", "scheduler_disabled")
-                    stage = "capture"
-                    state["pending"] = dict(
-                        phase="capture_pending",
-                        plan=plan.document.to_dict(),
-                        capture_pin=None,
-                        started_at=at.isoformat(),
-                    )
-                    _save(config, "state.json", state)
-
-                    def capture(active: httpx.Client) -> FrozenJSON:
-                        return run_capture(
-                            config.path("capture_root"),
-                            plan,
-                            ATTEMPT,
-                            active,
-                            api_key=key,
-                            allow_network=True,
-                            authorization=config.reference,
-                            authorization_policy=POLICY,
-                            operator_confirmed=True,
-                            clock=clock,
-                            monotonic=monotonic,
-                            sleep=sleep,
-                            cancelled=lambda: not control(config)["enabled"],
-                        )
-
-                    if client is not None:
-                        owner = capture(client)
-                    else:
-                        with capture_client() as active:
-                            owner = capture(active)
-                    state["pending"] = dict(
-                        phase="ingest_pending",
-                        plan=plan.document.to_dict(),
-                        capture_pin=owner.identifier,
-                        started_at=at.isoformat(),
-                    )
-                    _save(config, "state.json", state)
-            assert plan is not None and state["pending"] is not None
-            pin = state["pending"]["capture_pin"]
-            stage = "ingestion"
-            owner = verify_capture(config.path("capture_root"), plan, ATTEMPT, pin)
-            if not any(r["day"] == plan.day.isoformat() for r in state["captures"]):
-                state["captures"].append(
-                    dict(
-                        day=plan.day.isoformat(),
-                        at=at.isoformat(),
-                        capture_pin=pin,
-                        plan_pin=plan.document.identifier,
-                    )
+        else:
+            if scheduled and not host_seoul():
+                return finish("blocked", "host_timezone_not_asia_seoul")
+            plan, policy = _plan(config, at)
+            if target_day is not None:
+                plan = _daily_plan(policy, target_day)
+            local = at.astimezone(SEOUL)
+            d = config.document.to_dict()
+            assert plan.full_market_scope is not None
+            if target_day is None and local.date() not in plan.full_market_scope.permitted_days:
+                return finish("skipped", "today_not_permitted_collection_day")
+            if scheduled and (local.hour, local.minute) < (d["hour"], d["minute"]):
+                return finish("skipped", "scheduled_time_not_due")
+            prior = next((r for r in state["successes"] if r["day"] == plan.day.isoformat()), None)
+            if prior:
+                # Revalidate/reimport through the same pinned offline path; no HTTP.
+                state["pending"] = dict(
+                    phase="ingest_pending",
+                    plan=plan.document.to_dict(),
+                    capture_pin=prior["capture_pin"],
+                    started_at=at.isoformat(),
                 )
                 _save(config, "state.json", state)
-            responses = owner.to_dict()["responses"]
-            if (
-                len(responses) != 1
-                or responses[0]["metadata"]["http_status"] != 200
-                or not responses[0]["metadata"]["complete"]
-            ):
-                state["pending"] = None
-                return finish("failed", "capture_http_or_transport_failure")
-            if (
-                responses[0]["parse_error"] is not None
-                or responses[0]["metadata"]["error"] is not None
-            ):
-                state["pending"] = None
-                return finish("failed", "invalid_market_response")
-            result = ingest_capture(
-                config.path("operational_root"),
-                config.path("capture_root"),
-                plan,
-                plan.document.identifier,
-                ATTEMPT,
-                pin,
-                authorization=config.reference,
-                authorization_policy=POLICY,
-            )
-            origin = result.to_dict()["source_origin"]
-            stage = "validation"
-            with closing(OperationalMarketStore(config.path("operational_root"))) as store:
-                require(store.validate().to_dict()["valid"], "operational_integrity_failure")
-            count = result.to_dict()["observation_count"]
-            if not any(r["day"] == plan.day.isoformat() for r in state["successes"]):
-                state["successes"].append(
-                    dict(
-                        day=plan.day.isoformat(),
-                        at=utc(clock()).isoformat(),
-                        observation_count=count,
-                        capture_pin=pin,
-                        batch_pin=result.to_dict()["batch_pin"],
-                        origin=origin,
-                    )
+            else:
+                stage = "credentials"
+                key = _credential(config)
+                if not key:
+                    return finish("blocked", "missing_credentials")
+                readiness = recurring_preview(
+                    plan,
+                    ATTEMPT,
+                    config.reference,
+                    None,
+                    at,
+                    bool(key),
+                    credential=key,
+                    capture_root=config.path("capture_root"),
+                ).to_dict()
+                if readiness["blockers"]:
+                    blockers = readiness["blockers"]
+                    return finish("blocked", "recurring_policy_blocked")
+                stage = "storage"
+                storage = _storage(config)
+                if not storage["disk_usage"]["free_space_requirement_met"]:
+                    return finish("blocked", "storage_free_space_limit")
+                if client is None and policy["transport"] != "provider_https":
+                    return finish("blocked", "mock_policy_test_only")
+                if not control(config)["enabled"]:
+                    return finish("blocked", "scheduler_disabled")
+                stage = "capture"
+                state["pending"] = dict(
+                    phase="capture_pending",
+                    plan=plan.document.to_dict(),
+                    capture_pin=None,
+                    started_at=at.isoformat(),
                 )
-            require(len(state["successes"]) <= 366, "scheduler_completion_limit")
-            state["pending"] = None
-            return finish(
-                "skipped" if prior else "succeeded",
-                "already_collected"
-                if prior
-                else "offline_ingestion_resumed"
-                if pending
-                else "captured_and_ingested",
-                count,
-            )
-        except (ValueError, OSError, sqlite3.Error, httpx.HTTPError, KeyError, TypeError) as error:
-            if isinstance(error, ValueError) and str(error) == "no_eligible_completed_trading_date":
-                return finish("skipped", "no_eligible_completed_trading_date")
-            return finish(
-                "failed",
+                _save(config, "state.json", state)
+
+                def capture(active: httpx.Client) -> FrozenJSON:
+                    return run_capture(
+                        config.path("capture_root"),
+                        plan,
+                        ATTEMPT,
+                        active,
+                        api_key=key,
+                        allow_network=True,
+                        authorization=config.reference,
+                        authorization_policy=POLICY,
+                        operator_confirmed=True,
+                        clock=clock,
+                        monotonic=monotonic,
+                        sleep=sleep,
+                        cancelled=lambda: not control(config)["enabled"],
+                    )
+
+                if client is not None:
+                    owner = capture(client)
+                else:
+                    with capture_client() as active:
+                        owner = capture(active)
+                state["pending"] = dict(
+                    phase="ingest_pending",
+                    plan=plan.document.to_dict(),
+                    capture_pin=owner.identifier,
+                    started_at=at.isoformat(),
+                )
+                _save(config, "state.json", state)
+        assert plan is not None and state["pending"] is not None
+        pin = state["pending"]["capture_pin"]
+        stage = "ingestion"
+        owner = verify_capture(config.path("capture_root"), plan, ATTEMPT, pin)
+        if not any(r["day"] == plan.day.isoformat() for r in state["captures"]):
+            state["captures"].append(
                 dict(
-                    policy="policy_unavailable",
-                    credentials="credentials_unavailable",
-                    storage="operational_storage_unavailable",
-                    capture="capture_outcome_uncertain",
-                    ingestion="ingestion_pending",
-                    validation="operational_integrity_failure",
-                )[stage],
+                    day=plan.day.isoformat(),
+                    at=at.isoformat(),
+                    capture_pin=pin,
+                    plan_pin=plan.document.identifier,
+                )
             )
+            _save(config, "state.json", state)
+        responses = owner.to_dict()["responses"]
+        if (
+            len(responses) != 1
+            or responses[0]["metadata"]["http_status"] != 200
+            or not responses[0]["metadata"]["complete"]
+        ):
+            state["pending"] = None
+            return finish("failed", "capture_http_or_transport_failure")
+        if responses[0]["parse_error"] is not None or responses[0]["metadata"]["error"] is not None:
+            state["pending"] = None
+            return finish("failed", "invalid_market_response")
+        result = ingest_capture(
+            config.path("operational_root"),
+            config.path("capture_root"),
+            plan,
+            plan.document.identifier,
+            ATTEMPT,
+            pin,
+            authorization=config.reference,
+            authorization_policy=POLICY,
+        )
+        origin = result.to_dict()["source_origin"]
+        stage = "validation"
+        with closing(OperationalMarketStore(config.path("operational_root"))) as store:
+            require(store.validate().to_dict()["valid"], "operational_integrity_failure")
+        count = result.to_dict()["observation_count"]
+        if not any(r["day"] == plan.day.isoformat() for r in state["successes"]):
+            state["successes"].append(
+                dict(
+                    day=plan.day.isoformat(),
+                    at=utc(clock()).isoformat(),
+                    observation_count=count,
+                    capture_pin=pin,
+                    batch_pin=result.to_dict()["batch_pin"],
+                    origin=origin,
+                )
+            )
+        require(len(state["successes"]) <= 366, "scheduler_completion_limit")
+        state["pending"] = None
+        return finish(
+            "skipped" if prior else "succeeded",
+            "already_collected"
+            if prior
+            else "offline_ingestion_resumed"
+            if pending
+            else "captured_and_ingested",
+            count,
+        )
+    except (ValueError, OSError, sqlite3.Error, httpx.HTTPError, KeyError, TypeError) as error:
+        if isinstance(error, ValueError) and str(error) == "no_eligible_completed_trading_date":
+            return finish("skipped", "no_eligible_completed_trading_date")
+        return finish(
+            "failed",
+            dict(
+                policy="policy_unavailable",
+                credentials="credentials_unavailable",
+                storage="operational_storage_unavailable",
+                capture="capture_outcome_uncertain",
+                ingestion="ingestion_pending",
+                validation="operational_integrity_failure",
+            )[stage],
+        )
