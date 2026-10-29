@@ -8,17 +8,28 @@ import pytest
 from fastapi.testclient import TestClient
 
 from donghak_stock_vision.api.app import create_app
-from donghak_stock_vision.api.operational_market import OperationalReadError, PinnedOperationalReader
+from donghak_stock_vision.api.operational_market import (
+    OperationalReadError,
+    PinnedOperationalReader,
+)
 from donghak_stock_vision.data.schema import DailyBar
 from donghak_stock_vision.storage.sqlite import OPERATIONAL_APPLICATION_ID
 
 
 def make_snapshot(path: Path) -> str:
     bar = DailyBar(
-        ticker="005930", trading_date=date(2026, 10, 29),
-        open=100, high=110, low=90, close=105, volume=7,
-        trading_value=735, provider="krx", market="KOSPI",
-        adjustment="unadjusted", collected_at=datetime(2026, 10, 29, tzinfo=UTC),
+        ticker="005930",
+        trading_date=date(2026, 10, 29),
+        open=100,
+        high=110,
+        low=90,
+        close=105,
+        volume=7,
+        trading_value=735,
+        provider="krx",
+        market="KOSPI",
+        adjustment="unadjusted",
+        collected_at=datetime(2026, 10, 29, tzinfo=UTC),
     )
     with sqlite3.connect(path) as db:
         db.execute(f"PRAGMA application_id={OPERATIONAL_APPLICATION_ID}")
@@ -51,12 +62,21 @@ def test_pinned_operational_catalog_and_exact_bars(tmp_path: Path) -> None:
         "schemaVersion": "operational_market_v1",
         "evidenceStatus": "unreviewed",
         "items": [{"ticker": "005930", "latestDataDate": "2026-10-29"}],
-        "total": 1, "offset": 0, "limit": 25,
+        "total": 1,
+        "offset": 0,
+        "limit": 25,
     }
     result = client.get("/api/v1/operational/stocks/005930/ohlcv")
     assert result.status_code == 200
     assert result.json()["bars"] == [
-        {"date": "2026-10-29", "open": 100, "high": 110, "low": 90, "close": 105, "volume": 7}
+        {
+            "date": "2026-10-29",
+            "open": 100,
+            "high": 110,
+            "low": 90,
+            "close": 105,
+            "volume": 7,
+        }
     ]
     assert client.get("/api/v1/operational/stocks/999999/ohlcv").status_code == 404
     assert client.get("/api/v1/operational/stocks/bad/ohlcv").status_code == 422
