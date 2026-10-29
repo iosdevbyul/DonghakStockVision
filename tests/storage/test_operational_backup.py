@@ -48,9 +48,7 @@ def test_no_overwrite_and_tamper_rejection(tmp_path: Path) -> None:
     with pytest.raises(OperationalBackupError, match="destination"):
         backup_operational_database(source, target)
     with pytest.raises(OperationalBackupError, match="fingerprint"):
-        restore_operational_backup(
-            target, tmp_path / "restored.sqlite3", expected_sha256="0" * 64
-        )
+        restore_operational_backup(target, tmp_path / "restored.sqlite3", expected_sha256="0" * 64)
     with target.open("ab") as handle:
         handle.write(b"tamper")
     with pytest.raises(OperationalBackupError, match="fingerprint"):
