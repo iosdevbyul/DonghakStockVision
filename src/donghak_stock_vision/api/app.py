@@ -23,6 +23,7 @@ from donghak_stock_vision.api.models import (
     StockSummary,
 )
 from donghak_stock_vision.api.ohlcv import OhlcvMarketReader, OhlcvSeries
+from donghak_stock_vision.api.operational_market import PinnedOperationalReader, OperationalCatalog
 from donghak_stock_vision.api.operations import (
     AlertsPayload,
     FreshnessPayload,
@@ -45,6 +46,7 @@ from donghak_stock_vision.api.stock_analysis import (
 def create_app(
     reader: ResearchAPIReader | None = None,
     ohlcv_reader: OhlcvMarketReader | None = None,
+    operational_reader: PinnedOperationalReader | None = None,
     *,
     analysis_reader: AnalysisPublicationReader | None = None,
     operations_reader: OperationsReader | None = None,
@@ -178,6 +180,24 @@ def create_app(
         series = ohlcv_reader.series(ticker)
         if series is None:
             raise HTTPException(status_code=404, detail="stock bars not found")
+        return series
+
+    @app.get("/api/v1/operational/stocks", response_model=OperationalCatalog)
+    def operational_stocks(
+        offset: Annotated[int, Query(ge=0, le=100_000)] = 0,
+        limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    ) -> OperationalCatalog:
+        if operational_reader is None:
+            raise HTTPException(status_code=503, detail="pinned operational snapshot not configured")
+        return operational_reader.catalog(offset, limit)
+
+    @app.get("/api/v1/operational/stocks/{ticker}/ohlcv", response_model=OhlcvSeries)
+    def operational_ohlcv(ticker: Annotated[str, Path(pattern=r"^[0-9A-Z]{6}$")]) -> OhlcvSeries:
+        if operational_reader is None:
+            raise HTTPException(status_code=503, detail="pinned operational snapshot not configured")
+        series = operational_reader.series(ticker)
+        if series is None:
+            raise HTTPException(status_code=404, detail="operational stock bars not found")
         return series
 
     @app.get("/api/v1/stocks/{ticker}/analysis", response_model=PublishedStockAnalysis)
