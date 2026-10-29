@@ -112,11 +112,22 @@ def test_policy_validation_not_summary_trust(config: SchedulerConfig, damage: st
     assert result["blockers"] and not result["ready_for_mock_capture"]
 
 
-def test_expiry_and_unlisted_date(config: SchedulerConfig) -> None:
+def test_expiry_and_no_eligible_completed_date(config: SchedulerConfig) -> None:
     p = prepare(config)
-    for at in [AT + timedelta(days=7), AT + timedelta(days=4)]:
+    for at in [AT + timedelta(days=7), AT - timedelta(days=4)]:
         result = preflight(config, at, p).to_dict()
         assert result["blockers"] and not result["ready_for_mock_capture"]
+
+
+def test_weekend_execution_uses_latest_permitted_completed_session(config: SchedulerConfig) -> None:
+    p = prepare(config)
+    # Saturday 2025-07-12 is not an allowed market day; Friday 2025-07-11 is.
+    at = AT + timedelta(days=4)
+    with patch.object(httpx.Client, "send", side_effect=AssertionError("network forbidden")):
+        result = preflight(config, at, p).to_dict()
+    assert result["selected_trading_date"] == "2025-07-11"
+    assert result["ready_for_mock_capture"] and not result["blockers"]
+    assert result["network_requests"] == 0
 
 
 def test_duplicate_exhausted_budget_and_pause(config: SchedulerConfig) -> None:
