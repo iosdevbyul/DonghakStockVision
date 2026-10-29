@@ -143,9 +143,7 @@ def restore_operational_backup(
         temporary = Path(name)
         os.fchmod(fd, 0o600)
         os.close(fd)
-        with closing(
-            sqlite3.connect(f"{source.as_uri()}?mode=ro&immutable=1", uri=True)
-        ) as origin:
+        with closing(sqlite3.connect(f"{source.as_uri()}?mode=ro&immutable=1", uri=True)) as origin:
             with closing(sqlite3.connect(temporary)) as copy:
                 origin.backup(copy)
         restored = verify_backup(temporary)
