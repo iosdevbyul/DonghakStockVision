@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from donghak_stock_vision.api.app import create_app
 from donghak_stock_vision.api.operational_market import OperationalReadError, PinnedOperationalReader
 from donghak_stock_vision.data.schema import DailyBar
+from donghak_stock_vision.storage.sqlite import OPERATIONAL_APPLICATION_ID
 
 
 def make_snapshot(path: Path) -> str:
@@ -20,6 +21,8 @@ def make_snapshot(path: Path) -> str:
         adjustment="unadjusted", collected_at=datetime(2026, 10, 29, tzinfo=UTC),
     )
     with sqlite3.connect(path) as db:
+        db.execute(f"PRAGMA application_id={OPERATIONAL_APPLICATION_ID}")
+        db.execute("PRAGMA user_version=1")
         db.execute(
             "CREATE TABLE market_observations "
             "(market TEXT, ticker TEXT, trading_date TEXT, payload TEXT, validation_status TEXT)"
