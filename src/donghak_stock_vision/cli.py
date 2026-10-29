@@ -68,6 +68,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.market_storage_cli import add_commands as add_market_storage
 
     add_market_storage(sub)
+    from donghak_stock_vision.krx_scheduler_cli import add_commands as add_scheduler
+
+    add_scheduler(sub)
     from donghak_stock_vision.forward_signal_cli import add_commands as add_forward_signal
 
     add_forward_signal(sub)
@@ -84,6 +87,10 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
+        if args.command == "krx-scheduler":
+            from donghak_stock_vision.krx_scheduler_cli import run as run_scheduler
+
+            return run_scheduler(args)
         if args.command == "market-storage":
             from donghak_stock_vision.market_storage_cli import run as run_market_storage
 

@@ -14,6 +14,7 @@ from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.historical_readiness import HistoricalReadScope
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
 from donghak_stock_vision.data.research_split import ExplicitResearchSplit, ResearchDateRange
+from donghak_stock_vision.providers.forward_capture import capture_client
 from donghak_stock_vision.storage.forward_capture import (
     DB,
     assess_capture_pit,
@@ -363,9 +364,7 @@ def run(args: argparse.Namespace) -> int:
         if assessed["origin"] != "provider_https":
             raise ValueError("mock_review_is_test_only_no_cli_provider_request")
     transport = fixture_transport(plan) if plan.mode == "offline_fixture" else None
-    with httpx.Client(
-        transport=transport, trust_env=False, follow_redirects=False, timeout=20
-    ) as client:
+    with capture_client(transport=transport) as client:
         kwargs: dict[str, Any] = {}
         if args.action == "offline-pilot":
             kwargs["clock"] = lambda: datetime(2025, 7, 2, tzinfo=UTC)
