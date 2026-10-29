@@ -8,10 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from donghak_stock_vision.api.app import create_app
-from donghak_stock_vision.api.operational_market import (
-    OperationalReadError,
-    PinnedOperationalReader,
-)
+from donghak_stock_vision.api.ohlcv import OperationalReadError, PinnedOperationalReader
 from donghak_stock_vision.data.schema import DailyBar
 from donghak_stock_vision.storage.sqlite import OPERATIONAL_APPLICATION_ID
 
@@ -29,7 +26,7 @@ def make_snapshot(path: Path) -> str:
         provider="krx",
         market="KOSPI",
         adjustment="unadjusted",
-        collected_at=datetime(2026, 10, 29, tzinfo=UTC),
+        collected_at=datetime(2026, 10, 30, tzinfo=UTC),
     )
     with sqlite3.connect(path) as db:
         db.execute(f"PRAGMA application_id={OPERATIONAL_APPLICATION_ID}")
