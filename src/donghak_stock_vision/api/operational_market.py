@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 
 from donghak_stock_vision.api.ohlcv import OhlcvBar, OhlcvSeries
 from donghak_stock_vision.data.schema import DailyBar
+from donghak_stock_vision.storage.sqlite import OPERATIONAL_APPLICATION_ID
 
 
 class OperationalReadError(ValueError):
@@ -48,6 +49,9 @@ class PinnedOperationalReader:
         with closing(self._connect()) as db:
             if db.execute("PRAGMA integrity_check").fetchone() != ("ok",):
                 raise OperationalReadError("operational snapshot integrity failure")
+            if (db.execute("PRAGMA application_id").fetchone()[0] != OPERATIONAL_APPLICATION_ID
+                    or db.execute("PRAGMA user_version").fetchone()[0] != 1):
+                raise OperationalReadError("operational snapshot identity mismatch")
             columns = {row[1] for row in db.execute("PRAGMA table_info(market_observations)")}
             if not {"market", "ticker", "trading_date", "payload", "validation_status"} <= columns:
                 raise OperationalReadError("operational observation schema mismatch")
