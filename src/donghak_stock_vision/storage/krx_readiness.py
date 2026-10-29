@@ -15,7 +15,6 @@ from typing import Any
 
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require, utc
-from donghak_stock_vision.data.schema import SEOUL
 from donghak_stock_vision.storage import krx_launchd
 from donghak_stock_vision.storage.forward_capture import recurring_preview
 from donghak_stock_vision.storage.krx_recurring import verify_recurring_authorization
@@ -98,10 +97,8 @@ def preflight(config: SchedulerConfig, at: datetime, config_path: Path) -> Froze
             if reasons
             else None,
         )
-        today = at.astimezone(SEOUL).date()
-        assert plan.full_market_scope is not None
-        if today not in plan.full_market_scope.permitted_days:
-            blockers.append("today_not_permitted_collection_day")
+        # _plan and recurring_preview validate the selected completed trading day.
+        # The execution day itself need not be an allowed market session.
         transport = owner.to_dict()["transport"] if owner else None
     else:
         transport = None
