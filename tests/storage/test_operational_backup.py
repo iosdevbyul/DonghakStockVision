@@ -65,5 +65,5 @@ def test_reject_invalid_source_and_relative_destination(tmp_path: Path) -> None:
     make_operational_database(source)
     with pytest.raises(OperationalBackupError, match="destination"):
         backup_operational_database(source, Path("relative.sqlite3"))
-    with pytest.raises(OperationalBackupError, match="source"):
+    with pytest.raises(OperationalBackupError, match="destination"):
         backup_operational_database(source, source)
