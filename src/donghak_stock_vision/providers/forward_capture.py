@@ -12,6 +12,11 @@ from donghak_stock_vision.providers.base import ProviderError
 from donghak_stock_vision.providers.http import RequestGate, RetryingHTTP
 
 
+def capture_client(*, transport: httpx.BaseTransport | None = None) -> httpx.Client:
+    """Shared capture client defaults; origin/TLS/retry checks remain in run_capture."""
+    return httpx.Client(transport=transport, trust_env=False, follow_redirects=False, timeout=20)
+
+
 class CaptureHTTP(RetryingHTTP):
     """Sequential streaming transport; bounded retries, no redirects or proxy discovery.
 

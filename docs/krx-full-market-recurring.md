@@ -230,3 +230,11 @@ current credential binding and separately retained pins, then pass offline previ
 The already confirmed KRX service approval is not replaced or denied. A background
 scheduler, cross-application quota accounting, independent custody and downstream
 research qualification remain separate future work.
+
+## Optional macOS execution
+
+The [daily scheduler guide](krx-daily-scheduler.md) describes the separate disabled-by-default
+per-user LaunchAgent and one-shot runner. It reuses this policy and original capture/SQLite
+verification. It does not issue a real private policy, perform a live request in development,
+relax the observation lag or authorize signals/PAPER. Installation and enablement require
+explicit later operator actions.
