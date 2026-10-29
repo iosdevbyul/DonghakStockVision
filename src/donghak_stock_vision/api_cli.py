@@ -111,7 +111,8 @@ def main(argv: list[str] | None = None) -> None:
         if args.host not in {"127.0.0.1", "::1"}:
             parser().error("operational snapshots require loopback bind")
         from donghak_stock_vision.api.operational_market import PinnedOperationalReader
-operational_reader = PinnedOperationalReader(
+
+        operational_reader = PinnedOperationalReader(
             args.operational_snapshot, expected_sha256=args.operational_snapshot_sha256
         )
     analysis_reader = None
