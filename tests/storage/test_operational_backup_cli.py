@@ -23,17 +23,38 @@ def test_backup_verify_restore_cli(tmp_path: Path, capsys: pytest.CaptureFixture
     snapshot = tmp_path / "operational.snapshot.sqlite3"
     restored = tmp_path / "restored.sqlite3"
     make_store(source)
-    assert main(["market-storage", "backup", "--source", str(source),
-                 "--destination", str(snapshot)]) == 0
+    assert (
+        main(
+            [
+                "market-storage", "backup", "--source", str(source),
+                "--destination", str(snapshot),
+            ]
+        )
+        == 0
+    )
     report = json.loads(capsys.readouterr().out)
     sha = report["sha256"]
     assert report["action"] == "backup"
     assert snapshot.is_file()
-    assert main(["market-storage", "verify-backup", "--source", str(snapshot),
-                 "--expected-sha256", sha]) == 0
+    assert (
+        main(
+            [
+                "market-storage", "verify-backup", "--source", str(snapshot),
+                "--expected-sha256", sha,
+            ]
+        )
+        == 0
+    )
     assert json.loads(capsys.readouterr().out)["sha256"] == sha
-    assert main(["market-storage", "restore-backup", "--source", str(snapshot),
-                 "--destination", str(restored), "--expected-sha256", sha]) == 0
+    assert (
+        main(
+            [
+                "market-storage", "restore-backup", "--source", str(snapshot),
+                "--destination", str(restored), "--expected-sha256", sha,
+            ]
+        )
+        == 0
+    )
     assert json.loads(capsys.readouterr().out)["action"] == "restore-backup"
     assert restored.is_file()
 
