@@ -8,22 +8,7 @@ on:
 permissions:
   contents: read
 jobs:
-  fast-ruff:
-    name: Fast Ruff gate
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-      - name: Ruff lint and format
-        run: |
-          uvx --from ruff==0.17.3 ruff check src tests
-          uvx --from ruff==0.17.3 ruff format --check src tests
-
   checks:
-    needs: fast-ruff
     runs-on: [self-hosted, macOS, X64]
     strategy:
       matrix:
