@@ -30,3 +30,27 @@ The adapter verifies the SHA-256, SQLite integrity, operational application ID/v
 Verify the real snapshot's observed ticker count and scope directly through this read-only endpoint. **Do not assume 940** from an earlier collection statement; historical and latest-date counts may differ. Verify exact ticker OHLCV bars and missing/invalid cases. Existing `/api/v1/stocks/{ticker}/ohlcv` continues to use the separate immutable research market DB and is not redirected to operational data.
 
 The web client must explicitly opt in to these operational routes and label them **unreviewed operational observations**, not reviewed research, forecasts or validated market completeness. No actual local SQLite or HTTP verification was performed by this PR.
+
+## Operational-only local startup
+
+After an explicit operator-reviewed backup and SHA-256 pin, the API can expose
+the operational catalog without requiring an unrelated research snapshot:
+
+```bash
+dsv-api --operational-only \
+  --operational-snapshot /absolute/private/operational.snapshot.sqlite3 \
+  --operational-snapshot-sha256 <reviewed-lowercase-sha256> \
+  --host 127.0.0.1
+```
+
+The operational-only mode rejects simultaneous research snapshots, market DB,
+analysis publication, security metadata, portfolio publication and DART
+operations inputs. Research endpoints remain unavailable (503). No KRX requests
+or active SQLite writes occur. The CLI does not create a backup or automatically
+refresh a pinned snapshot. The existing standard research API startup contract
+remains unchanged.
+
+Before using with real data, the operator must explicitly approve the offline
+backup and startup, review disk permissions and compare the observed ticker
+count against the original captured data. A pinned operational observation
+remains **unreviewed**, not research-eligible or PAPER-authorized.

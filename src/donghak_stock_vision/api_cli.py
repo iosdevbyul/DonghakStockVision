@@ -22,6 +22,11 @@ def parser() -> argparse.ArgumentParser:
         "--operational-snapshot", type=Path, help="offline operational .snapshot.sqlite3 copy"
     )
     result.add_argument("--operational-snapshot-sha256", help="approved offline copy SHA-256")
+    result.add_argument(
+        "--operational-only",
+        action="store_true",
+        help="serve pinned operational routes without a research snapshot",
+    )
     result.add_argument("--security-metadata", type=Path, help="optional display metadata envelope")
     result.add_argument(
         "--security-metadata-fingerprint", help="expected metadata artifact fingerprint"
@@ -52,7 +57,26 @@ def main(argv: list[str] | None = None) -> None:
     if snapshot_path is None:
         configured = os.getenv("DSV_API_SNAPSHOT_PATH", "").strip()
         snapshot_path = Path(configured) if configured else None
-    if snapshot_path is None:
+    if args.operational_only:
+        if snapshot_path is not None:
+            parser().error("--operational-only cannot use a research snapshot")
+        if not args.operational_snapshot or not args.operational_snapshot_sha256:
+            parser().error("--operational-only requires a pinned operational snapshot")
+        if any(
+            (
+                args.market_db,
+                args.market_db_sha256,
+                args.analysis_publication,
+                args.security_metadata,
+                args.security_metadata_fingerprint,
+                args.portfolio_publications,
+                args.portfolio_index_sha256,
+                args.operations_root,
+                args.dart_acquisition_freshness_seconds,
+            )
+        ):
+            parser().error("--operational-only forbids research and publication inputs")
+    elif snapshot_path is None:
         parser().error("--snapshot or DSV_API_SNAPSHOT_PATH is required")
 
     try:
@@ -118,12 +142,15 @@ def main(argv: list[str] | None = None) -> None:
         analysis_reader = AnalysisPublicationReader.from_path(args.analysis_publication)
     from donghak_stock_vision.api.snapshot import SnapshotValidationError
 
-    try:
-        reader = SnapshotReader.from_path(snapshot_path)
-    except SnapshotValidationError:
-        raise SystemExit(
-            "research snapshot unavailable or invalid; supply a validated --snapshot"
-        ) from None
+    if snapshot_path is None:
+        reader = None
+    else:
+        try:
+            reader = SnapshotReader.from_path(snapshot_path)
+        except SnapshotValidationError:
+            raise SystemExit(
+                "research snapshot unavailable or invalid; supply a validated --snapshot"
+            ) from None
     metadata_reader = None
     if args.security_metadata:
         from donghak_stock_vision.api.security_metadata import SecurityMetadataReader
