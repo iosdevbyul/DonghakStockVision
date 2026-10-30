@@ -26,6 +26,7 @@ from donghak_stock_vision.api.ohlcv import (
     OhlcvMarketReader,
     OhlcvSeries,
     OperationalCatalog,
+    OperationalSnapshotSummary,
     PinnedOperationalReader,
 )
 from donghak_stock_vision.api.operations import (
@@ -185,6 +186,14 @@ def create_app(
         if series is None:
             raise HTTPException(status_code=404, detail="stock bars not found")
         return series
+
+    @app.get("/api/v1/operational/summary", response_model=OperationalSnapshotSummary)
+    def operational_summary() -> OperationalSnapshotSummary:
+        if operational_reader is None:
+            raise HTTPException(
+                status_code=503, detail="pinned operational snapshot not configured"
+            )
+        return operational_reader.summary()
 
     @app.get("/api/v1/operational/stocks", response_model=OperationalCatalog)
     def operational_stocks(

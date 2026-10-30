@@ -159,6 +159,18 @@ class OperationalCatalog(BaseModel):
     limit: int
 
 
+class OperationalSnapshotSummary(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    schemaVersion: str = "operational_snapshot_summary_v1"
+    evidenceStatus: str = "unreviewed"
+    market: str = "KOSPI"
+    observationCount: int
+    tickerCount: int
+    tradingDayCount: int
+    firstTradingDate: str | None
+    lastTradingDate: str | None
+
+
 class PinnedOperationalReader:
     """Require an offline immutable copy, never the actively written operational DB."""
 
@@ -196,6 +208,25 @@ class PinnedOperationalReader:
         db = sqlite3.connect(self.path.as_uri() + "?mode=ro&immutable=1", uri=True)
         db.execute("PRAGMA query_only=ON")
         return db
+
+    def summary(self) -> OperationalSnapshotSummary:
+        """Actual observed coverage, not a statement of market completeness."""
+        self._verify()
+        with closing(self._connect()) as db:
+            row = db.execute(
+                "SELECT COUNT(*), COUNT(DISTINCT ticker), "
+                "COUNT(DISTINCT trading_date), MIN(trading_date), MAX(trading_date) "
+                "FROM market_observations WHERE market='KOSPI'"
+            ).fetchone()
+        self._verify()
+        assert row is not None
+        return OperationalSnapshotSummary(
+            observationCount=row[0],
+            tickerCount=row[1],
+            tradingDayCount=row[2],
+            firstTradingDate=row[3],
+            lastTradingDate=row[4],
+        )
 
     def catalog(self, offset: int, limit: int) -> OperationalCatalog:
         self._verify()

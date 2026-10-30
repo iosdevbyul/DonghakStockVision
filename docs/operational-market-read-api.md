@@ -4,6 +4,7 @@ This optional contract reads an **offline snapshot copy** of the private operati
 
 ## Scope
 
+- `GET /api/v1/operational/summary`: observed KOSPI row count, distinct ticker count, distinct trading days and first/last trading date; all values derived from the SHA-pinned offline copy, not assumed exchange completeness
 - `GET /api/v1/operational/stocks?offset=0&limit=25`: paginated KOSPI ticker catalog with `latestDataDate`, `total`, `offset`, `limit`, `schemaVersion=operational_market_v1`, and `evidenceStatus=unreviewed`
 - `GET /api/v1/operational/stocks/{ticker}/ohlcv`: up to 2500 historical unadjusted KRX daily bars, chronological, using existing `OhlcvSeries`
 - 503 when no operator-approved copy was configured; 404 for no observed ticker; 422 for invalid ticker
@@ -54,3 +55,9 @@ Before using with real data, the operator must explicitly approve the offline
 backup and startup, review disk permissions and compare the observed ticker
 count against the original captured data. A pinned operational observation
 remains **unreviewed**, not research-eligible or PAPER-authorized.
+
+
+The summary endpoint is also available in operational-only mode. Its empty
+snapshot result has zero counts and null date bounds. The summary is explicitly
+marked `evidenceStatus=unreviewed` and makes no inference about missing KRX
+sessions or authorization for PAPER trading. No live database is queried.
