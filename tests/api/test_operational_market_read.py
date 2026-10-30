@@ -176,9 +176,7 @@ def test_empty_operational_snapshot_summary(tmp_path: Path) -> None:
     reader = PinnedOperationalReader(
         path, expected_sha256=hashlib.sha256(path.read_bytes()).hexdigest()
     )
-    summary = TestClient(create_app(operational_reader=reader)).get(
-        "/api/v1/operational/summary"
-    )
+    summary = TestClient(create_app(operational_reader=reader)).get("/api/v1/operational/summary")
     assert summary.status_code == 200
     assert summary.json()["observationCount"] == 0
     assert summary.json()["tickerCount"] == 0
