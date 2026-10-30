@@ -68,9 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--expected-tickers", type=int)
     args = parser.parse_args(argv)
     try:
-        result = verify(
-            args.snapshot, args.sha256, expected_tickers=args.expected_tickers
-        )
+        result = verify(args.snapshot, args.sha256, expected_tickers=args.expected_tickers)
     except (OSError, ValueError):
         parser.exit(2, "operational snapshot verification failed\n")
     print(json.dumps(result, sort_keys=True))
