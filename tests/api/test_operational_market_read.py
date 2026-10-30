@@ -47,6 +47,7 @@ def test_unconfigured_operational_routes_are_unavailable() -> None:
     client = TestClient(create_app())
     assert client.get("/api/v1/operational/stocks").status_code == 503
     assert client.get("/api/v1/operational/stocks/005930/ohlcv").status_code == 503
+    assert client.get("/api/v1/operational/summary").status_code == 503
 
 
 def test_pinned_operational_catalog_and_exact_bars(tmp_path: Path) -> None:
@@ -54,6 +55,18 @@ def test_pinned_operational_catalog_and_exact_bars(tmp_path: Path) -> None:
     fingerprint = make_snapshot(path)
     reader = PinnedOperationalReader(path, expected_sha256=fingerprint)
     client = TestClient(create_app(operational_reader=reader))
+    coverage = client.get("/api/v1/operational/summary")
+    assert coverage.status_code == 200
+    assert coverage.json() == {
+        "schemaVersion": "operational_snapshot_summary_v1",
+        "evidenceStatus": "unreviewed",
+        "market": "KOSPI",
+        "observationCount": 1,
+        "tickerCount": 1,
+        "tradingDayCount": 1,
+        "firstTradingDate": "2026-10-29",
+        "lastTradingDate": "2026-10-29",
+    }
     catalog = client.get("/api/v1/operational/stocks?offset=0&limit=25")
     assert catalog.status_code == 200
     assert catalog.json() == {
@@ -122,6 +135,7 @@ def test_operational_only_cli_serves_real_observations_without_research(
     assert len(captured) == 1
     client = TestClient(captured[0])
     assert client.get("/api/v1/operational/stocks").json()["total"] == 1
+    assert client.get("/api/v1/operational/summary").json()["observationCount"] == 1
     assert client.get("/api/v1/operational/stocks/005930/ohlcv").status_code == 200
     assert client.get("/api/v1/stocks").status_code == 503
 
@@ -149,3 +163,25 @@ def test_operational_only_cli_rejects_mixed_research_inputs(
             ]
         )
     assert mixed.value.code == 2
+
+
+def test_empty_operational_snapshot_summary(tmp_path: Path) -> None:
+    from donghak_stock_vision.storage.operational_market import SCHEMA
+
+    path = tmp_path / "empty.snapshot.sqlite3"
+    with sqlite3.connect(path) as db:
+        db.execute(f"PRAGMA application_id={OPERATIONAL_APPLICATION_ID}")
+        db.execute("PRAGMA user_version=1")
+        db.executescript(SCHEMA)
+    reader = PinnedOperationalReader(
+        path, expected_sha256=hashlib.sha256(path.read_bytes()).hexdigest()
+    )
+    summary = TestClient(create_app(operational_reader=reader)).get(
+        "/api/v1/operational/summary"
+    )
+    assert summary.status_code == 200
+    assert summary.json()["observationCount"] == 0
+    assert summary.json()["tickerCount"] == 0
+    assert summary.json()["tradingDayCount"] == 0
+    assert summary.json()["firstTradingDate"] is None
+    assert summary.json()["lastTradingDate"] is None
