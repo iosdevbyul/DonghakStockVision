@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from donghak_stock_vision.api.app import create_app
@@ -103,9 +104,9 @@ def test_operational_only_cli_serves_real_observations_without_research(
     path = tmp_path / "operational.snapshot.sqlite3"
     fingerprint = make_snapshot(path)
     monkeypatch.delenv("DSV_API_SNAPSHOT_PATH", raising=False)
-    captured: list[object] = []
+    captured: list[FastAPI] = []
 
-    def serve(app: object, **kwargs: object) -> None:
+    def serve(app: FastAPI, **kwargs: object) -> None:
         captured.append(app)
 
     monkeypatch.setattr("uvicorn.run", serve)
