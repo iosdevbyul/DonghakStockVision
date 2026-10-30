@@ -1,21 +1,14 @@
-# CI fast feedback gate
+# CI recovery after fast-gate failure
 
-The GitHub Actions workflow first runs Ruff lint and formatting in a separate
-GitHub-hosted Linux job. It uses an explicit Ruff version matching the CI
-version observed when this change was prepared. The full self-hosted macOS job
-depends on this gate, so common format failures do not occupy the slow Mac
-runner.
+The proposed GitHub-hosted fast Ruff gate failed before the macOS regression
+could run. The run did not provide usable job logs or steps through the
+connected GitHub API, so the exact failure cause remains unconfirmed.
 
-The existing macOS checks are unchanged and remain mandatory:
+This branch restores the original CI workflow: the self-hosted macOS job runs
+independently, including Ruff lint and formatting, strict Mypy, full offline
+pytest, wheel/sdist builds and installed wheel smoke tests. No safety or
+regression checks are removed.
 
-- Editable installation with all development/learning/API/custody dependencies
-- Ruff lint and formatting (again in the full job)
-- Strict Mypy
-- Full offline pytest regression
-- Wheel and sdist build
-- Installed base, learning, API and decision wheel smoke tests
-
-This change does not eliminate any test or permit a PR to merge on the fast
-gate alone. Hosted-runner availability and tool download time can affect the
-actual gain. Follow-up: inspect job durations and queued time before further
-optimization; never parallelize stateful tests blindly.
+A separate fast feedback gate should not be reintroduced until GitHub-hosted
+runner eligibility, billing, job logs and Ruff version availability are
+verified. Any subsequent optimization should be measured before adoption.
