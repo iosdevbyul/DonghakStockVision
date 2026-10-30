@@ -15,9 +15,15 @@ def add_commands(sub: Any) -> None:
     )
     command.add_argument(
         "action",
-        choices=("init", "status", "validate", "duplicates", "usage", "latest", "ingest-capture"),
+        choices=(
+            "init", "status", "validate", "duplicates", "usage", "latest",
+            "ingest-capture", "backup", "verify-backup", "restore-backup",
+        ),
     )
     command.add_argument("--root", type=Path)
+    command.add_argument("--source", type=Path)
+    command.add_argument("--destination", type=Path)
+    command.add_argument("--expected-sha256")
     command.add_argument("--capture-root", type=Path)
     command.add_argument("--plan", type=Path)
     command.add_argument("--plan-pin")
@@ -47,6 +53,8 @@ def add_commands(sub: Any) -> None:
 def run(args: argparse.Namespace) -> int:
     if args.db is not None:
         raise ValueError("market_storage_uses_root_not_research_db")
+    if args.action in ("backup", "verify-backup", "restore-backup"):
+        return _backup_action(args)
     if args.root is None:
         if args.action == "ingest-capture":
             raise ValueError("explicit_operational_storage_root_required")
@@ -132,3 +140,43 @@ def _ingest_capture(args: argparse.Namespace) -> FrozenJSON:
         authorization_policy=args.authorization_policy,
         allow_synthetic_fixture=args.allow_synthetic_fixture,
     )
+
+
+def _backup_action(args: argparse.Namespace) -> int:
+    """Explicit offline file operations; never infer an operator database path."""
+    import json
+    from dataclasses import asdict
+
+    from donghak_stock_vision.storage.operational_backup import (
+        backup_operational_database,
+        restore_operational_backup,
+        verify_backup,
+    )
+
+    if args.db is not None:
+        raise ValueError("backup_uses_explicit_source_not_research_db")
+    if args.root is not None:
+        raise ValueError("backup_does_not_accept_implicit_storage_root")
+    if any(
+        getattr(args, key) is not None
+        for key in ("capture_root", "plan", "plan_pin", "capture_pin", "attempt")
+    ):
+        raise ValueError("capture_arguments_not_allowed_for_backup")
+    if args.source is None:
+        raise ValueError("explicit_backup_source_required")
+    if args.action == "backup":
+        if args.destination is None or args.expected_sha256 is not None:
+            raise ValueError("backup_requires_destination_without_prior_pin")
+        result = backup_operational_database(args.source, args.destination)
+    elif args.action == "verify-backup":
+        if args.destination is not None or args.expected_sha256 is None:
+            raise ValueError("verification_requires_expected_sha256_without_destination")
+        result = verify_backup(args.source, expected_sha256=args.expected_sha256)
+    else:
+        if args.destination is None or args.expected_sha256 is None:
+            raise ValueError("restore_requires_destination_and_expected_sha256")
+        result = restore_operational_backup(
+            args.source, args.destination, expected_sha256=args.expected_sha256
+        )
+    print(json.dumps({"action": args.action, **asdict(result)}, sort_keys=True))
+    return 0
