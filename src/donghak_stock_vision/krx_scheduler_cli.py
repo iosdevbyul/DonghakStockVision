@@ -22,6 +22,7 @@ def add_commands(sub: Any) -> None:
             "uninstall",
             "run-once",
             "preflight",
+            "diagnose",
             "backlog",
             "run-due",
             "register-completion",
@@ -112,6 +113,25 @@ def run(args: argparse.Namespace) -> int:
             args.capture_pin,
             args.batch_pin,
             authorization=reference,
+        )
+    elif args.action == "diagnose":
+        from donghak_stock_vision.storage.krx_backlog import backlog
+        from donghak_stock_vision.storage.krx_operations_diagnostics import summarize
+        from donghak_stock_vision.storage.krx_readiness import preflight
+
+        if any(
+            (
+                args.apply,
+                args.execute,
+                args.scheduled,
+                args.allow_network,
+                args.confirm_operator_authorization,
+            )
+        ):
+            raise ValueError("diagnostics_are_read_only")
+        at = datetime.now(UTC)
+        result = FrozenJSON.freeze(
+            summarize(backlog(config, at).to_dict(), preflight(config, at, args.config).to_dict())
         )
     elif args.action == "preflight":
         from donghak_stock_vision.storage.krx_readiness import preflight
