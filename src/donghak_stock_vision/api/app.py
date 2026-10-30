@@ -1,10 +1,12 @@
 """FastAPI transport for immutable research snapshots."""
 
-from collections.abc import Sequence
-from typing import Annotated
+from collections.abc import Callable, Mapping, Sequence
+from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, status
 from fastapi.middleware.cors import CORSMiddleware
+
+from donghak_stock_vision.storage.krx_operations_diagnostics import summarize
 
 from donghak_stock_vision.api.historical_portfolio_routes import portfolio_router
 from donghak_stock_vision.api.historical_portfolios import PortfolioPublicationReader
@@ -55,6 +57,7 @@ def create_app(
     *,
     analysis_reader: AnalysisPublicationReader | None = None,
     operations_reader: OperationsReader | None = None,
+    krx_diagnostics_reports: Callable[[], tuple[Mapping[str, Any], Mapping[str, Any]]] | None = None,
     security_metadata_reader: SecurityMetadataReader | None = None,
     portfolio_reader: PortfolioPublicationReader | None = None,
     allowed_origins: Sequence[str] = (
@@ -239,6 +242,14 @@ def create_app(
         return stock
 
     operations = operations_reader or OperationsReader(research=reader, market=ohlcv_reader)
+
+    @app.get("/api/v1/operations/krx-scheduler/diagnostics")
+    def krx_scheduler_diagnostics() -> dict[str, Any]:
+        """Expose only explicitly supplied read-only scheduler diagnostic reports."""
+        if krx_diagnostics_reports is None:
+            raise HTTPException(status_code=503, detail="KRX diagnostics not configured")
+        backlog_report, preflight_report = krx_diagnostics_reports()
+        return summarize(backlog_report, preflight_report)
 
     @app.get("/api/v1/operations/runs", response_model=RunsPayload)
     def operation_runs(
