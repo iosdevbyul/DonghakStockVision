@@ -16,8 +16,16 @@ def add_commands(sub: Any) -> None:
     command.add_argument(
         "action",
         choices=(
-            "init", "status", "validate", "duplicates", "usage", "latest",
-            "ingest-capture", "backup", "verify-backup", "restore-backup",
+            "init",
+            "status",
+            "validate",
+            "duplicates",
+            "usage",
+            "latest",
+            "ingest-capture",
+            "backup",
+            "verify-backup",
+            "restore-backup",
         ),
     )
     command.add_argument("--root", type=Path)
