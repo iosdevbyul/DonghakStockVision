@@ -93,3 +93,58 @@ def test_requires_offline_pinned_copy_and_detects_tampering(tmp_path: Path) -> N
         out.write(b"tamper")
     with pytest.raises(OperationalReadError, match="fingerprint"):
         reader.catalog(0, 25)
+
+
+def test_operational_only_cli_serves_real_observations_without_research(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from donghak_stock_vision import api_cli
+
+    path = tmp_path / "operational.snapshot.sqlite3"
+    fingerprint = make_snapshot(path)
+    monkeypatch.delenv("DSV_API_SNAPSHOT_PATH", raising=False)
+    captured: list[object] = []
+
+    def serve(app: object, **kwargs: object) -> None:
+        captured.append(app)
+
+    monkeypatch.setattr("uvicorn.run", serve)
+    api_cli.main(
+        [
+            "--operational-only",
+            "--operational-snapshot",
+            str(path),
+            "--operational-snapshot-sha256",
+            fingerprint,
+        ]
+    )
+    assert len(captured) == 1
+    client = TestClient(captured[0])
+    assert client.get("/api/v1/operational/stocks").json()["total"] == 1
+    assert client.get("/api/v1/operational/stocks/005930/ohlcv").status_code == 200
+    assert client.get("/api/v1/stocks").status_code == 503
+
+
+def test_operational_only_cli_rejects_mixed_research_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from donghak_stock_vision import api_cli
+
+    monkeypatch.delenv("DSV_API_SNAPSHOT_PATH", raising=False)
+    snapshot = tmp_path / "operational.snapshot.sqlite3"
+    with pytest.raises(SystemExit) as missing:
+        api_cli.main(["--operational-only"])
+    assert missing.value.code == 2
+    with pytest.raises(SystemExit) as mixed:
+        api_cli.main(
+            [
+                "--operational-only",
+                "--operational-snapshot",
+                str(snapshot),
+                "--operational-snapshot-sha256",
+                "0" * 64,
+                "--analysis-publication",
+                str(tmp_path / "analysis.json"),
+            ]
+        )
+    assert mixed.value.code == 2
