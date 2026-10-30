@@ -25,6 +25,7 @@ dsv = "donghak_stock_vision.cli:main"
 dsv-api = "donghak_stock_vision.api_cli:main"
 dsv-portfolio-publication = "donghak_stock_vision.portfolio_publication_cli:main"
 dsv-api-export = "donghak_stock_vision.api_export_cli:main"
+dsv-operational-verify = "donghak_stock_vision.operational_verification_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/donghak_stock_vision"]
