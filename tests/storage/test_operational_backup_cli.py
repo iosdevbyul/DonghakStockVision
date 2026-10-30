@@ -26,8 +26,12 @@ def test_backup_verify_restore_cli(tmp_path: Path, capsys: pytest.CaptureFixture
     assert (
         main(
             [
-                "market-storage", "backup", "--source", str(source),
-                "--destination", str(snapshot),
+                "market-storage",
+                "backup",
+                "--source",
+                str(source),
+                "--destination",
+                str(snapshot),
             ]
         )
         == 0
@@ -39,8 +43,12 @@ def test_backup_verify_restore_cli(tmp_path: Path, capsys: pytest.CaptureFixture
     assert (
         main(
             [
-                "market-storage", "verify-backup", "--source", str(snapshot),
-                "--expected-sha256", sha,
+                "market-storage",
+                "verify-backup",
+                "--source",
+                str(snapshot),
+                "--expected-sha256",
+                sha,
             ]
         )
         == 0
@@ -49,8 +57,14 @@ def test_backup_verify_restore_cli(tmp_path: Path, capsys: pytest.CaptureFixture
     assert (
         main(
             [
-                "market-storage", "restore-backup", "--source", str(snapshot),
-                "--destination", str(restored), "--expected-sha256", sha,
+                "market-storage",
+                "restore-backup",
+                "--source",
+                str(snapshot),
+                "--destination",
+                str(restored),
+                "--expected-sha256",
+                sha,
             ]
         )
         == 0
