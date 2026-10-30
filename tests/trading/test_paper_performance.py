@@ -17,9 +17,7 @@ def point(day: int, equity: str, benchmark: str | None = None) -> EquityPoint:
 
 
 def test_report_with_benchmark() -> None:
-    result = summarize(
-        (point(1, "1000", "200"), point(2, "900", "210"), point(3, "1100", "220"))
-    )
+    result = summarize((point(1, "1000", "200"), point(2, "900", "210"), point(3, "1100", "220")))
     assert result.total_return_pct == Decimal("10.0")
     assert result.max_drawdown_pct == Decimal("10.0")
     assert result.benchmark_return_pct == Decimal("10.0")
