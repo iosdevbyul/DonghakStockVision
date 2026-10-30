@@ -58,10 +58,19 @@ def main(argv: list[str] | None = None) -> None:
             parser().error("--operational-only cannot use a research snapshot")
         if not args.operational_snapshot or not args.operational_snapshot_sha256:
             parser().error("--operational-only requires a pinned operational snapshot")
-        if any((args.market_db, args.market_db_sha256, args.analysis_publication,
-                args.security_metadata, args.security_metadata_fingerprint,
-                args.portfolio_publications, args.portfolio_index_sha256,
-                args.operations_root, args.dart_acquisition_freshness_seconds)):
+        if any(
+            (
+                args.market_db,
+                args.market_db_sha256,
+                args.analysis_publication,
+                args.security_metadata,
+                args.security_metadata_fingerprint,
+                args.portfolio_publications,
+                args.portfolio_index_sha256,
+                args.operations_root,
+                args.dart_acquisition_freshness_seconds,
+            )
+        ):
             parser().error("--operational-only forbids research and publication inputs")
     elif snapshot_path is None:
         parser().error("--snapshot or DSV_API_SNAPSHOT_PATH is required")
