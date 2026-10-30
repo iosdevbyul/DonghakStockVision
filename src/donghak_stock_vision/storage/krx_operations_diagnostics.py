@@ -4,9 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 
-def summarize(
-    backlog: Mapping[str, Any], preflight: Mapping[str, Any]
-) -> dict[str, Any]:
+def summarize(backlog: Mapping[str, Any], preflight: Mapping[str, Any]) -> dict[str, Any]:
     """Project existing evidence without changing authorization or scheduler state."""
     due = backlog["due_dates"]
     expired = backlog["expired_dates"]
