@@ -6,8 +6,6 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from donghak_stock_vision.storage.krx_operations_diagnostics import summarize
-
 from donghak_stock_vision.api.historical_portfolio_routes import portfolio_router
 from donghak_stock_vision.api.historical_portfolios import PortfolioPublicationReader
 from donghak_stock_vision.api.models import (
@@ -48,6 +46,7 @@ from donghak_stock_vision.api.stock_analysis import (
     AnalysisPublicationReader,
     PublishedStockAnalysis,
 )
+from donghak_stock_vision.storage.krx_operations_diagnostics import summarize
 
 
 def create_app(
