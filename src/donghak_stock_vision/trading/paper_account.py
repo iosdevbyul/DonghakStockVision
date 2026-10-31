@@ -1,6 +1,6 @@
 """Explicit synthetic KRW 10M PAPER account genesis; no orders or market data."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from donghak_stock_vision.backtest.data import FrozenJSON
@@ -23,7 +23,7 @@ def open_krw_10m_account(
     """Create an empty synthetic broker funded with exactly 10,000,000 KRW."""
     identity = text(account_id)
     opening_at = utc(at)
-    if opening_at != at or at.utcoffset() is None:
+    if at.utcoffset() != timedelta(0):
         raise ValueError("timezone_aware_utc_opening_required")
     if not any(mechanics.currency is Currency.KRW for mechanics in policy.currencies):
         raise ValueError("krw_mechanics_required")
