@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import pytest
+from tests.storage.test_operational_backup import make_operational_database
 
 from donghak_stock_vision.storage.operational_backup import (
     OperationalBackupError,
@@ -12,7 +13,6 @@ from donghak_stock_vision.storage.operational_backup import (
     restore_operational_backup,
     verify_backup,
 )
-from tests.storage.test_operational_backup import make_operational_database
 
 
 def test_backup_restore_do_not_modify_source_or_overwrite_target(tmp_path: Path) -> None:
