@@ -183,3 +183,26 @@ The initial dry-run phase may *simulate* Trello transitions without writing
 cards. Actual authenticated Trello mutations are a distinct, reviewed
 capability introduced later; no automatic card-writing agent is enabled by
 this document.
+
+## Operator-requested unattended mode (requested 2026-10-31)
+
+The operator explicitly requests an unattended loop: implement a bounded task,
+open a PR, wait for the complete CI result, merge eligible changes, reconcile
+Trello, and continue with the next authorized Next card. Trello is the primary
+operator-facing dashboard and must be updated at every verified transition.
+
+This request authorizes **design and preparation**, not ignoring the hard
+preconditions above. As of this revision `main` reports
+`protected=false`, and mandatory check/branch protections cannot be
+verified. Thus the effective merge setting remains **OFF** and cannot
+automatically turn on because an operator is away. The initial controller
+must fail closed, log `PROTECTION_UNVERIFIED`, and continue only with
+safe non-merge steps. Runtime and PAPER/KRX behavior changes remain
+manual-review-only regardless of successful CI.
+
+Once independently verified branch protection, required checks, credentials,
+audit store and kill switch are available, the operator may provide a
+separate time-bounded approval for a **specific low-risk allowlist**.
+Only then may a reviewed implementation enable automatic merges. No
+unbounded/infinite agent, auto-approval of its own code, or self-modification
+of the merge policy is permitted.
