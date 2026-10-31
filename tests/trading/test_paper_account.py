@@ -1,6 +1,6 @@
 """Synthetic KRW 10M PAPER opening reuses deterministic broker semantics."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -43,5 +43,5 @@ def test_rejects_non_utc_opening() -> None:
         open_krw_10m_account("paper-10m", frame.now.replace(tzinfo=None), policy)
     with pytest.raises(ValueError):
         open_krw_10m_account(
-            "paper-10m", datetime(2026, 10, 31, tzinfo=UTC) + timedelta(hours=1), policy
+            "paper-10m", datetime(2026, 10, 31, tzinfo=timezone(timedelta(hours=9))), policy
         )
