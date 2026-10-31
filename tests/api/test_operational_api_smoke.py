@@ -2,13 +2,14 @@
 
 import importlib.util
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
 from tests.api.test_operational_market_read import make_snapshot
 
 
-def load_smoke():
+def load_smoke() -> ModuleType:
     path = Path(__file__).resolve().parents[2] / "scripts" / "smoke-operational-api.py"
     spec = importlib.util.spec_from_file_location("operational_api_smoke", path)
     assert spec is not None and spec.loader is not None
