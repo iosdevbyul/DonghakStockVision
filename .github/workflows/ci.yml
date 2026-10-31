@@ -34,7 +34,7 @@ jobs:
       - name: Mypy
         run: mypy
       - name: Offline tests
-        run: pytest
+        run: pytest --durations=30 --durations-min=1.0
       - name: Build
         run: python -m build
       - name: Installed wheel smoke test
