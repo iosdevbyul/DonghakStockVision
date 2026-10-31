@@ -4,11 +4,11 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
+from tests.trading.test_paper import fixture
 
 from donghak_stock_vision.trading.domain import Currency
 from donghak_stock_vision.trading.paper import DeterministicPaperBroker
 from donghak_stock_vision.trading.paper_account import open_krw_10m_account
-from tests.trading.test_paper import fixture
 
 
 def test_initial_account_has_exact_cash_and_no_trades() -> None:
