@@ -56,7 +56,9 @@ def create_app(
     *,
     analysis_reader: AnalysisPublicationReader | None = None,
     operations_reader: OperationsReader | None = None,
-    krx_diagnostics_reports: Callable[[], tuple[Mapping[str, Any], Mapping[str, Any]]] | None = None,
+    krx_diagnostics_reports: (
+        Callable[[], tuple[Mapping[str, Any], Mapping[str, Any]]] | None
+    ) = None,
     security_metadata_reader: SecurityMetadataReader | None = None,
     portfolio_reader: PortfolioPublicationReader | None = None,
     allowed_origins: Sequence[str] = (
