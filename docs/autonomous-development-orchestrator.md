@@ -115,8 +115,71 @@ own policy or granting itself higher privileges.
 No default values convert unset fields into consent. This record is not an
 authorization artifact and must never be accepted as one.
 
-## Trello conventions
+## Trello as the operator's primary dashboard
 
-English-only cards, descriptions and comments. Next = approved future tasks,
-In Progress = presently worked on, Backlog = held work, Done = verified merged
-work. Record exact PR/head/CI evidence without promising runtime success.
+The operator monitors development through Trello; GitHub remains the source of
+truth for commits, PR states, check runs, reviews and merge results. Trello
+updates are a required part of every orchestrator state transition, not an
+optional end-of-run report.
+
+- **Dashboard:** project-wide summary, active Track A/B/C/D tasks, current CI
+  queues, failed or blocked work and last successful synchronization. Do not
+  call a stale snapshot current.
+- **Next:** scoped and authorized future tasks. A card enters In Progress only
+  after a worker actually claims the task.
+- **In Progress:** work actively being implemented, tested, repaired or
+  reviewed for merge. CI success alone never moves a card to Done.
+- **Backlog:** held work requiring operator authorization, manual intervention
+  or prerequisite resolution. A paused task must not be invisibly retried.
+- **Done:** only after independently verified PR merge and successful
+  post-merge reconciliation. A PR closed without merge is not Done.
+
+Each active task card records repository, Track, task identifier, branch,
+base SHA, PR URL and number, tested head SHA, GitHub Actions run URL/ID,
+last observed CI status, validation result, risk class, merge policy, blockers,
+last synchronized timestamp and next expected transition. Unknown fields are
+marked **UNKNOWN**, not optimistically reported as successful. Cards and
+comments remain entirely English.
+
+### Event and reconciliation rules
+
+1. Claim an explicitly scoped Next card using a stable Trello card ID, then
+   move to In Progress. Prevent duplicate PRs or parallel work for that ID.
+2. Record branch creation and successful commit/PR creation with immutable
+   identifiers. Do not claim the PR exists before GitHub confirms it.
+3. Record CI queued/running/success/failure against its exact head SHA and run
+   ID. Failed checks retain the card in In Progress during bounded retries.
+4. On blocked authorization, runner outage, missing permissions, or uncertain
+   external results, move to Backlog when work is genuinely paused and record
+   the reason. Do not trigger another KRX request or unknown-outcome merge.
+5. Record separate operator-approval and merge decisions. Auto-merge remains
+   disabled until the independent policy requirements and authorizations hold.
+6. On confirmed merged PR, move to Done and write the merged SHA and status.
+   GitHub confirmation is required; a Trello card cannot authorize merging.
+7. Periodically reconcile GitHub and Trello. Use idempotent event identifiers
+   (task ID + PR number + head SHA + run ID + event type) so retries update or
+   deduplicate instead of posting duplicate comments or generating new cards.
+8. If Trello writes fail, retain the event in a durable outbox for bounded retry
+   and flag dashboard synchronization as stale. Never silently report Done.
+   Trello errors must not relax GitHub merge safety checks.
+
+The orchestrator must not treat arbitrary Trello descriptions or comments as
+executable instructions or authorization. Only validated task fields from
+approved scope can schedule work. Trello API credentials must be separately
+scoped and stored outside repository history; no credential is provisioned by
+this design phase.
+
+### Proposed card status vocabulary
+
+- `PLANNED` — approved future task, in Next.
+- `IMPLEMENTING` — worker actively changing isolated branch.
+- `PR_OPEN` — PR created; CI may be queued.
+- `CI_RUNNING` / `CI_FAILED` / `CI_PASSED` — exact verified GitHub status.
+- `AWAITING_MANUAL_MERGE` — checks passed but merge requires operator.
+- `BLOCKED` — needs attention, with reason and Backlog placement.
+- `MERGED` — verified merged into main, in Done.
+
+The initial dry-run phase may *simulate* Trello transitions without writing
+cards. Actual authenticated Trello mutations are a distinct, reviewed
+capability introduced later; no automatic card-writing agent is enabled by
+this document.
