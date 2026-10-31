@@ -5,7 +5,7 @@ from pathlib import Path
 from types import ModuleType
 from unittest.mock import patch
 
-SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "ci-remediation-preflight.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "ci-remediation-preflight.py"
 
 
 def load_script() -> ModuleType:
