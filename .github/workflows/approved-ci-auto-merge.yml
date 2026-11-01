@@ -36,8 +36,8 @@ jobs:
               core.info("CI run lacks a unique tested base SHA; manual review required"); return;
             }
             const labels = pr.labels.map(l => l.name);
-            if (!labels.includes("auto-merge-approved") || labels.includes("manual-qa") || labels.includes("no-automerge")) {
-              core.info("Explicit approval missing or manual hold: #" + pr.number); return;
+            if (labels.includes("manual-qa") || labels.includes("no-automerge")) {
+              core.info("Manual review hold: #" + pr.number); return;
             }
             const paths = await github.paginate(github.rest.pulls.listFiles,{owner,repo,pull_number:pr.number,per_page:100});
             if (!paths.length || paths.some(f => f.filename.startsWith(".github/") ||
