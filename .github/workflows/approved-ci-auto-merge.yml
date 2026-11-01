@@ -29,6 +29,12 @@ jobs:
               p.head.sha === run.head_sha && p.user?.login === owner && !p.draft);
             if (eligible.length !== 1) { core.info("No unique trusted PR for passing SHA"); return; }
             const pr = eligible[0];
+            // Fail closed if the successful run cannot prove its tested base revision.
+            const associated = (run.pull_requests || []).filter(p => p.number === pr.number);
+            const testedBase = associated.length === 1 ? associated[0].base?.sha : null;
+            if (!/^[a-f0-9]{40}$/.test(testedBase || "")) {
+              core.info("CI run lacks a unique tested base SHA; manual review required"); return;
+            }
             const labels = pr.labels.map(l => l.name);
             if (!labels.includes("auto-merge-approved") || labels.includes("manual-qa") || labels.includes("no-automerge")) {
               core.info("Explicit approval missing or manual hold: #" + pr.number); return;
@@ -40,7 +46,7 @@ jobs:
             }
             const {data: current} = await github.rest.pulls.get({owner,repo,pull_number:pr.number});
             if (current.state !== "open" || current.draft || current.head.sha !== run.head_sha ||
-                current.mergeable !== true) {
+                current.base.sha !== testedBase || current.mergeable !== true) {
               core.info("PR updated, conflicted, or mergeability unconfirmed"); return;
             }
             const result = await github.rest.pulls.merge({
