@@ -52,9 +52,13 @@ jobs:
             const boardCards = await api("GET", "boards/" + board + "/cards", {
               filter: "open", fields: "id,name,desc,idList"
             });
+            // Only PR-specific cards are eligible. Dashboard summaries can link to
+            // the same PR and must never be renamed or moved by this workflow.
             const matches = boardCards.filter(c =>
-              c.desc?.includes(url) || (c.name?.includes("[DonghakStockVision]") &&
-                c.name?.includes("[PR #" + number + "]")));
+              (c.name?.includes("[DonghakStockVision]") &&
+                c.name?.includes("[PR #" + number + "]")) ||
+              (c.desc?.includes("--- GitHub PR sync ---") &&
+                c.desc?.includes("GitHub PR: " + url)));
             if (matches.length > 1) {
               core.setFailed("Multiple matching Trello cards; manual deduplication required");
               return;
