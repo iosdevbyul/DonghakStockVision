@@ -181,9 +181,11 @@ def test_disable_preview_lock_and_time_guards(setup: SchedulerConfig) -> None:
     with _lock(setup, ".run.lock"), pytest.raises(ValueError, match="already_running"):
         run_due(setup, execute=True, clock=lambda: AT)
     calls: list[str] = []
-    assert (
-        run(setup, calls, scheduled=True)["stop_reason"] == "scheduled_time_not_due" and not calls
-    )
+    with patch("donghak_stock_vision.storage.krx_scheduler.host_seoul", return_value=True):
+        assert (
+            run(setup, calls, scheduled=True)["stop_reason"] == "scheduled_time_not_due"
+            and not calls
+        )
     with patch("donghak_stock_vision.storage.krx_scheduler.host_seoul", return_value=False):
         assert run(setup, calls, scheduled=True)["stop_reason"] == "host_timezone_not_asia_seoul"
     assert not calls
