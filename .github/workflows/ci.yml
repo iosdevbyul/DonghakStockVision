@@ -9,14 +9,12 @@ permissions:
   contents: read
 jobs:
   checks:
-    runs-on: [self-hosted, macOS, X64]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.13']
+        python-version: ['3.12', '3.13', '3.14']
     steps:
       - uses: actions/checkout@v4
-      # setup-python's macOS toolcache installer assumes /Users/runner and
-      # cannot write there on a personal self-hosted macOS account.
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
