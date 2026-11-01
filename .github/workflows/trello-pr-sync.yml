@@ -1,0 +1,93 @@
+name: Sync PR to Trello
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited, ready_for_review, converted_to_draft, closed]
+permissions:
+  pull-requests: read
+  contents: read
+jobs:
+  sync:
+    # This job uses secrets. Never run PR code or accept fork-owned PRs.
+    if: >-
+      ${{ github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login == github.repository_owner }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Upsert the owner PR card
+        uses: actions/github-script@v7
+        env:
+          TRELLO_KEY: ${{ secrets.TRELLO_KEY }}
+          TRELLO_TOKEN: ${{ secrets.TRELLO_TOKEN }}
+          TRELLO_BOARD_ID: 6ad6714ac6541cd2af63d82f
+          TRELLO_IN_PROGRESS_ID: 6ad671a51c78dbce64d886b7
+          TRELLO_DONE_ID: 6ad671a3cb1b23bc3f6a6a7b
+        with:
+          script: |
+            const key = process.env.TRELLO_KEY, token = process.env.TRELLO_TOKEN;
+            if (!key || !token) {
+              core.setFailed("TRELLO_KEY and TRELLO_TOKEN repository secrets are required");
+              return;
+            }
+            const {owner, repo} = context.repo;
+            const number = context.payload.pull_request.number;
+            const {data: pr} = await github.rest.pulls.get({owner, repo, pull_number: number});
+            if (pr.head.repo?.full_name !== owner + "/" + repo ||
+                pr.user?.login !== owner) {
+              core.info("Untrusted PR: Trello sync skipped");
+              return;
+            }
+            const board = process.env.TRELLO_BOARD_ID;
+            const api = async (method, path, params = {}) => {
+              const url = new URL("https://api.trello.com/1/" + path);
+              url.searchParams.set("key", key);
+              url.searchParams.set("token", token);
+              for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+              const response = await fetch(url, {method, redirect: "error"});
+              if (!response.ok) throw new Error("Trello " + method + " " + path + " HTTP " + response.status);
+              return response.json();
+            };
+            const url = pr.html_url;
+            const tag = "[DonghakStockVision][PR #" + number + "]";
+            const boardCards = await api("GET", "boards/" + board + "/cards", {
+              filter: "open", fields: "id,name,desc,idList"
+            });
+            const matches = boardCards.filter(c =>
+              c.desc?.includes(url) || (c.name?.includes("[DonghakStockVision]") &&
+                c.name?.includes("[PR #" + number + "]")));
+            if (matches.length > 1) {
+              core.setFailed("Multiple matching Trello cards; manual deduplication required");
+              return;
+            }
+            const merged = pr.merged === true;
+            const status = merged ? "Merged" : pr.state === "closed" ? "Closed without merge"
+              : pr.draft ? "Draft" : "In Progress";
+            const name = tag + " " + pr.title + " — " + status;
+            const detail = [
+              "GitHub PR: " + url,
+              "Repository: " + owner + "/" + repo,
+              "PR number: #" + number,
+              "Status: " + status,
+              "Branch: " + pr.head.ref,
+              "Commit: " + pr.head.sha,
+              "Base: " + pr.base.ref,
+              "Automation: GitHub Actions PR lifecycle synchronization"
+            ].join("\\n");
+            if (matches.length === 0) {
+              const listId = merged ? process.env.TRELLO_DONE_ID : process.env.TRELLO_IN_PROGRESS_ID;
+              const created = await api("POST", "cards", {idList: listId, name, desc: detail});
+              core.info("Created Trello card " + created.id);
+            } else {
+              const card = matches[0];
+              const existing = card.desc || "";
+              // Preserve existing human-authored notes. Replace only our managed status block.
+              const marker = "\\n\\n--- GitHub PR sync ---\\n";
+              const human = existing.split(marker)[0];
+              const desc = human.includes(url) ? human + marker + detail : human + marker + detail;
+              const changes = {name, desc};
+              if (merged) changes.idList = process.env.TRELLO_DONE_ID;
+              else if (pr.state === "open" && card.idList === process.env.TRELLO_DONE_ID)
+                changes.idList = process.env.TRELLO_IN_PROGRESS_ID;
+              await api("PUT", "cards/" + card.id, changes);
+              core.info("Updated Trello card " + card.id);
+            }
