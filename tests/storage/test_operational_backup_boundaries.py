@@ -26,9 +26,7 @@ def test_backup_restore_do_not_modify_source_or_overwrite_target(tmp_path: Path)
     assert hashlib.sha256(source.read_bytes()).hexdigest() == before
     assert backup.stat().st_mode & 0o777 == 0o600
 
-    restored_receipt = restore_operational_backup(
-        backup, restored, expected_sha256=receipt.sha256
-    )
+    restored_receipt = restore_operational_backup(backup, restored, expected_sha256=receipt.sha256)
     assert restored_receipt.observation_count == receipt.observation_count
     assert hashlib.sha256(source.read_bytes()).hexdigest() == before
     assert restored.stat().st_mode & 0o777 == 0o600
