@@ -33,6 +33,9 @@ jobs:
           ruff format --check src tests
       - name: Mypy
         run: mypy
+      # Catch preflight regressions before the expensive full offline suite.
+      - name: Fast remediation preflight tests
+        run: pytest -q tests/test_ci_remediation_preflight.py
       - name: Offline tests
         run: pytest --durations=30 --durations-min=1.0
       - name: Build
