@@ -72,18 +72,18 @@ jobs:
               "Commit: " + pr.head.sha,
               "Base: " + pr.base.ref,
               "Automation: GitHub Actions PR lifecycle synchronization"
-            ].join("\\n");
+            ].join("\n");
             if (matches.length === 0) {
               const listId = merged ? process.env.TRELLO_DONE_ID : process.env.TRELLO_IN_PROGRESS_ID;
-              const created = await api("POST", "cards", {idList: listId, name, desc: detail});
+              const created = await api("POST", "cards", {idList: listId, name, desc: "\n\n--- GitHub PR sync ---\n" + detail});
               core.info("Created Trello card " + created.id);
             } else {
               const card = matches[0];
               const existing = card.desc || "";
               // Preserve existing human-authored notes. Replace only our managed status block.
-              const marker = "\\n\\n--- GitHub PR sync ---\\n";
+              const marker = "\n\n--- GitHub PR sync ---\n";
               const human = existing.split(marker)[0];
-              const desc = human.includes(url) ? human + marker + detail : human + marker + detail;
+              const desc = human + marker + detail;
               const changes = {name, desc};
               if (merged) changes.idList = process.env.TRELLO_DONE_ID;
               else if (pr.state === "open" && card.idList === process.env.TRELLO_DONE_ID)
