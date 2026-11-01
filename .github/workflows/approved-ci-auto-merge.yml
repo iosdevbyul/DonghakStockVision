@@ -1,0 +1,49 @@
+name: Approved CI Auto Merge
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: guarded-auto-merge
+  cancel-in-progress: false
+jobs:
+  merge:
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Merge approved owner PR after exact SHA passes CI
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const owner = context.repo.owner, repo = context.repo.repo;
+            const full = owner + "/" + repo;
+            if (run.head_repository?.full_name !== full || !/^[a-f0-9]{40}$/.test(run.head_sha || "")) return;
+            const {data: prs} = await github.rest.repos.listPullRequestsAssociatedWithCommit({owner,repo,commit_sha:run.head_sha});
+            const eligible = prs.filter(p => p.state === "open" && p.base.ref === "main" &&
+              p.base.repo?.full_name === full && p.head.repo?.full_name === full &&
+              p.head.sha === run.head_sha && p.user?.login === owner && !p.draft);
+            if (eligible.length !== 1) { core.info("No unique trusted PR for passing SHA"); return; }
+            const pr = eligible[0];
+            const labels = pr.labels.map(l => l.name);
+            if (!labels.includes("auto-merge-approved") || labels.includes("manual-qa") || labels.includes("no-automerge")) {
+              core.info("Explicit approval missing or manual hold: #" + pr.number); return;
+            }
+            const paths = await github.paginate(github.rest.pulls.listFiles,{owner,repo,pull_number:pr.number,per_page:100});
+            if (!paths.length || paths.some(f => f.filename.startsWith(".github/") ||
+                 /(^|\/)(?:[^/]*\.entitlements|[^/]*\.mobileprovision|[^/]*\.p12)$/.test(f.filename))) {
+              core.info("Protected or empty file change requires manual merge"); return;
+            }
+            const {data: current} = await github.rest.pulls.get({owner,repo,pull_number:pr.number});
+            if (current.state !== "open" || current.draft || current.head.sha !== run.head_sha ||
+                current.mergeable !== true) {
+              core.info("PR updated, conflicted, or mergeability unconfirmed"); return;
+            }
+            const result = await github.rest.pulls.merge({
+              owner,repo,pull_number:pr.number,merge_method:"squash",sha:run.head_sha
+            });
+            core.info("Merged #" + pr.number + ": " + result.data.merged);
