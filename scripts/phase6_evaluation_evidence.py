@@ -2,10 +2,44 @@
 
 import argparse
 import json
+import math
 from pathlib import Path
+from typing import Any, cast
 
 from phase6_baseline_scorecard import scorecard
 from phase6_error_attribution import attribute
+
+
+def _completeness(baseline: dict[str, object], errors: dict[str, object]) -> dict[str, object]:
+    """Fail closed on incomplete or non-finite frozen evaluation evidence."""
+    blockers: list[str] = []
+    scores = cast(dict[str, dict[str, Any]], baseline["directions"])
+    attributions = cast(dict[str, dict[str, Any]], errors["directions"])
+    for direction in ("up", "down"):
+        score = scores[direction]
+        attribution = attributions[direction]
+        if score.get("status") != "evaluated":
+            blockers.append(f"{direction}_test_not_evaluated")
+        ap = score.get("testAveragePrecision")
+        if type(ap) not in (int, float) or not math.isfinite(ap) or not 0 <= ap <= 1:
+            blockers.append(f"{direction}_test_ap_invalid")
+        baselines = score.get("baselineAveragePrecision")
+        if not isinstance(baselines, dict) or not baselines:
+            blockers.append(f"{direction}_baselines_missing")
+        elif any(
+            type(value) not in (int, float)
+            or not math.isfinite(value)
+            or not 0 <= value <= 1
+            for value in baselines.values()
+        ):
+            blockers.append(f"{direction}_baseline_ap_invalid")
+        if attribution.get("status") != "descriptive_only":
+            blockers.append(f"{direction}_error_attribution_unavailable")
+    return {
+        "complete": not blockers,
+        "blockers": blockers,
+        "meaning": "Historical evidence completeness only, not model readiness or approval",
+    }
 
 
 def evidence(path: Path, evaluation_id: str) -> dict[str, object]:
@@ -23,6 +57,7 @@ def evidence(path: Path, evaluation_id: str) -> dict[str, object]:
         "modelVersion": baseline["modelVersion"],
         "snapshotId": baseline["snapshotId"],
         "baseline": baseline,
+        "evidenceCompleteness": _completeness(baseline, errors),
         "errors": errors,
         "limitations": (
             "Historical research evidence only. Repeated inspection of the frozen "
