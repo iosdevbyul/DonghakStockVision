@@ -43,9 +43,17 @@ def test_combined_evidence_consistent_and_read_only(tmp_path: Path) -> None:
         store.close()
     before = database.read_bytes()
     result = subprocess.run(
-        [sys.executable, str(SCRIPT), "--analysis-db", str(database),
-         "--evaluation-id", evaluation_id],
-        capture_output=True, text=True, check=False,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--analysis-db",
+            str(database),
+            "--evaluation-id",
+            evaluation_id,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
@@ -57,8 +65,16 @@ def test_combined_evidence_consistent_and_read_only(tmp_path: Path) -> None:
 
 def test_missing_database_rejected(tmp_path: Path) -> None:
     result = subprocess.run(
-        [sys.executable, str(SCRIPT), "--analysis-db", str(tmp_path / "absent.sqlite3"),
-         "--evaluation-id", "unknown"],
-        capture_output=True, text=True, check=False,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--analysis-db",
+            str(tmp_path / "absent.sqlite3"),
+            "--evaluation-id",
+            "unknown",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert result.returncode == 2
