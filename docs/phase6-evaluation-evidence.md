@@ -11,3 +11,7 @@ PYTHONPATH=src python scripts/phase6_evaluation_evidence.py \
 The report verifies evaluation, model, and snapshot identities across both sources. All records come from an existing analysis database. No KRX requests, writes, refits, model promotion, or trading take place.
 
 Missing observations remain explicitly unavailable. These are historical research descriptions, not independently validated forward results; later hypotheses require a new untouched evaluation window.
+
+## Evidence completeness checks
+
+The `evidenceCompleteness` section marks missing or invalid frozen test AP, missing baseline AP, un-evaluated directions, and unavailable error attribution as blockers. Both directions must have complete descriptive evidence for `complete=true`. This check never certifies an investment strategy, independent holdout, or model promotion. Incomplete evidence remains visible rather than being treated as success.
