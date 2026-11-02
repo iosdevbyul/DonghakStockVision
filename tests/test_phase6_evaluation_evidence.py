@@ -60,6 +60,9 @@ def test_combined_evidence_consistent_and_read_only(tmp_path: Path) -> None:
     assert report["baseline"]["directions"]["up"]["testMarginVsBestBaseline"] == pytest.approx(0.1)
     assert report["errors"]["directions"]["up"]["falsePositives"] == 1
     assert report["evaluationId"] == evaluation_id
+    assert report["evidenceCompleteness"]["complete"] is False
+    assert "down_test_not_evaluated" in report["evidenceCompleteness"]["blockers"]
+    assert "down_error_attribution_unavailable" in report["evidenceCompleteness"]["blockers"]
     assert database.read_bytes() == before
 
 
