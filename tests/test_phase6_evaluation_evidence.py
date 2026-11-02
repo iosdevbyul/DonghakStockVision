@@ -3,6 +3,8 @@
 import json
 import subprocess
 import sys
+
+import pytest
 from pathlib import Path
 
 from donghak_stock_vision.storage.analysis import AnalysisStore
@@ -47,7 +49,7 @@ def test_combined_evidence_consistent_and_read_only(tmp_path: Path) -> None:
     )
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
-    assert report["baseline"]["directions"]["up"]["testMarginVsBestBaseline"] == 0.1
+    assert report["baseline"]["directions"]["up"]["testMarginVsBestBaseline"] == pytest.approx(0.1)
     assert report["errors"]["directions"]["up"]["falsePositives"] == 1
     assert report["evaluationId"] == evaluation_id
     assert database.read_bytes() == before
