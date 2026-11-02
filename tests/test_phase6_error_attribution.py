@@ -16,9 +16,10 @@ def _metrics(fp: int, fn: int, tp: int = 1, tn: int = 1) -> dict[str, object]:
 
 def _run(path: Path, evaluation_id: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(SCRIPT), "--analysis-db", str(path),
-         "--evaluation-id", evaluation_id],
-        capture_output=True, text=True, check=False,
+        [sys.executable, str(SCRIPT), "--analysis-db", str(path), "--evaluation-id", evaluation_id],
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
@@ -58,16 +59,19 @@ def test_error_attribution_rejects_inconsistent_ticker_counts(tmp_path: Path) ->
     metrics = _metrics(2, 1)
     metrics["by_ticker"] = {"AAA": _metrics(0, 0)}
     try:
-        evaluation_id = store.put("evaluation", {
-            "mode": "historical_research",
-            "operational_status": "unregistered",
-            "model_version": "model-1",
-            "snapshot_id": "snapshot-1",
-            "directions": {
-                "up": {"test_status": "evaluated", "test": metrics},
-                "down": {"test_status": "unavailable"},
+        evaluation_id = store.put(
+            "evaluation",
+            {
+                "mode": "historical_research",
+                "operational_status": "unregistered",
+                "model_version": "model-1",
+                "snapshot_id": "snapshot-1",
+                "directions": {
+                    "up": {"test_status": "evaluated", "test": metrics},
+                    "down": {"test_status": "unavailable"},
+                },
             },
-        })
+        )
     finally:
         store.close()
     result = _run(path, evaluation_id)
