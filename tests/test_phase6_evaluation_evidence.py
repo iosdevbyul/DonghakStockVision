@@ -3,9 +3,9 @@
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from donghak_stock_vision.storage.analysis import AnalysisStore
 
