@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "phase6_compare_evaluations.py"
 
 
-def _evaluation(snapshot: str, ap: float) -> dict:
+def _evaluation(snapshot: str, ap: float) -> dict[str, object]:
     return {
         "mode": "historical_research",
         "operational_status": "unregistered",
