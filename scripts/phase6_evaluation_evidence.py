@@ -4,6 +4,7 @@ import argparse
 import json
 import math
 from pathlib import Path
+from typing import Any, cast
 
 from phase6_baseline_scorecard import scorecard
 from phase6_error_attribution import attribute
@@ -12,9 +13,11 @@ from phase6_error_attribution import attribute
 def _completeness(baseline: dict[str, object], errors: dict[str, object]) -> dict[str, object]:
     """Fail closed on incomplete or non-finite frozen evaluation evidence."""
     blockers: list[str] = []
+    scores = cast(dict[str, dict[str, Any]], baseline["directions"])
+    attributions = cast(dict[str, dict[str, Any]], errors["directions"])
     for direction in ("up", "down"):
-        score = baseline["directions"][direction]
-        attribution = errors["directions"][direction]
+        score = scores[direction]
+        attribution = attributions[direction]
         if score.get("status") != "evaluated":
             blockers.append(f"{direction}_test_not_evaluated")
         ap = score.get("testAveragePrecision")
