@@ -65,6 +65,23 @@ def test_combined_evidence_consistent_and_read_only(tmp_path: Path) -> None:
     assert "down_test_not_evaluated" in report["evidenceCompleteness"]["blockers"]
     assert "down_error_attribution_unavailable" in report["evidenceCompleteness"]["blockers"]
     assert database.read_bytes() == before
+    strict = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--analysis-db",
+            str(database),
+            "--evaluation-id",
+            evaluation_id,
+            "--require-complete",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert strict.returncode == 3, strict.stderr
+    assert json.loads(strict.stdout)["evidenceCompleteness"]["complete"] is False
+    assert database.read_bytes() == before
 
 
 def test_missing_database_rejected(tmp_path: Path) -> None:
