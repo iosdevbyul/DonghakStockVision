@@ -91,9 +91,20 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--analysis-db", type=Path, required=True)
     parser.add_argument("--evaluation-id", required=True)
+    parser.add_argument(
+        "--require-complete",
+        action="store_true",
+        help="exit 3 if frozen research evidence is incomplete; still print the report",
+    )
     args = parser.parse_args()
     try:
-        print(json.dumps(evidence(args.analysis_db, args.evaluation_id), sort_keys=True))
+        report = evidence(args.analysis_db, args.evaluation_id)
+        print(json.dumps(report, sort_keys=True, allow_nan=False))
+        completeness = report["evidenceCompleteness"]
+        if args.require_complete and (
+            not isinstance(completeness, dict) or completeness.get("complete") is not True
+        ):
+            return 3
     except (ValueError, KeyError, TypeError) as error:
         parser.exit(2, f"evidence report failed: {error}\n")
     return 0
