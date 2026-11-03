@@ -99,3 +99,50 @@ def test_missing_database_rejected(tmp_path: Path) -> None:
         check=False,
     )
     assert result.returncode == 2
+
+
+def test_strict_gate_accepts_complete_historical_evidence(tmp_path: Path) -> None:
+    database = tmp_path / "analysis.sqlite3"
+    store = AnalysisStore(database)
+    matrix = {"tp": 1, "fp": 1, "tn": 1, "fn": 0}
+    metrics = {
+        "pr_auc_ap": 0.6,
+        "confusion_matrix": matrix,
+        "by_ticker": {"AAA": {"confusion_matrix": matrix}},
+    }
+    direction = {
+        "test_status": "evaluated",
+        "evaluation_status": "baseline_not_beaten",
+        "test": metrics,
+        "test_baselines": {"prior": {"pr_auc_ap": 0.5}},
+    }
+    try:
+        evaluation_id = store.put(
+            "evaluation",
+            {
+                "mode": "historical_research",
+                "operational_status": "unregistered",
+                "usage_restriction": "research_only",
+                "model_version": "model-1",
+                "snapshot_id": "snapshot-1",
+                "directions": {"up": direction, "down": direction},
+            },
+        )
+    finally:
+        store.close()
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--analysis-db",
+            str(database),
+            "--evaluation-id",
+            evaluation_id,
+            "--require-complete",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["evidenceCompleteness"]["complete"] is True
