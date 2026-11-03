@@ -10,9 +10,7 @@ from donghak_stock_vision.storage.analysis import AnalysisStore
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "phase6_batch_evidence.py"
 
 
-def _run(
-    database: Path, ids: list[str], strict: bool = False
-) -> subprocess.CompletedProcess[str]:
+def _run(database: Path, ids: list[str], strict: bool = False) -> subprocess.CompletedProcess[str]:
     command = [
         sys.executable,
         str(SCRIPT),
