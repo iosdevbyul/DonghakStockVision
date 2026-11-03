@@ -2,6 +2,7 @@
 
 import argparse
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -19,12 +20,21 @@ def audit(path: Path, evaluation_ids: list[str]) -> dict[str, Any]:
     complete = sum(
         report["evidenceCompleteness"]["complete"] is True for report in reports
     )
+    blockers = Counter(
+        blocker
+        for report in reports
+        for blocker in report["evidenceCompleteness"]["blockers"]
+    )
     return {
         "schemaVersion": "phase6_evidence_batch_v1",
         "evaluationCount": len(reports),
         "completeCount": complete,
         "incompleteCount": len(reports) - complete,
         "allComplete": complete == len(reports),
+        "blockerCounts": dict(sorted(blockers.items())),
+        "evaluationsWithBlockers": sum(
+            bool(report["evidenceCompleteness"]["blockers"]) for report in reports
+        ),
         "reports": reports,
         "limitations": (
             "Historical descriptive evidence only. Comparing reports is not "
