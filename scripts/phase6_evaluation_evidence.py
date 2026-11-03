@@ -33,6 +33,27 @@ def _completeness(baseline: dict[str, object], errors: dict[str, object]) -> dic
             for value in baselines.values()
         ):
             blockers.append(f"{direction}_baseline_ap_invalid")
+        margin = score.get("testMarginVsBestBaseline")
+        if (
+            type(ap) in (int, float)
+            and math.isfinite(ap)
+            and isinstance(baselines, dict)
+            and baselines
+            and all(type(v) in (int, float) and math.isfinite(v) for v in baselines.values())
+        ):
+            expected = ap - max(baselines.values())
+            if (
+                type(margin) not in (int, float)
+                or not math.isfinite(margin)
+                or not math.isclose(margin, expected, rel_tol=1e-9, abs_tol=1e-12)
+            ):
+                blockers.append(f"{direction}_test_margin_inconsistent")
+        validation_margin = score.get("validationMargin")
+        if validation_margin is not None and (
+            type(validation_margin) not in (int, float)
+            or not math.isfinite(validation_margin)
+        ):
+            blockers.append(f"{direction}_validation_margin_invalid")
         if attribution.get("status") != "descriptive_only":
             blockers.append(f"{direction}_error_attribution_unavailable")
     return {
