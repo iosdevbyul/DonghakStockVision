@@ -20,11 +20,11 @@ def audit(path: Path, evaluation_ids: list[str]) -> dict[str, Any]:
     complete = sum(
         report["evidenceCompleteness"]["complete"] is True for report in reports
     )
-    blockers = Counter(
-        blocker
-        for report in reports
-        for blocker in report["evidenceCompleteness"]["blockers"]
-    )
+    blocker_evaluations: dict[str, list[str]] = {}
+    for report in reports:
+        for blocker in report["evidenceCompleteness"]["blockers"]:
+            blocker_evaluations.setdefault(blocker, []).append(report["evaluationId"])
+    blockers = Counter({name: len(ids) for name, ids in blocker_evaluations.items()})
     return {
         "schemaVersion": "phase6_evidence_batch_v1",
         "evaluationCount": len(reports),
@@ -32,6 +32,12 @@ def audit(path: Path, evaluation_ids: list[str]) -> dict[str, Any]:
         "incompleteCount": len(reports) - complete,
         "allComplete": complete == len(reports),
         "blockerCounts": dict(sorted(blockers.items())),
+        "blockerEvaluationIds": dict(sorted(blocker_evaluations.items())),
+        "incompleteEvaluationIds": [
+            report["evaluationId"]
+            for report in reports
+            if report["evidenceCompleteness"]["blockers"]
+        ],
         "evaluationsWithBlockers": sum(
             bool(report["evidenceCompleteness"]["blockers"]) for report in reports
         ),
