@@ -100,7 +100,10 @@ def main() -> int:
     try:
         report = evidence(args.analysis_db, args.evaluation_id)
         print(json.dumps(report, sort_keys=True, allow_nan=False))
-        if args.require_complete and not report["evidenceCompleteness"]["complete"]:
+        completeness = report["evidenceCompleteness"]
+        if args.require_complete and (
+            not isinstance(completeness, dict) or completeness.get("complete") is not True
+        ):
             return 3
     except (ValueError, KeyError, TypeError) as error:
         parser.exit(2, f"evidence report failed: {error}\n")
