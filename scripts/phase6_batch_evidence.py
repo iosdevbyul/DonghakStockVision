@@ -9,12 +9,19 @@ from typing import Any
 from phase6_evaluation_evidence import evidence
 
 
-def _review_priority(blockers: list[str]) -> tuple[int, str]:
-    """Prioritize evidence integrity issues, never model performance."""
-    if any(
-        blocker.endswith(("_invalid", "_inconsistent")) for blocker in blockers
-    ):
-        return 0, "integrity"
+def _review_priority(report: dict[str, Any]) -> tuple[int, str]:
+    """Prioritize errors in evaluated directions over absent evidence."""
+    blockers = report["evidenceCompleteness"]["blockers"]
+    scores = report["baseline"]["directions"]
+    for direction in ("up", "down"):
+        if scores[direction].get("status") != "evaluated":
+            continue
+        if any(
+            blocker.startswith(f"{direction}_")
+            and blocker.endswith(("_invalid", "_inconsistent"))
+            for blocker in blockers
+        ):
+            return 0, "integrity"
     return 1, "missing_evidence"
 
 
@@ -24,7 +31,7 @@ def _review_queue(reports: list[dict[str, Any]]) -> list[dict[str, Any]]:
         blockers = report["evidenceCompleteness"]["blockers"]
         if not blockers:
             continue
-        order, priority = _review_priority(blockers)
+        order, priority = _review_priority(report)
         queue.append(
             {
                 "evaluationId": report["evaluationId"],
