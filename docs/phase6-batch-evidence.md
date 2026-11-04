@@ -21,3 +21,7 @@ Different snapshots can appear in one inventory, but their scores are **not** co
 ## Evaluation traceability
 
 `blockerEvaluationIds` maps each blocker code to the selected evaluation IDs that contain it, preserving request order. `incompleteEvaluationIds` provides a direct review queue of evaluations with at least one blocker, also in request order. These are identifiers for offline investigation, not a ranking of model quality or an authorization to use the models.
+
+## Descriptive review priority
+
+`reviewQueue` identifies incomplete evaluations and orders them for manual evidence review. Metric integrity blockers ending in `_invalid` or `_inconsistent` are assigned `integrity` priority ahead of `missing_evidence` blockers. Evaluations with equal priority preserve input order. Each entry retains the evaluation and model IDs with its full blocker list. Priority describes evidence investigation order only; it is **not** a model performance ranking, prediction confidence, or authorization to trade.
