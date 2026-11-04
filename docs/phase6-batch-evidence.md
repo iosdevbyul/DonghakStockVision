@@ -17,3 +17,7 @@ Different snapshots can appear in one inventory, but their scores are **not** co
 ## Aggregated blockers
 
 `blockerCounts` records how many selected evaluation reports contain each descriptive completeness blocker, with keys sorted for reproducible JSON output. `evaluationsWithBlockers` counts evaluations with at least one blocker; one evaluation may contribute more than one blocker. The counts do not estimate predictive accuracy or establish a causal explanation.
+
+## Evaluation traceability
+
+`blockerEvaluationIds` maps each blocker code to the selected evaluation IDs that contain it, preserving request order. `incompleteEvaluationIds` provides a direct review queue of evaluations with at least one blocker, also in request order. These are identifiers for offline investigation, not a ranking of model quality or an authorization to use the models.
