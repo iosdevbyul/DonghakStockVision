@@ -76,6 +76,9 @@ def test_batch_audit_preserves_order_and_rejects_incomplete_evidence(tmp_path: P
     assert output["blockerCounts"]["down_test_not_evaluated"] == 1
     assert output["blockerCounts"]["down_error_attribution_unavailable"] == 1
     assert output["incompleteEvaluationIds"] == [incomplete_id]
+    assert [row["evaluationId"] for row in output["reviewQueue"]] == [incomplete_id]
+    assert output["reviewQueue"][0]["priority"] == "missing_evidence"
+    assert output["reviewQueue"][0]["modelVersion"] == "incomplete-model"
     assert output["blockerEvaluationIds"]["down_test_not_evaluated"] == [incomplete_id]
     assert output["blockerEvaluationIds"]["down_error_attribution_unavailable"] == [incomplete_id]
     assert [row["evaluationId"] for row in output["reports"]] == selected
