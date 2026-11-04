@@ -76,6 +76,9 @@ def test_batch_audit_preserves_order_and_rejects_incomplete_evidence(tmp_path: P
     assert output["blockerCounts"]["down_test_not_evaluated"] == 1
     assert output["blockerCounts"]["down_error_attribution_unavailable"] == 1
     assert output["incompleteEvaluationIds"] == [incomplete_id]
+    assert [row["evaluationId"] for row in output["reviewQueue"]] == [incomplete_id]
+    assert output["reviewQueue"][0]["priority"] == "missing_evidence"
+    assert output["reviewQueue"][0]["modelVersion"] == "incomplete-model"
     assert output["blockerEvaluationIds"]["down_test_not_evaluated"] == [incomplete_id]
     assert output["blockerEvaluationIds"]["down_error_attribution_unavailable"] == [incomplete_id]
     assert [row["evaluationId"] for row in output["reports"]] == selected
@@ -96,3 +99,52 @@ def test_batch_audit_rejects_duplicate_ids_and_missing_database(tmp_path: Path) 
     missing = _run(database, ["missing"])
     assert missing.returncode == 2
     assert not database.exists()
+
+
+def test_review_queue_prioritizes_invalid_metrics_before_missing_data(tmp_path: Path) -> None:
+    database = tmp_path / "analysis.sqlite3"
+    store = AnalysisStore(database)
+    matrix = {"tp": 1, "fp": 1, "tn": 1, "fn": 0}
+
+    def direction(ap: float) -> dict[str, object]:
+        return {
+            "test_status": "evaluated",
+            "test": {
+                "pr_auc_ap": ap,
+                "confusion_matrix": matrix,
+                "by_ticker": {"AAA": {"confusion_matrix": matrix}},
+            },
+            "test_baselines": {"prior": {"pr_auc_ap": 0.5}},
+        }
+
+    common = {
+        "mode": "historical_research",
+        "operational_status": "unregistered",
+        "usage_restriction": "research_only",
+        "snapshot_id": "snapshot-1",
+    }
+    try:
+        missing_id = store.put(
+            "evaluation",
+            {
+                **common,
+                "model_version": "missing",
+                "directions": {"up": direction(0.6), "down": {"test_status": "unavailable"}},
+            },
+        )
+        invalid_id = store.put(
+            "evaluation",
+            {
+                **common,
+                "model_version": "invalid",
+                "directions": {"up": direction(1.5), "down": direction(0.6)},
+            },
+        )
+    finally:
+        store.close()
+    result = _run(database, [missing_id, invalid_id])
+    assert result.returncode == 0, result.stderr
+    queue = json.loads(result.stdout)["reviewQueue"]
+    assert [row["evaluationId"] for row in queue] == [invalid_id, missing_id]
+    assert [row["priority"] for row in queue] == ["integrity", "missing_evidence"]
+    assert "up_test_ap_invalid" in queue[0]["blockers"]
