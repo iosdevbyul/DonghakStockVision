@@ -105,6 +105,7 @@ def test_review_queue_prioritizes_invalid_metrics_before_missing_data(tmp_path: 
     database = tmp_path / "analysis.sqlite3"
     store = AnalysisStore(database)
     matrix = {"tp": 1, "fp": 1, "tn": 1, "fn": 0}
+
     def direction(ap: float) -> dict[str, object]:
         return {
             "test_status": "evaluated",
@@ -115,6 +116,7 @@ def test_review_queue_prioritizes_invalid_metrics_before_missing_data(tmp_path: 
             },
             "test_baselines": {"prior": {"pr_auc_ap": 0.5}},
         }
+
     common = {
         "mode": "historical_research",
         "operational_status": "unregistered",
