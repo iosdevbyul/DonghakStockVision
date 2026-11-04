@@ -1,5 +1,6 @@
 """Conditional metrics with explicit undefined cases, including noninterpolated AP."""
 
+import math
 import statistics
 from typing import Any
 
@@ -11,6 +12,11 @@ from donghak_stock_vision.models.linear import sigmoid
 def evaluate_metrics(labels: list[int], scores: list[float]) -> dict[str, Any]:
     if len(labels) != len(scores):
         raise ValueError("labels and scores must align")
+    if any(type(y) is not int or y not in (0, 1) for y in labels):
+        raise ValueError("labels must be binary integers")
+    if any(type(p) not in (int, float) or not 0 <= p <= 1 or not math.isfinite(p) for p in scores):
+        raise ValueError("scores must be finite numbers in [0, 1]")
+    positive_count = sum(labels)
     tp = sum(y == 1 and p >= THRESHOLD for y, p in zip(labels, scores, strict=True))
     fp = sum(y == 0 and p >= THRESHOLD for y, p in zip(labels, scores, strict=True))
     fn = sum(y == 1 and p < THRESHOLD for y, p in zip(labels, scores, strict=True))
@@ -33,7 +39,7 @@ def evaluate_metrics(labels: list[int], scores: list[float]) -> dict[str, Any]:
             added = sum(groups[p])
             seen += len(groups[p])
             positives += added
-            ap += added / sum(labels) * positives / seen
+            ap += added / positive_count * positives / seen
     else:
         reasons["pr_auc_ap"] = "empty_or_single_class"
     bins = []
@@ -54,8 +60,8 @@ def evaluate_metrics(labels: list[int], scores: list[float]) -> dict[str, Any]:
         )
     return {
         "n": len(labels),
-        "positive": sum(labels),
-        "negative": len(labels) - sum(labels),
+        "positive": positive_count,
+        "negative": len(labels) - positive_count,
         "prevalence": statistics.mean(labels) if labels else None,
         "threshold": THRESHOLD,
         "precision": precision,
@@ -82,7 +88,11 @@ def baseline_scores(
 
 
 def report(samples: list[Sample], scores: list[float]) -> dict[str, Any]:
-    labels = [int(s.label) for s in samples if s.label is not None]
+    if len(samples) != len(scores):
+        raise ValueError("samples and scores must align")
+    if any(s.label_status != "labeled" or type(s.label) is not int for s in samples):
+        raise ValueError("only explicitly labeled samples can be evaluated")
+    labels = [s.label for s in samples if s.label is not None]
     result = evaluate_metrics(labels, scores)
     result["by_ticker"] = {
         ticker: evaluate_metrics(
