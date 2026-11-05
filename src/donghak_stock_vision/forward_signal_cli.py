@@ -11,7 +11,19 @@ from donghak_stock_vision.backtest.validation import require
 
 def add_commands(sub: Any) -> None:
     cmd = sub.add_parser("forward-signal", help="captured-observation SMA signals; no trading")
-    cmd.add_argument("action", choices=("dry-run", "evaluate", "history", "verify", "offline-demo"))
+    cmd.add_argument(
+        "action",
+        choices=(
+            "dry-run",
+            "evaluate",
+            "history",
+            "verify",
+            "offline-demo",
+            "predict",
+            "prediction-status",
+            "offline-prediction-demo",
+        ),
+    )
     cmd.add_argument("--capture-root", type=Path)
     cmd.add_argument("--request", type=Path)
     cmd.add_argument("--request-pin")
@@ -19,6 +31,8 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--journal-pin")
     cmd.add_argument("--signal-id")
     cmd.add_argument("--limit", type=int, default=50)
+    cmd.add_argument("--prediction-policy", type=Path)
+    cmd.add_argument("--prediction-policy-pin")
     from donghak_stock_vision.storage.krx_authorization import add_trust_arguments
 
     add_trust_arguments(cmd)
@@ -43,14 +57,25 @@ def run(args: argparse.Namespace) -> int:
     from donghak_stock_vision.storage.forward_signal import generate_signal, verify_signal
     from donghak_stock_vision.storage.forward_signal_journal import append_signal, history
 
-    if args.action == "offline-demo":
-        from donghak_stock_vision.forward_signal_demo_cli import demonstrate
+    require(
+        args.action == "predict"
+        or (args.prediction_policy is None and args.prediction_policy_pin is None),
+        "prediction_policy_only_for_predict",
+    )
+
+    if args.action in {"offline-demo", "offline-prediction-demo"}:
+        from donghak_stock_vision.forward_signal_demo_cli import demonstrate, demonstrate_prediction
 
         require(
             args.capture_root is not None and args.journal is not None,
             "explicit_demo_capture_root_and_journal_required",
         )
-        print(demonstrate(args.capture_root, args.journal, args.outcome).payload_json)
+        result = (
+            demonstrate_prediction(args.capture_root, args.journal)
+            if args.action == "offline-prediction-demo"
+            else demonstrate(args.capture_root, args.journal, args.outcome)
+        )
+        print(result.payload_json)
         return 0
     from donghak_stock_vision.storage.krx_authorization import cli_trust
 
@@ -76,7 +101,20 @@ def run(args: argparse.Namespace) -> int:
     )
     if args.action == "history":
         print(history(args.journal, args.journal_pin, limit=args.limit).payload_json)
-    elif args.action == "evaluate":
+    elif args.action in {"evaluate", "predict"}:
+        policy = None
+        if args.action == "predict":
+            require(
+                args.prediction_policy is not None and args.prediction_policy_pin is not None,
+                "explicit_prediction_policy_and_pin_required",
+            )
+            require(
+                args.prediction_policy.is_file()
+                and not args.prediction_policy.is_symlink()
+                and args.prediction_policy.stat().st_size <= 4096,
+                "bounded_prediction_policy_required",
+            )
+            policy = FrozenJSON(args.prediction_policy.read_text())
         print(
             append_signal(
                 args.journal,
@@ -86,6 +124,8 @@ def run(args: argparse.Namespace) -> int:
                 args.journal_pin,
                 datetime.now(UTC),
                 authorization_trust=trust,
+                prediction_policy=policy,
+                prediction_policy_pin=args.prediction_policy_pin,
             ).payload_json
         )
     else:
@@ -97,6 +137,15 @@ def run(args: argparse.Namespace) -> int:
         ]
         require(len(selected) == 1, "signal_not_found")
         entry = selected[0]["entry"]
+        if "prediction" in entry:
+            from donghak_stock_vision.storage.prospective_prediction import authorize_horizon
+
+            authorize_horizon(
+                request,
+                args.request_pin,
+                FrozenJSON.freeze(entry["prediction"]["policy"]),
+                entry["prediction"]["policy_pin"],
+            )
         verify_signal(
             args.capture_root,
             request,
@@ -105,6 +154,12 @@ def run(args: argparse.Namespace) -> int:
             entry["decision_pin"],
             authorization_trust=trust,
         )
+        if args.action == "prediction-status":
+            from donghak_stock_vision.storage.prospective_prediction import state
+
+            require("prediction" in entry, "legacy_signal_has_no_predeclared_prediction")
+            print(state(FrozenJSON.freeze(entry["prediction"]), datetime.now(UTC)).payload_json)
+            return 0
         print(
             FrozenJSON.freeze(
                 {
