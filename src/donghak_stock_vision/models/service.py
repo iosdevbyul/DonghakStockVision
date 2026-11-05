@@ -290,7 +290,7 @@ class EvaluationService:
     def __init__(self, store: AnalysisStore) -> None:
         self.store = store
 
-    def evaluate(self, version: str, mode: str) -> dict[str, Any]:
+    def evaluate(self, version: str, mode: str, *, persist: bool = True) -> dict[str, Any]:
         model = load_model(self.store, version, mode)
         dataset = self.store.get("dataset", model["dataset_id"])
         snapshot = self.store.get("snapshot", model["snapshot_id"])
@@ -332,5 +332,7 @@ class EvaluationService:
                 scores = [score(entry["parameters"], s.values)[0] for s in rows]
                 if report(rows, scores) != entry[part]:
                     raise AnalysisError("evaluation_reproduction_mismatch")
-        result["evaluation_id"] = self.store.put("evaluation", result)
+        result["evaluation_id"] = (
+            self.store.put("evaluation", result) if persist else digest(result)
+        )
         return result
