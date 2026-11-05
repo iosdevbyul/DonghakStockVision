@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -16,20 +16,34 @@ from donghak_stock_vision.storage.forward_signal import POLICY, generate_signal,
 from donghak_stock_vision.storage.forward_signal_journal import GENESIS, append_signal, history
 
 
-def prepare(root: Path, closes: tuple[int, ...]) -> FrozenJSON:
+def prepare(
+    root: Path,
+    closes: tuple[int, ...],
+    *,
+    research_split: ExplicitResearchSplit | None = None,
+    observation_days: tuple[date, ...] | None = None,
+) -> FrozenJSON:
     require(not root.exists(), "demo_requires_new_capture_root")
     require(0 < len(closes) <= 4, "demo_close_budget")
-    split = ExplicitResearchSplit(
+    require(
+        (research_split is None) == (observation_days is None),
+        "explicit_synthetic_days_and_cohort_required_together",
+    )
+    split = research_split or ExplicitResearchSplit(
         ResearchDateRange(date(2025, 7, 1), date(2025, 7, 4)),
         ResearchDateRange(date(2025, 7, 7), date(2025, 7, 7)),
         ResearchDateRange(date(2025, 7, 8), date(2025, 7, 8)),
+    )
+    days = observation_days or tuple(date(2025, 7, i + 1) for i in range(len(closes)))
+    require(
+        len(days) == len(closes) and list(days) == sorted(set(days)), "synthetic_observation_dates"
     )
     sources = []
     for i, close in enumerate(closes):
         plan = ForwardCapturePlan(
             "KOSPI",
             "005930",
-            date(2025, 7, i + 1),
+            days[i],
             "training",
             split,
             split.identifier,
@@ -86,8 +100,8 @@ def prepare(root: Path, closes: tuple[int, ...]) -> FrozenJSON:
             "market": "KOSPI",
             "currency": "KRW",
             "mode": "offline_fixture",
-            "start": "2025-07-01",
-            "end": "2025-07-04",
+            "start": days[0].isoformat(),
+            "end": days[-1].isoformat() if observation_days is not None else "2025-07-04",
             "calculated_at": datetime.now(UTC).isoformat(),
             "fast": 2,
             "slow": 3,
@@ -101,6 +115,73 @@ def prepare(root: Path, closes: tuple[int, ...]) -> FrozenJSON:
         output.write(request.payload_json)
     (root / "signal-request.json").chmod(0o600)
     return request
+
+
+def demonstrate_prediction(root: Path, journal: Path) -> FrozenJSON:
+    """Execute a new, explicitly synthetic forecast using the existing collector."""
+    from donghak_stock_vision.data.schema import SEOUL
+    from donghak_stock_vision.storage.prospective_prediction import state
+
+    require(not journal.exists(), "demo_requires_new_journal")
+    today = datetime.now(UTC).astimezone(SEOUL).date()
+    day = today - timedelta(days=1)
+    days: list[date] = []
+    while len(days) < 4:
+        if day.weekday() < 5:
+            days.append(day)
+        day -= timedelta(days=1)
+    days.reverse()
+    target = today + timedelta(days=1)
+    while target.weekday() >= 5:
+        target += timedelta(days=1)
+    # These weekday choices are synthetic fixture dates, not a KRX calendar claim.
+    cohort = ExplicitResearchSplit(
+        ResearchDateRange(days[0], target),
+        ResearchDateRange(target + timedelta(days=1), target + timedelta(days=1)),
+        ResearchDateRange(target + timedelta(days=2), target + timedelta(days=2)),
+    )
+    request = prepare(root, (100, 90, 80, 120), research_split=cohort, observation_days=tuple(days))
+    due = datetime.combine(target + timedelta(days=1), datetime.min.time(), UTC)
+    policy = FrozenJSON.freeze(
+        {
+            "version": "forward_prediction_policy_v1",
+            "target_trading_date": target.isoformat(),
+            "evaluate_not_before": due.isoformat(),
+            "outcome_deadline": (due + timedelta(days=3)).isoformat(),
+            "max_recording_delay_seconds": 30,
+        }
+    )
+    policy_path = root / "prediction-policy.json"
+    with policy_path.open("x") as output:
+        output.write(policy.payload_json)
+    policy_path.chmod(0o600)
+    appended = append_signal(
+        journal,
+        root,
+        request,
+        request.identifier,
+        GENESIS,
+        datetime.now(UTC),
+        prediction_policy=policy,
+        prediction_policy_pin=policy.identifier,
+    ).to_dict()
+    prediction = FrozenJSON.freeze(appended["entry"]["entry"]["prediction"])
+    history(journal, appended["head_pin"])
+    return FrozenJSON.freeze(
+        {
+            "version": "forward_prediction_demo_v1",
+            "origin": "offline_fixture",
+            "request_path": str(root / "signal-request.json"),
+            "request_pin": request.identifier,
+            "policy_path": str(policy_path),
+            "policy_pin": policy.identifier,
+            "signal_id": appended["entry"]["entry"]["decision"]["signal_id"],
+            "journal_head_pin": appended["head_pin"],
+            "prediction": prediction.to_dict(),
+            "status": state(prediction, datetime.now(UTC)).to_dict(),
+            "live_requests": 0,
+        }
+    )
 
 
 def demonstrate(root: Path, journal: Path, outcome: str) -> FrozenJSON:
