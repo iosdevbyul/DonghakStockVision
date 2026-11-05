@@ -95,14 +95,16 @@ def _entries(connection: sqlite3.Connection, expected_head: str) -> list[dict[st
     ):
         owner = FrozenJSON(document)
         d = owner.to_dict()
+        prediction_entry = d.get("version") == "forward_signal_entry_v2"
         require(
             set(d)
-            == {"version", "sequence", "previous_pin", "inserted_at", "decision", "decision_pin"},
+            == {"version", "sequence", "previous_pin", "inserted_at", "decision", "decision_pin"}
+            | ({"prediction"} if prediction_entry else set()),
             "journal_entry_fields",
         )
         decision = FrozenJSON.freeze(d["decision"])
         require(
-            d["version"] == "forward_signal_entry_v1"
+            d["version"] in {"forward_signal_entry_v1", "forward_signal_entry_v2"}
             and seq == len(entries) + 1 == d["sequence"]
             and signal_id == d["decision"]["signal_id"]
             and d["previous_pin"] == previous
@@ -111,6 +113,20 @@ def _entries(connection: sqlite3.Connection, expected_head: str) -> list[dict[st
             "journal_integrity_mismatch",
         )
         inserted = timestamp(d["inserted_at"])
+        if prediction_entry:
+            from donghak_stock_vision.storage.prospective_prediction import evidence
+
+            prediction = d["prediction"]
+            require(
+                evidence(
+                    decision,
+                    FrozenJSON.freeze(prediction["policy"]),
+                    prediction["policy_pin"],
+                    inserted,
+                ).to_dict()
+                == prediction,
+                "prediction_evidence_mismatch",
+            )
         require(
             inserted.isoformat() == d["inserted_at"]
             and inserted >= timestamp(d["decision"]["calculated_at"]),
@@ -156,7 +172,19 @@ def append_signal(
     inserted_at: datetime,
     *,
     authorization_trust: FrozenJSON | None = None,
+    prediction_policy: FrozenJSON | None = None,
+    prediction_policy_pin: str | None = None,
 ) -> FrozenJSON:
+    require(
+        (prediction_policy is None) == (prediction_policy_pin is None),
+        "prediction_policy_and_pin_required_together",
+    )
+    if prediction_policy is not None:
+        from donghak_stock_vision.storage.prospective_prediction import authorize_horizon
+
+        if prediction_policy_pin is None:
+            raise ValueError("prediction_policy_pin_required")
+        authorize_horizon(request, request_pin, prediction_policy, prediction_policy_pin)
     decision = generate_signal(
         root, request, request_pin, authorization_trust=authorization_trust
     )  # Never append arbitrary summary JSON.
@@ -183,6 +211,41 @@ def append_signal(
         inserted_at >= timestamp(decision.to_dict()["calculated_at"]),
         "insertion_before_calculation",
     )
+    require(
+        (prediction_policy is None) == (prediction_policy_pin is None),
+        "prediction_policy_and_pin_required_together",
+    )
+    prediction = None
+    if prediction_policy is not None:
+        from donghak_stock_vision.storage.prospective_prediction import evidence, policy
+
+        if prediction_policy_pin is None:
+            raise ValueError("prediction_policy_pin_required")
+        policy(prediction_policy, prediction_policy_pin)
+        if path.exists():
+            existing = history(path, expected_head, limit=MAX_ENTRIES).to_dict()
+            for entry in existing["entries"]:
+                if entry["entry"]["decision"]["signal_id"] == decision.to_dict()["signal_id"]:
+                    stored = entry["entry"].get("prediction")
+                    require(
+                        stored is not None
+                        and stored["policy_pin"] == prediction_policy_pin
+                        and entry["entry"]["decision_pin"] == decision.identifier,
+                        "same_signal_id_different_prediction_contract",
+                    )
+                    require(
+                        inserted_at >= timestamp(entry["entry"]["inserted_at"]),
+                        "prediction_clock_before_recording",
+                    )
+                    return FrozenJSON.freeze(
+                        {
+                            "version": "forward_signal_append_v1",
+                            "duplicate": True,
+                            "entry": entry,
+                            "head_pin": expected_head,
+                        }
+                    )
+        prediction = evidence(decision, prediction_policy, prediction_policy_pin, inserted_at)
     with closing(_open(path, create=True)) as connection:
         try:
             connection.execute("BEGIN IMMEDIATE")
@@ -190,6 +253,10 @@ def append_signal(
             signal_id = decision.to_dict()["signal_id"]
             for entry in entries:
                 if entry["entry"]["decision"]["signal_id"] == signal_id:
+                    require(
+                        (entry["entry"].get("prediction") is None) == (prediction is None),
+                        "same_signal_id_different_prediction_contract",
+                    )
                     require(
                         entry["entry"]["decision_pin"] == decision.identifier,
                         "same_signal_id_different_content",
@@ -209,12 +276,15 @@ def append_signal(
             )
             owner = FrozenJSON.freeze(
                 {
-                    "version": "forward_signal_entry_v1",
+                    "version": "forward_signal_entry_v2"
+                    if prediction is not None
+                    else "forward_signal_entry_v1",
                     "sequence": len(entries) + 1,
                     "previous_pin": expected_head,
                     "inserted_at": inserted_at.isoformat(),
                     "decision": decision.to_dict(),
                     "decision_pin": decision.identifier,
+                    **({"prediction": prediction.to_dict()} if prediction is not None else {}),
                 }
             )
             require(len(owner.payload_json.encode()) <= MAX_ENTRY, "entry_output_budget")
