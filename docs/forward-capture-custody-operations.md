@@ -28,10 +28,12 @@ weakened to upload another payload under the receipt contract.
 
 ## Exact readiness checks and trust levels
 
-`forward_capture_operational_readiness_v1` is a canonical immutable report of a
-particular inspection. It evaluates original provider authorization and terms
+`forward_capture_operational_readiness_v1` (research scope) and
+`forward_capture_operational_readiness_v2` (operational observation/full-market
+scope) are canonical immutable reports of a particular inspection. It evaluates original provider authorization and terms
 references, credential **presence only**, explicit date/symbol/market/currency,
-original split pin, separately supplied plan/capture pins, bounded request/retry/
+original split pin for v1 or original operational scope for v2/v3, separately
+supplied plan/capture pins, bounded request/retry/
 byte/time/daily budgets, private storage permissions, archive byte ceiling,
 original capture/receipt/parser/ingestion consistency, exported receipt, outbox,
 local receipt readback and any explicitly supplied external claims.
@@ -210,3 +212,71 @@ restore drill require separately scoped work. Preserve Corporate Actions, PIT/OO
 Runner Tail, Run Input Freeze and trading restrictions. No strategy, paper order,
 public API route, scheduler, Docker service, operational approval or live trading
 activation is added.
+
+
+## Version-aware operational scope compatibility (PR #220)
+
+The original `ForwardCapturePlan` remains authoritative. It is reconstructed with
+its strict existing `from_dict` validator and canonical round-trip comparison
+before archive reads. Custody never creates research membership or substitutes
+an observation/market scope for a research split.
+
+| Original plan | Scope authority | Before #220 | Current custody output |
+| --- | --- | --- | --- |
+| v1 | Existing training/tuning partition and original split/pin | Supported research-scope projection | Unchanged `forward_capture_custody_binding_v1` and `forward_capture_operational_readiness_v1`, identical canonical bytes and pins for identical owners/configuration |
+| v2 | Original `prospective_read_only_observation_v1`, UTC collection window (maximum 24 hours), completed observation date with existing 1–7 day rule, KOSPI/005930 | Custody v1 indexed absent research fields; #219 reported incompatible | `forward_capture_custody_binding_v2` and `forward_capture_operational_readiness_v2`, explicit `kind=observation` |
+| v3 | Original `kospi_full_market_scope_v1`, endpoint/method/market, bounded validity window and explicit ordered permitted days | Same research-scope mismatch | Same new v2 custody contracts, explicit `kind=full_market` |
+
+For v2/v3 the nested scope has version `forward_capture_custody_scope_v2`, the
+exact `capture_plan_version`, provider, market, currency, day and mode. Observation
+scope includes the original ticker and exact `observation_scope`; full-market
+scope instead includes exact `full_market_scope`. There are no fabricated
+`partition`, `split` or `split_pin` fields. The full-market allowlist is an explicit
+collection declaration, not independently verified exchange calendar evidence.
+
+Original capture/plan pins, response sequence, endpoint/parameters, raw receipt ID,
+raw digest, response/ingestion fingerprints, exported original receipt bytes and
+outbox identity retain their existing meanings. Capture replay still reconstructs
+the original raw-source and parser linkage; `capture_raw_source_custody_v1` is
+unchanged. Full-market HTTP bodies stay whole in the original archive and no
+research ingestion is introduced. Existing failed ingestion remains a failure;
+receipt custody does not claim successful normalization.
+
+Both local request-start and response-completion instants must be within the
+original operational scope's **[valid_from, valid_until)** window. This is a
+structural consistency check against original local timestamps, not a new grant
+or proof of authentic historical timing. Existing provider-policy authorization,
+credentials, network opt-in and collection-lag checks are not changed or replaced.
+
+Use the existing `stage_forward_custody`, `verify_forward_custody`,
+`assess_forward_operations` and `verify_operations_report` APIs or existing
+`forward-capture custody-stage`, `custody-verify`, `custody-readiness`,
+`custody-status` and `custody-readback` CLI actions with the **original** plan file,
+plan pin, attempt, capture pin and response sequence. Command options and offline
+restrictions are unchanged; no new transport or submission path is added.
+Explicit local staging writes only the existing receipt export/outbox; all
+verification/readiness operations remain read-only. This PR stages only synthetic
+test archives, never private originals.
+
+Unknown versions and missing/extra/cross-version scope fields fail through the
+existing plan/scope validators (`plan_contract`, `plan_fields`,
+`forward_scope_version`, `full_market_scope_contract`, or their stricter original
+scope reasons). Noncanonical plans fail `custody_canonical_plan_required`.
+Wrong capture/plan/attempt/raw identities retain original verifier failures;
+unknown response sequence is `unknown_response`. Out-of-window operational
+capture timestamps fail `custody_capture_outside_declared_scope_window`.
+Rehashed binding/report substitutions fail `custody_binding_semantic_mismatch`
+or `readiness_report_semantic_mismatch`. Missing exports, acknowledgements and
+readbacks remain explicit blockers, never implied successes.
+
+Existing limits are retained: bounded archive, plan, response, supplied receipt
+and readback sizes. The projection adds only bounded scope metadata, no raw-body
+copy, database scan or additional full-source replay. Repeated verification uses
+original owners and retained pins, not a mutable trust cache.
+
+Even content-consistent original acknowledgements/readbacks remain unauthenticated.
+Existing signature semantics, issuer governance and optimized cohort reconciliation
+are unchanged. No publication time, independent clock/custody authentication,
+genuine prediction eligibility, performance approval or trading authorization is
+established. External custody of the complete raw response is not achieved by
+exporting its JSON receipt.
