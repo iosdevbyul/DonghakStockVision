@@ -400,3 +400,9 @@ Next unresolved dependency is separately authorized, authenticated external
 submission/readback evidence for the exact full response object, followed by
 independent custodian and chronology authority. Existing adapters or supplied
 VersionIds alone satisfy none of these dependencies.
+
+The [prospective prediction custody rehearsal](prospective-prediction-custody-workflow.md)
+now connects these original raw-source assessments to an existing frozen synthetic
+prediction and append-only journal entry. It preserves the separate meanings of
+source response receipts, prediction journal integrity and independent prediction
+custody; no real provider capture becomes an authenticated prediction owner.

@@ -117,12 +117,10 @@ def prepare(
     return request
 
 
-def demonstrate_prediction(root: Path, journal: Path) -> FrozenJSON:
-    """Execute a new, explicitly synthetic forecast using the existing collector."""
+def prepare_prediction_fixture(root: Path) -> tuple[FrozenJSON, FrozenJSON]:
+    """Retain original synthetic inputs using the existing collector and horizon."""
     from donghak_stock_vision.data.schema import SEOUL
-    from donghak_stock_vision.storage.prospective_prediction import state
 
-    require(not journal.exists(), "demo_requires_new_journal")
     today = datetime.now(UTC).astimezone(SEOUL).date()
     day = today - timedelta(days=1)
     days: list[date] = []
@@ -155,6 +153,16 @@ def demonstrate_prediction(root: Path, journal: Path) -> FrozenJSON:
     with policy_path.open("x") as output:
         output.write(policy.payload_json)
     policy_path.chmod(0o600)
+    return request, policy
+
+
+def demonstrate_prediction(root: Path, journal: Path) -> FrozenJSON:
+    """Execute a new, explicitly synthetic forecast using the existing collector."""
+    from donghak_stock_vision.storage.prospective_prediction import state
+
+    require(not journal.exists(), "demo_requires_new_journal")
+    request, policy = prepare_prediction_fixture(root)
+    policy_path = root / "prediction-policy.json"
     appended = append_signal(
         journal,
         root,
