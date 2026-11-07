@@ -3,6 +3,7 @@
 from dataclasses import replace
 from pathlib import Path
 from time import perf_counter
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -447,3 +448,170 @@ def test_invalid_future_remains_local_failure_not_receipt_approval(tmp_path: Pat
     assert d["counts"]["local_future_invalid"] == 1
     assert d["counts"]["policy_prediction_pairs_verified"] == 2
     assert not d["independently_authenticated_chronology"]
+
+
+@pytest.mark.parametrize("n", [1, 3, 8, 32])
+def test_invocation_local_context_replay_and_crypto_bounds(tmp_path: Path, n: int) -> None:
+    from donghak_stock_vision.storage import prospective_external_receipt as crypto
+    from donghak_stock_vision.storage import prospective_receipt_cohort as implementation
+    from donghak_stock_vision.storage.prediction_binding import inspect_prediction
+    from donghak_stock_vision.storage.prospective_custody_readiness import audit_custody
+
+    data = cohort(tmp_path, n)
+    with (
+        patch.object(implementation, "audit_custody", wraps=audit_custody) as audits,
+        patch.object(implementation, "inspect_prediction", wraps=inspect_prediction) as extraction,
+        patch.object(crypto, "_verify_signature", wraps=crypto._verify_signature) as signatures,
+    ):
+        report = run(data)
+    assert audits.call_count == 2
+    assert extraction.call_count == n
+    assert signatures.call_count == 2 * n  # Real cryptographic verification, no mocked success.
+    assert (
+        report.to_dict()["work_bounds"]["maximum_full_cohort_case_traversals_per_replay_layer"]
+        == 2 * n
+    )
+
+
+def test_single_case_identity_and_legacy_v1_report_verification(tmp_path: Path) -> None:
+    from donghak_stock_vision.storage.prospective_receipt_reconciliation import reconcile_receipts
+
+    data = cohort(tmp_path, 3, future=True)
+    s, policy, owners, e, anchor, _ = data
+    report = run(data)
+    for row in report.to_dict()["cases"]:
+        identity = row["prediction_id"]
+        single = reconcile_receipts(
+            s, identity, (policy, owners[identity]), anchor, anchor.identifier, AS_OF
+        )
+        assert row["single_case_report_pin"] == single.identifier
+        assert report.to_dict()["custody_report"] == single.to_dict()["custody_report"]
+    legacy = report.to_dict()
+    legacy["work_bounds"]["maximum_full_cohort_case_traversals_per_replay_layer"] = 9
+    old = FrozenJSON.freeze(legacy)
+    verify_cohort(
+        old,
+        old.identifier,
+        legacy["original_references_pin"],
+        s,
+        policy,
+        owners,
+        e,
+        e.identifier,
+        anchor,
+        anchor.identifier,
+        AS_OF,
+    )
+    legacy["work_bounds"]["maximum_full_cohort_case_traversals_per_replay_layer"] = 10
+    forged = FrozenJSON.freeze(legacy)
+    with pytest.raises(ValueError, match="semantic_mismatch"):
+        verify_cohort(
+            forged,
+            forged.identifier,
+            legacy["original_references_pin"],
+            s,
+            policy,
+            owners,
+            e,
+            e.identifier,
+            anchor,
+            anchor.identifier,
+            AS_OF,
+        )
+
+
+@pytest.mark.parametrize("target", ["future", "original", "journal"])
+def test_mid_operation_changes_cannot_escape_final_boundary(tmp_path: Path, target: str) -> None:
+    from donghak_stock_vision.storage import prospective_receipt_cohort as implementation
+    from donghak_stock_vision.storage.forward_capture import DB
+
+    data = cohort(tmp_path, 3, future=True)
+    s = data[0]
+    from donghak_stock_vision.storage.prospective_receipt_reconciliation import (
+        _reconcile_verified_pair,
+    )
+
+    real = _reconcile_verified_pair
+    mutated = False
+
+    def mutate(*args: Any, **kwargs: Any) -> FrozenJSON:
+        nonlocal mutated
+        result = real(*args, **kwargs)
+        if not mutated:
+            case = s.cases[-1]
+            if target == "future":
+                assert case.future is not None
+                path = case.future.capture_root / DB
+            elif target == "original":
+                path = case.prediction.capture_root / DB
+            else:
+                path = case.prediction.journal
+            if target == "journal":
+                import sqlite3
+
+                with sqlite3.connect(path) as connection:
+                    connection.execute("DROP TRIGGER signal_entries_no_update")
+            else:
+                with path.open("ab") as stream:
+                    stream.write(b"modified during receipt checks")
+            mutated = True
+        return result
+
+    with patch.object(implementation, "_reconcile_verified_pair", side_effect=mutate):
+        with pytest.raises(ValueError):
+            run(data)
+    assert mutated
+
+
+def test_original_context_is_not_cached_between_invocations(tmp_path: Path) -> None:
+    from donghak_stock_vision.storage.forward_capture import DB
+
+    data = cohort(tmp_path, 1, future=True)
+    s, policy, owners, e, anchor, _ = data
+    report = run(data)
+    f = s.cases[0].future
+    assert f is not None
+    with (f.capture_root / DB).open("ab") as stream:
+        stream.write(b"changed after return")
+    changed = run(data)
+    assert changed != report and changed.to_dict()["counts"]["local_future_invalid"] == 1
+    with pytest.raises(ValueError, match="original_references_pin_mismatch|semantic_mismatch"):
+        verify_cohort(
+            report,
+            report.identifier,
+            report.to_dict()["original_references_pin"],
+            s,
+            policy,
+            owners,
+            e,
+            e.identifier,
+            anchor,
+            anchor.identifier,
+            AS_OF,
+        )
+
+
+def test_changed_policy_and_horizon_are_not_trusted_context(tmp_path: Path) -> None:
+    data = cohort(tmp_path, 1)
+    s, policy, owners, e, anchor, _ = data
+    changed = s.policy.to_dict()
+    changed["minimum_samples"] = 0
+    invalid = replace(s, policy=FrozenJSON.freeze(changed))
+    with pytest.raises(ValueError):
+        reconcile_cohort(invalid, policy, owners, e, e.identifier, anchor, anchor.identifier, AS_OF)
+    with pytest.raises(ValueError):
+        reconcile_cohort(
+            replace(s, horizon_pin="0" * 64),
+            policy,
+            owners,
+            e,
+            e.identifier,
+            anchor,
+            anchor.identifier,
+            AS_OF,
+        )
+    with pytest.raises(TypeError):
+        run_kwargs: Any = {"verified_context": {"trusted": True}}
+        reconcile_cohort(
+            s, policy, owners, e, e.identifier, anchor, anchor.identifier, AS_OF, **run_kwargs
+        )

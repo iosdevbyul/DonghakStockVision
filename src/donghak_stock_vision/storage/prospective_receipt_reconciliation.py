@@ -39,9 +39,39 @@ def reconcile_receipts(
     require(len(selected) == 1, "reconciliation_selected_membership_mismatch")
     # Full declared membership, scope, horizon, pins and original replay remain authoritative.
     custody = audit_custody(source, as_of)
-    c = custody.to_dict()
     original = inspect_prediction(selected[0].prediction)
     prediction = FrozenJSON.freeze(original.to_dict()["prediction"])
+    return _reconcile_verified_pair(
+        source,
+        selected_prediction_id,
+        receipts,
+        anchor,
+        anchor_pin,
+        as_of,
+        custody=custody,
+        prediction=prediction,
+        entry_pin=selected[0].prediction.entry_pin,
+    )
+
+
+def _reconcile_verified_pair(
+    source: EvaluationSources,
+    selected_prediction_id: str,
+    receipts: tuple[ReceiptOwner, ...],
+    anchor: FrozenJSON | None,
+    anchor_pin: str | None,
+    as_of: datetime,
+    *,
+    custody: FrozenJSON,
+    prediction: FrozenJSON,
+    entry_pin: str,
+) -> FrozenJSON:
+    """Private assembly only; callers must freshly replay originals in this invocation.
+
+    No public API accepts this context. Public semantic verification always
+    reconstructs from original owners; these values confer no persistent trust.
+    """
+    c = custody.to_dict()
     owners = {r.role: r for r in receipts}
     require(
         owners["policy"].artifact == source.policy
@@ -91,7 +121,7 @@ def reconcile_receipts(
             "selected_prediction_id": selected_prediction_id,
             "original_policy_pin": source.policy_pin,
             "original_prediction_artifact_pin": prediction.identifier,
-            "original_prediction_entry_pin": selected[0].prediction.entry_pin,
+            "original_prediction_entry_pin": entry_pin,
             "cohort_pin": source.cohort_pin,
             "horizon_pin": source.horizon_pin,
             "original_references_pin": c["references_pin"],
