@@ -20,6 +20,7 @@ from donghak_stock_vision.storage.prospective_custody_readiness import audit_cus
 from donghak_stock_vision.storage.prospective_evaluation_consumer import EvaluationSources
 
 VERSION = "prospective_operational_evidence_readiness_v1"
+OPERATIONAL_VERSION = "prospective_operational_evidence_readiness_v2"
 MAX_REPORT = 256 * 1024
 _NO_RETURNED = ReturnedCustodyEvidence()
 GAPS = (
@@ -58,6 +59,35 @@ def assess_operational_evidence(
     anchor: AnchorSnapshot | None = None,
     expected_issuer: str | None = None,
     expected_key_id: str | None = None,
+) -> FrozenJSON:
+    """Assess original owners with version-appropriate custody; never convert predictions."""
+    return _assess_operational_evidence(
+        capture,
+        as_of,
+        config,
+        config_pin,
+        returned=returned,
+        source=source,
+        source_references_pin=source_references_pin,
+        anchor=anchor,
+        expected_issuer=expected_issuer,
+        expected_key_id=expected_key_id,
+    )
+
+
+def _assess_operational_evidence(
+    capture: CaptureSource,
+    as_of: datetime,
+    config: ForwardOperationsConfig,
+    config_pin: str,
+    *,
+    returned: ReturnedCustodyEvidence = _NO_RETURNED,
+    source: EvaluationSources | None = None,
+    source_references_pin: str | None = None,
+    anchor: AnchorSnapshot | None = None,
+    expected_issuer: str | None = None,
+    expected_key_id: str | None = None,
+    legacy_scope: bool = False,
 ) -> FrozenJSON:
     """Reconstruct facts; no supplied approval booleans, converted owners or credentials.
 
@@ -101,10 +131,11 @@ def assess_operational_evidence(
             anchor.owner, anchor.pin, str(expected_issuer), str(expected_key_id), at
         )
     plan = capture.plan
-    compatible = plan.observation_scope is None and plan.full_market_scope is None
+    research_scope = plan.observation_scope is None and plan.full_market_scope is None
+    compatible = research_scope or not legacy_scope
     linked_ids: set[str] = set()
     if source is not None:
-        require(compatible, "operational_scope_cannot_map_to_offline_prediction_contract")
+        require(research_scope, "operational_scope_cannot_map_to_offline_prediction_contract")
         # Reject an unrelated/future archive before reading its payload. Only the
         # original outcome binder may resolve future evidence under its gate.
         for case in source.cases:
@@ -123,8 +154,8 @@ def assess_operational_evidence(
     metadata = response["metadata"]
     require(utc(metadata["response_completed_at"]) <= at, "operational_capture_after_as_of")
 
-    # Forward custody v1 indexes research partition/split keys absent in v2/v3.
-    # Do not fabricate those keys or reinterpret operational captures as predictions.
+    # Retain reconstruction of original #219 v1 unsupported-scope reports only.
+    # Current assessments always use the original plan's version-aware custody path.
     def operations() -> FrozenJSON | None:
         return (
             assess_forward_operations(
@@ -166,7 +197,7 @@ def assess_operational_evidence(
         )
     else:
         assert custody is not None
-        require(compatible, "operational_scope_cannot_map_to_offline_prediction_contract")
+        require(research_scope, "operational_scope_cannot_map_to_offline_prediction_contract")
         require(
             response["parsed_bars"] is not None
             and sum(r["parsed_bars"] is not None for r in doc["responses"]) == 1,
@@ -227,7 +258,7 @@ def assess_operational_evidence(
             reasons.add("issuer_asserted_custody_chronology_inconsistent")
     report = FrozenJSON.freeze(
         {
-            "version": VERSION,
+            "version": VERSION if research_scope or legacy_scope else OPERATIONAL_VERSION,
             "as_of": at.isoformat(),
             "state": "unresolved",
             "references_pin": refs.identifier,
@@ -317,8 +348,9 @@ def verify_operational_evidence(
         "operational_report_byte_budget",
     )
     require(report.identifier == sha(report_pin), "operational_report_pin")
-    require(report.to_dict().get("version") == VERSION, "operational_report_version")
-    replay = assess_operational_evidence(
+    version = report.to_dict().get("version")
+    require(version in (VERSION, OPERATIONAL_VERSION), "operational_report_version")
+    replay = _assess_operational_evidence(
         capture,
         as_of,
         config,
@@ -329,6 +361,7 @@ def verify_operational_evidence(
         anchor=anchor,
         expected_issuer=expected_issuer,
         expected_key_id=expected_key_id,
+        legacy_scope=version == VERSION,
     )
     require(replay.to_dict()["references_pin"] == sha(references_pin), "operational_reference_pin")
     require(replay == report, "operational_semantic_mismatch")

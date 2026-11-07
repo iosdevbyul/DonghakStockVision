@@ -171,9 +171,15 @@ def test_operational_v2_is_verified_without_fabricated_research_membership(tmp_p
         owner = record(root, plan, auth)
     c = CaptureSource(root, plan, plan.document.identifier, "a", owner.identifier)
     d = assess(c, PROVIDER_NOW + timedelta(minutes=1)).to_dict()
-    assert d["capture_replayed"] and not d["capture_custody_contract_compatible"]
+    assert d["capture_replayed"] and d["capture_custody_contract_compatible"]
     assert d["capture_plan_version"] == "forward_capture_plan_v2"
-    assert "capture_custody_v1_requires_research_scope_absent_in_capture_v2_v3" in d["reason_codes"]
+    assert d["version"] == "prospective_operational_evidence_readiness_v2"
+    assert (
+        "capture_custody_v1_requires_research_scope_absent_in_capture_v2_v3"
+        not in d["reason_codes"]
+    )
+    assert "custody_export_missing_or_invalid" in d["reason_codes"]
+    assert d["custody"]["original_export_verified"] is False
     assert not d["genuine_forward_evidence"]
 
 

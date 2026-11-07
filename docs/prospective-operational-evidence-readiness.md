@@ -1,6 +1,8 @@
 # Operational capture and prospective evidence readiness
 
-`prospective_operational_evidence_readiness_v1` is a read-only gap assessment.
+`prospective_operational_evidence_readiness_v1` (research capture) and
+`prospective_operational_evidence_readiness_v2` (operational v2/v3 capture) are
+read-only gap assessments.
 It connects existing original-owner verifiers without creating a capture engine,
 conversion pipeline, journal, database, trust registry, or operational approval.
 It calculates no predictive performance. Every report remains `unresolved`.
@@ -96,24 +98,37 @@ interfaces. Mock provider transport and synthetic authorization documents test
 scope compatibility without proving real-provider origin or permission. No test
 calls a provider or substitutes fixture data into a real evidence archive.
 
-## Concrete schema incompatibilities
+## Version-aware custody and retained reports
 
-`forward_capture_plan_v2` is a prospective read-only observation scope, while v3
-represents full-market operational capture. Their original manifest/receipt
-lineage can be replayed. However, custody readiness v1 directly indexes the legacy
-research `partition`, `split_pin` and ticker fields. The bridge therefore reports
-`capture_custody_v1_requires_research_scope_absent_in_capture_v2_v3` and does not
-invoke that incompatible custody projection. Supplied returned custody evidence
-is explicitly uninspected for this scope. It does not fabricate a research split.
+Capture v1 remains a research partition/split owner; v2 is a prospective read-only
+observation scope and v3 is an explicitly allowed full-market collection scope.
+The bridge now invokes the existing version-aware custody validator for all three.
+It never fabricates research fields. See the before/after matrix in
+[Forward capture custody operations](forward-capture-custody-operations.md#version-aware-operational-scope-compatibility-pr-220).
 
-The original prospective prediction workflow remains restricted to
-`offline_fixture` and existing authorized research windows. Operational v2/v3
-captures cannot be mapped to those prediction owners. Attempting that mapping
-fails; no conversion, synthetic relabelling or eligibility flag is added.
-Separately, operational completion verification currently requires explicit
-original provider authorization owners and rejects a synthetic source through
-its public completion verifier. This report leaves persistence unassessed rather
-than bypassing either prerequisite.
+For v2/v3, new bridge reports explicitly use
+`prospective_operational_evidence_readiness_v2`. Contract compatibility means the
+original capture and scope passed the applicable custody path; it does **not**
+imply that an export or returned acknowledgement/readback exists or verifies.
+Those facts remain separately reported. Missing original exports cannot become
+successful custody findings merely because the schema is supported. Original
+capture, policy, prediction, horizon and trusted-reference identities are retained.
+
+Research v1 reports and canonical pins are unchanged. Independently pinned original
+#219 v1 reports for v2/v3 can still be reconstructed with their historical
+unsupported-scope finding and null custody results. This compatibility branch is
+private to semantic verification; the public assessor cannot request the old path.
+Changing only a new report's version to v1 fails semantic reconstruction. No past
+report or retained pin is rewritten or reinterpreted as a successful custody check.
+
+Prospective prediction owners remain restricted to `offline_fixture`, their
+original research windows and predeclared horizons. Supplying a v2/v3 operational
+capture as a prediction input still fails
+`operational_scope_cannot_map_to_offline_prediction_contract` before that archive
+is read. Valid operational custody is not research authorization or genuine future
+observation provenance. Separately, operational SQLite completion verification
+still requires its original authorization owners; persistence remains unassessed
+by this bridge.
 
 ## Time, authenticity and source distinctions
 
@@ -171,8 +186,8 @@ custody, historical key/revocation evidence and clock assurance. Bind each to
 exact original artifacts, not summaries. Preserve original market-source rights,
 source bytes, custody acknowledgements and independently retained readback pins.
 
-A separately reviewed compatibility change would be needed to let existing custody
-readiness inspect operational v2/v3 scope without fabricating historical partitions.
+The structural custody-scope compatibility gap is resolved, while original
+external custody and time-authentication requirements remain unresolved.
 A separate prospective owner contract and independent evidence review would be
 needed for genuine provider predictions; loosening `offline_fixture` is not a fix.
 No external evidence requirement is completed merely by this adapter.
