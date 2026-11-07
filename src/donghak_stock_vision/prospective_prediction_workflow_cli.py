@@ -115,9 +115,17 @@ def run(args: argparse.Namespace) -> int:
         )
         print(demonstrate(args.capture_root, args.journal, args.archive_namespace).payload_json)
         return 0
-    from donghak_stock_vision.forward_signal_cli import _request
-
-    request = _request(args)
+    require(
+        args.request is not None and args.request_pin is not None,
+        "explicit_capture_root_request_and_pin_required",
+    )
+    require(
+        args.request.is_file()
+        and not args.request.is_symlink()
+        and args.request.stat().st_size <= 256 * 1024,
+        "bounded_signal_request_required",
+    )
+    request = FrozenJSON(args.request.read_text())
     policy = _owner(args.prediction_policy, 4096)
     require(args.prediction_policy_pin is not None, "workflow_prediction_policy_pin_required")
     if args.action == "prediction-custody-freeze":
