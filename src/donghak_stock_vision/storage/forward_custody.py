@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from donghak_stock_vision.backtest.data import FrozenJSON
-from donghak_stock_vision.backtest.validation import require, sha
+from donghak_stock_vision.backtest.validation import require, sha, utc
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.storage.capture_custody_ack import inspect_custody_acknowledgement
@@ -106,6 +106,31 @@ class _SuppliedReadback:
         return self.payload
 
 
+def _custody_scope(document: dict[str, Any]) -> dict[str, Any]:
+    """Project the original strict plan; v1 bytes stay unchanged, v2/v3 are tagged."""
+    plan = ForwardCapturePlan.from_dict(document)
+    require(plan.document.to_dict() == document, "custody_canonical_plan_required")
+    common = {k: document[k] for k in ("provider", "market", "currency", "day", "mode")}
+    if document["version"] == "forward_capture_plan_v1":
+        return common | {k: document[k] for k in ("ticker", "partition", "split_pin")}
+    scope = {
+        "version": "forward_capture_custody_scope_v2",
+        "capture_plan_version": document["version"],
+        **common,
+    }
+    if document["version"] == "forward_capture_plan_v2":
+        return scope | {
+            "kind": "observation",
+            "ticker": document["ticker"],
+            "observation_scope": document["observation_scope"],
+        }
+    return scope | {"kind": "full_market", "full_market_scope": document["full_market_scope"]}
+
+
+def _custody_version(plan: dict[str, Any], prefix: str) -> str:
+    return prefix + ("_v1" if plan["version"] == "forward_capture_plan_v1" else "_v2")
+
+
 def _capture(
     root: Path,
     plan: ForwardCapturePlan,
@@ -116,10 +141,21 @@ def _capture(
 ) -> tuple[FrozenJSON, dict[str, Any]]:
     plan.__post_init__()  # Fail closed on final-test/holdout before disk access.
     require(plan.document.identifier == sha(plan_pin), "independent_plan_pin_mismatch")
+    _custody_scope(plan.document.to_dict())  # Validate version-specific scope before archive I/O.
     owner = verify_capture(root, plan, attempt, capture_pin)
     rows = owner.to_dict()["responses"]
     require(type(sequence) is int and 0 <= sequence < len(rows), "unknown_response")
-    return owner, rows[sequence]
+    response = rows[sequence]
+    window = plan.observation_scope or plan.full_market_scope
+    if window is not None:
+        require(
+            all(
+                window.valid_from <= utc(response["metadata"][key]) < window.valid_until
+                for key in ("request_started_at", "response_completed_at")
+            ),
+            "custody_capture_outside_declared_scope_window",
+        )
+    return owner, response
 
 
 def _private(path: Path, *, directory: bool) -> bool:
@@ -175,25 +211,13 @@ def _binding(
     document = owner.to_dict()
     return FrozenJSON.freeze(
         {
-            "version": "forward_capture_custody_binding_v1",
+            "version": _custody_version(document["plan"], "forward_capture_custody_binding"),
             "capture_id": document["capture_id"],
             "capture_manifest_pin": owner.identifier,
             "source_endpoint": response["metadata"]["endpoint"],
             "request_parameters": response["metadata"]["parameters"],
             "plan_pin": digest(document["plan"]),
-            "scope": {
-                k: document["plan"][k]
-                for k in (
-                    "provider",
-                    "market",
-                    "currency",
-                    "ticker",
-                    "day",
-                    "partition",
-                    "split_pin",
-                    "mode",
-                )
-            },
+            "scope": _custody_scope(document["plan"]),
             "response_sequence": response["metadata"]["request_index"],
             "raw_id": raw_id,
             "raw_sha256": response["receipt"]["rawSha256"],
@@ -416,25 +440,15 @@ def assess_forward_operations(
         )
     return FrozenJSON.freeze(
         {
-            "version": "forward_capture_operational_readiness_v1",
+            "version": _custody_version(
+                plan.document.to_dict(), "forward_capture_operational_readiness"
+            ),
             "capture_id": owner.to_dict()["capture_id"],
             "capture_manifest_pin": owner.identifier,
             "plan_pin": plan.document.identifier,
             "config": config.document.to_dict(),
             "config_pin": config.document.identifier,
-            "scope": {
-                k: plan.document.to_dict()[k]
-                for k in (
-                    "provider",
-                    "market",
-                    "ticker",
-                    "day",
-                    "currency",
-                    "partition",
-                    "split_pin",
-                    "mode",
-                )
-            },
+            "scope": _custody_scope(plan.document.to_dict()),
             "status": "blocked_for_provider_collection_and_independent_custody",
             "offline_staging_ready": private_archive and destination_usable,
             "credential_present": credential_present,
