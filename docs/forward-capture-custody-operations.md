@@ -206,9 +206,10 @@ Object Lock, retention, bucket, AWS account or profile availability was assumed 
 queried here. Retention alone does not provide a recoverable backup or independent
 authenticated custody. Original A-2/A-3 approval requirements remain applicable.
 
-A later source-body/manifest custody protocol, independent acknowledgement
-verifier, authenticated clock/publication evidence, retention audit and backup
-restore drill require separately scoped work. Preserve Corporate Actions, PIT/OOS,
+The existing raw-source S3 contract and transport can retain complete bodies;
+the read-only linkage below does not deploy them. Independent acknowledgement
+verification, authenticated clock/publication evidence, retention audit and backup
+restore drill still require separately scoped work. Preserve Corporate Actions, PIT/OOS,
 Runner Tail, Run Input Freeze and trading restrictions. No strategy, paper order,
 public API route, scheduler, Docker service, operational approval or live trading
 activation is added.
@@ -280,3 +281,122 @@ are unchanged. No publication time, independent clock/custody authentication,
 genuine prediction eligibility, performance approval or trading authorization is
 established. External custody of the complete raw response is not achieved by
 exporting its JSON receipt.
+
+## Original raw HTTP response linkage and offline readiness (PR #221)
+
+`storage.forward_raw_source_custody` is a separate read-only consumer of the
+existing `CaptureSource` from prospective operational readiness. Existing
+`forward_capture_operational_readiness_v1/v2` and
+`prospective_operational_evidence_readiness_v1/v2` reports keep their original
+bytes, pins and verification paths. Their custody readbacks concern **JSON
+receipts**. The new `forward_raw_source_custody_assessment_v1` concerns **original
+HTTP response bytes**, and can be retained beside those reports using the same
+capture, plan, attempt and response pins. It does not accept prediction owners or
+change #217 governance, #218 cohort evaluation, or offline-fixture restrictions.
+
+There is no structural schema mismatch: `pilot.sqlite3` uses the original
+`raw_pages` BLOB and `raw_capture_receipts` tables required by
+`prepare_raw_source_custody`. `forward_responses(capture_id, sequence, raw_id,
+metadata)` supplies the authoritative response-to-source lineage. The integration
+calls the existing `verify_capture` through the version-aware custody validator,
+then calls `prepare_raw_source_custody` inside an original read-only SQLite
+transaction. It compares the contract's complete original receipt, capture/sequence
+run identity and byte length to the verified manifest. No temporary database,
+synthesized receipt, metadata conversion, raw-source wrapper contract or second
+S3 adapter is needed. The returned `RawSourceCustodyContract` is the original
+contract with identical identifier, receipt digest, idempotency key and object
+keys. Compressed/failed/partial response bodies remain their exact retained bytes;
+parser output does not replace them, and linkage does not assert successful parsing.
+
+| Capability | Implemented capability | Locally verified evidence | Externally verified evidence for these captures |
+| --- | --- | --- | --- |
+| Local original response retention | Original `raw_pages` BLOB archive | Exact bytes, size and SHA-256 checked against pinned manifest and receipt | None established by local retention |
+| Original receipt verification | Original receipt join and canonical serialization | Full receipt identity and SHA-256; original raw ID and run identity | No independent issuer authenticated |
+| JSON receipt custody | Existing export/outbox, acknowledgement and receipt readback contracts | Original operations consumer verifies exported JSON and supplied receipt claims | Deployment and authenticated acknowledgement remain separate dependencies |
+| Full HTTP response custody | Existing raw-source contract, now linked to original forward response | Original full body contract and object identity verified | No successful external submission inferred |
+| S3 transport | Existing `RawSourceS3Adapter` inspect/submit/readback and audited `RawSourceS3Session` | Capability exists; assessment never invokes a session or SDK | No AWS deployment, access, retention or object availability checked here |
+| Offline readback verification | Existing `verify_raw_source_readback` reused | Supplied bytes and metadata checked against exact original source and retained object reference | Supplied bytes and VersionId do not establish remote existence |
+| Actual external deployment | Existing adapters support separately authorized operations | Operator references and supplied observations are labelled claims | Current deployment for these captures unestablished |
+| Independent custodian authority | No new authority verifier | Always unverified, including consistent S3 observations/local audit logs | Requires independent authenticated custodian evidence |
+| Authenticated chronology | No new clock or publication verifier | Local collection instants remain local assertions; retention time is a supplied claim | Publication/prediction existence time and historical clock authority unestablished |
+| Genuine prospective evaluation eligibility | Existing restrictions preserved | Every approval flag false; performance metrics null | Requires original prediction provenance, independent custody/chronology and existing PIT/evaluation gates |
+
+Use the Python API with the original source references (no new CLI or transport
+entry point):
+
+```python
+from donghak_stock_vision.storage.prospective_operational_readiness import CaptureSource
+from donghak_stock_vision.storage.forward_raw_source_custody import (
+    assess_forward_raw_source,
+    link_forward_raw_source,
+    verify_forward_raw_source_assessment,
+)
+
+capture = CaptureSource(root, original_plan, plan_pin, attempt, capture_pin, sequence)
+link = link_forward_raw_source(capture, archive_namespace=reviewed_namespace)
+# link.source is the existing RawSourceCustodyContract. No upload is performed.
+report = assess_forward_raw_source(capture, archive_namespace=reviewed_namespace)
+verify_forward_raw_source_assessment(
+    report, retained_report_pin, capture, archive_namespace=reviewed_namespace,
+)
+```
+
+Retain the assessment pin outside the report. The new binding includes the
+resolved original root and explicit archive namespace, as well as original plan
+version/pin, capture/response identity and receipt/source fingerprints. SQLite
+has **no intrinsic archive namespace field**: namespace is an operator-assigned
+label, not authenticated archive metadata. Retain that label and original root
+separately; reconstruction with a different root or namespace fails against the
+retained report. A byte-identical clone does not establish independent custody.
+Moving an archive requires an explicitly reviewed new assessment/reference; the
+underlying original raw-source contract identifier semantics are unchanged.
+
+Optional `SuppliedRawSourceEvidence` accepts an existing `RawSourceS3Observation`,
+its separately retained `observation_document(...).identifier`, an exact pinned
+object reference, and optional readback bytes plus their retained SHA-256. The
+reference must be retained separately and contain exactly:
+
+```json
+{
+  "version": "forward_raw_source_object_reference_v1",
+  "source_identifier": "<original contract identifier>",
+  "bucket": "donghak-custody-dev",
+  "key": "<original contract source_object_key>",
+  "version_id": "<separately retained exact VersionId>"
+}
+```
+
+`reference_pin` is the canonical `FrozenJSON` identifier. Missing evidence remains
+explicit in reason codes. Present malformed, mismatched, oversized or contradictory
+evidence rejects the assessment. An observation without readback verifies only
+supplied metadata consistency. Version/key/source substitutions fail even when the
+observation is rehashed if they contradict the retained reference or original
+source. Rewriting both observation and reference establishes only another
+self-consistent claim. The consumer accepts the original unprefixed contract key;
+`dev-tests/...` observations are deliberately rejected. Supplied retention mode and
+expiry are recorded claims, never claims of current protection or backup. No local
+audit event is used as cryptographic or historical authority.
+
+### Consistency and bounds
+
+Each linkage performs one original capture replay. A length/type/count preflight
+bounds selected capture responses before replay; original archive (256 MiB),
+response-count and plan body limits remain, and the original contract independently
+bounds the selected BLOB to 16 MiB. Reports, observations and object references are
+bounded to 64 KiB. No response-body cache is introduced and reports never embed raw
+bodies. The caller owns the lifetime of the single returned original contract.
+
+Preflight, capture replay and the subsequent contract read use separate read-only
+SQLite transactions. The final transaction rechecks the pinned manifest, exact
+intent and selected journal row, then validates the original receipt/BLOB in its
+snapshot. This detects observable selected-source changes across those boundaries;
+it does **not** promise an atomic snapshot spanning replay, other captures,
+filesystem replacement, or later mutations. Original capture limits and filesystem
+symlink guards still apply. Assess against a quiescent retained archive for
+reproducibility. Full capture verification runs again when verifying a retained
+assessment; a freshly rehashed summary cannot substitute for original evidence.
+
+Next unresolved dependency is separately authorized, authenticated external
+submission/readback evidence for the exact full response object, followed by
+independent custodian and chronology authority. Existing adapters or supplied
+VersionIds alone satisfy none of these dependencies.
