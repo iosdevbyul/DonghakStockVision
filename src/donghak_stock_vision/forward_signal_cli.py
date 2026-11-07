@@ -22,6 +22,10 @@ def add_commands(sub: Any) -> None:
             "predict",
             "prediction-status",
             "offline-prediction-demo",
+            "prediction-custody-freeze",
+            "prediction-custody-record",
+            "prediction-custody-verify",
+            "offline-prediction-custody-demo",
         ),
     )
     cmd.add_argument("--capture-root", type=Path)
@@ -33,6 +37,13 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--limit", type=int, default=50)
     cmd.add_argument("--prediction-policy", type=Path)
     cmd.add_argument("--prediction-policy-pin")
+    cmd.add_argument("--workflow", type=Path)
+    cmd.add_argument("--workflow-pin")
+    cmd.add_argument("--archive-namespace")
+    cmd.add_argument("--report", type=Path)
+    cmd.add_argument("--report-pin")
+    cmd.add_argument("--entry-pin")
+    cmd.add_argument("--prediction-id")
     from donghak_stock_vision.storage.krx_authorization import add_trust_arguments
 
     add_trust_arguments(cmd)
@@ -56,6 +67,14 @@ def _request(args: argparse.Namespace) -> FrozenJSON:
 def run(args: argparse.Namespace) -> int:
     from donghak_stock_vision.storage.forward_signal import generate_signal, verify_signal
     from donghak_stock_vision.storage.forward_signal_journal import append_signal, history
+
+    if (
+        args.action.startswith("prediction-custody-")
+        or args.action == "offline-prediction-custody-demo"
+    ):
+        from donghak_stock_vision.prospective_prediction_workflow_cli import run as run_workflow
+
+        return run_workflow(args)
 
     require(
         args.action == "predict"

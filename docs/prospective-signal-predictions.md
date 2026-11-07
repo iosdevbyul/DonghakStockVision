@@ -129,3 +129,10 @@ Next, separately verify exact target-date observations captured after the origin
 record, without modifying it. Genuine real-provider validation additionally needs
 an existing approved independent creation-time/custody evidence path; this change
 does not invent that authority or relax its absence.
+
+## Complete source-to-prediction custody rehearsal
+
+The existing fixture preparation, prediction contracts and journal are reused by
+`forward-signal offline-prediction-custody-demo`. It freezes original raw-source
+custody references before append and reconstructs a pinned end-to-end report after
+readback. See [the executable workflow and recovery procedure](prospective-prediction-custody-workflow.md).
