@@ -69,7 +69,12 @@ def test_synthetic_005930_original_to_transactional_readback_without_network(
 @pytest.mark.parametrize("name", ["capture_pin", "plan_pin", "batch_pin"])
 def test_pinned_capture_source_or_batch_mismatch_fails_closed(tmp_path: Path, name: str) -> None:
     destination, source = retained(tmp_path)
-    damaged = replace(source, **{name: "0" * 64})
+    if name == "capture_pin":
+        damaged = replace(source, capture_pin="0" * 64)
+    elif name == "plan_pin":
+        damaged = replace(source, plan_pin="0" * 64)
+    else:
+        damaged = replace(source, batch_pin="0" * 64)
     with pytest.raises(ValueError):
         audit_stored_005930(destination, damaged)
 
