@@ -92,7 +92,9 @@ def test_modified_owners_and_forged_reports_fail_closed(
     elif kind == "future":
         assert case.future is not None
         future = replace(case.future, request_pin="0" * 64)
-        evaluation = replace(\n            source.rehearsal.evaluation, cases=(EvidenceCase(case.prediction, future),)\n        )
+        evaluation = replace(
+            source.rehearsal.evaluation, cases=(EvidenceCase(case.prediction, future),)
+        )
         source = replace(source, rehearsal=replace(source.rehearsal, evaluation=evaluation))
     elif kind == "anchor":
         owner = anchor()
