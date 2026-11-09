@@ -67,9 +67,7 @@ def test_synthetic_005930_original_to_transactional_readback_without_network(
 
 
 @pytest.mark.parametrize("name", ["capture_pin", "plan_pin", "batch_pin"])
-def test_pinned_capture_source_or_batch_mismatch_fails_closed(
-    tmp_path: Path, name: str
-) -> None:
+def test_pinned_capture_source_or_batch_mismatch_fails_closed(tmp_path: Path, name: str) -> None:
     destination, source = retained(tmp_path)
     damaged = replace(source, **{name: "0" * 64})
     with pytest.raises(ValueError):
@@ -112,7 +110,9 @@ def fake_preflight(*, endpoint: str = ENDPOINT, ready: bool = True) -> FrozenJSO
                 "concurrency": 1,
                 "max_seconds": 30,
                 "max_response_bytes": 2097152,
-            } if ready else None,
+            }
+            if ready
+            else None,
         }
     )
 
@@ -150,9 +150,7 @@ def test_wrong_endpoint_cannot_claim_005930_request_contract() -> None:
 
 
 @pytest.mark.parametrize("flag", ["allow_network", "execute", "confirm_operator_authorization"])
-def test_cli_pilot_preflight_rejects_execution_flags(
-    flag: str, tmp_path: Path
-) -> None:
+def test_cli_pilot_preflight_rejects_execution_flags(flag: str, tmp_path: Path) -> None:
     flags = {
         "apply": False,
         "execute": False,
@@ -162,10 +160,18 @@ def test_cli_pilot_preflight_rejects_execution_flags(
     }
     flags[flag] = True
     args = Namespace(
-        db=None, action="pilot-preflight", config=tmp_path / "private.json",
-        config_pin="0" * 64, source_plan=None, source_plan_pin=None,
-        source_attempt=None, capture_pin=None, batch_pin=None,
-        source_authorization_root=None, source_authorization_pin=None, **flags
+        db=None,
+        action="pilot-preflight",
+        config=tmp_path / "private.json",
+        config_pin="0" * 64,
+        source_plan=None,
+        source_plan_pin=None,
+        source_attempt=None,
+        capture_pin=None,
+        batch_pin=None,
+        source_authorization_root=None,
+        source_authorization_pin=None,
+        **flags,
     )
     with patch(
         "donghak_stock_vision.krx_scheduler_cli.load_config",
