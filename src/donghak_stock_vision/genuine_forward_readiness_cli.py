@@ -6,7 +6,7 @@ from pathlib import Path
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
 from donghak_stock_vision.data.learning import timestamp
-from donghak_stock_vision.prediction_outcome_e2e_cli import _pinned, _read, inputs
+from donghak_stock_vision.prediction_outcome_e2e_cli import _read, inputs
 from donghak_stock_vision.storage.genuine_forward_readiness import (
     ReadinessInputs,
     assess_readiness,
@@ -46,6 +46,7 @@ def main(argv: list[str] | None = None) -> int:
                 "readiness_anchor_identity_required",
             )
             owner = _read(args.anchor, MAX_INPUT_BYTES)
+            assert args.anchor_pin is not None
             anchor = AnchorSnapshot(owner, args.anchor_pin)
         source = ReadinessInputs(original, anchor, args.issuer, args.key_id)
         if args.verify_report is None:
