@@ -3,7 +3,6 @@
 import argparse
 from pathlib import Path
 
-from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
 from donghak_stock_vision.data.learning import timestamp
 from donghak_stock_vision.prediction_outcome_e2e_cli import _read, inputs
