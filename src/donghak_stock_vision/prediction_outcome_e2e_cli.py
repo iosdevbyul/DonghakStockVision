@@ -96,6 +96,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         source = inputs(_read(args.input, MAX_INPUT_BYTES), args.input_pin)
         if args.verify_report is not None:
+            assert args.report_pin is not None
             report = _read(args.verify_report, MAX_INPUT_BYTES)
             verify_rehearsal(report, args.report_pin, source, args.as_of)
         else:
