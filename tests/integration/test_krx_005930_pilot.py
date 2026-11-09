@@ -142,7 +142,9 @@ def test_wrong_endpoint_cannot_claim_005930_request_contract() -> None:
         "donghak_stock_vision.storage.krx_pilot.preflight",
         return_value=fake_preflight(endpoint="https://example.invalid"),
     ):
-        d = pilot_preflight(\n            cast(SchedulerConfig, object()), datetime.now(UTC), Path("unused")\n        ).to_dict()
+        d = pilot_preflight(
+            cast(SchedulerConfig, object()), datetime.now(UTC), Path("unused")
+        ).to_dict()
     assert not d["request_contract_verified"]
     assert "005930_pilot_request_contract_not_verified" in d["blockers"]
 
