@@ -108,10 +108,12 @@ def pilot_preflight(
         request is not None
         and request["endpoint"] == ENDPOINT
         and request["method"] == "GET"
-        and request["parameters"] is not None
+        and request["parameters"]
+        == {"basDd": str(info["selected_trading_date"]).replace("-", "")}
         and request["requests_maximum"] == 1
         and request["retries"] == 0
         and request["concurrency"] == 1
+        and 0 < request["max_seconds"] <= 30
         and 0 < request["max_response_bytes"] <= 2 * 1024 * 1024
     )
     blocked = list(info["blockers"])
@@ -140,7 +142,9 @@ def pilot_preflight(
             "native_preflight": info,
             "request_contract_verified": exact,
             "configured_provider_ready_for_separate_review": bool(
-                exact and info["ready_for_manual_provider_capture"]
+                exact
+                and info["origin"] == "provider_https"
+                and info["ready_for_manual_provider_capture"]
             ),
             "stored_005930": stored,
             "live_pilot_authorized": False,
