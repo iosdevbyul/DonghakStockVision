@@ -91,11 +91,19 @@ def test_explicit_fixture_required_and_provider_authorization_not_inferred(
         )
 
 
-def test_missing_verified_005930_observation_rejected(tmp_path: Path) -> None:
-    destination, source = retained(tmp_path)
-    wrong_day = replace(source.plan, day=source.plan.day.replace(year=2024))
+def test_out_of_authorized_partition_date_rejected(tmp_path: Path) -> None:
+    _, source = retained(tmp_path)
+    # ForwardCapturePlan rejects an unauthorized date before any storage audit.
+    with pytest.raises(ValueError, match="outside_authorized_partition"):
+        replace(source.plan, day=source.plan.day.replace(year=2024))
+
+
+def test_missing_stored_batch_rejected(tmp_path: Path) -> None:
+    _, source = retained(tmp_path)
+    empty_store = tmp_path / "empty-operational-store"
+    OperationalMarketStore.initialize(empty_store, StorageLimits(min_free_bytes=0))
     with pytest.raises(ValueError):
-        audit_stored_005930(destination, replace(source, plan=wrong_day))
+        audit_stored_005930(empty_store, source)
 
 
 def fake_preflight(*, endpoint: str = ENDPOINT, ready: bool = True) -> FrozenJSON:
