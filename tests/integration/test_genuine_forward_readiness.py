@@ -42,8 +42,12 @@ def test_reproducible_offline_report_and_independent_blockers(
     assert d["performance_metrics"] is None and d["network_requests"] == 0
     assert all(
         d[key] is False
-        for key in ("genuine_forward_evidence", "pit_qualified", "performance_approved",
-                    "execution_authorized")
+        for key in (
+            "genuine_forward_evidence",
+            "pit_qualified",
+            "performance_approved",
+            "execution_authorized",
+        )
     )
     assert source.rehearsal.evaluation.cases[0].prediction.journal.read_bytes() == before
 
@@ -69,8 +73,9 @@ def test_configured_or_revoked_anchor_never_conveys_independent_authority(
     report = assess_readiness(source, AS_OF).to_dict()
     assert report["capabilities"]["issuer_key_governance_consistency"]["status"] == "verified_local"
     assert report["overall"] == "blocked"
-    assert "historical_revocation_completeness_and_freshness_unverified" in (
-        report["missing_evidence_and_blockers"]
+    assert (
+        "historical_revocation_completeness_and_freshness_unverified"
+        in (report["missing_evidence_and_blockers"])
     )
     if status != "active":
         assert "declared_key_" + status in report["missing_evidence_and_blockers"]
@@ -99,8 +104,10 @@ def test_modified_owners_and_forged_reports_fail_closed(
     elif kind == "anchor":
         owner = anchor()
         source = replace(
-            source, anchor=AnchorSnapshot(owner, "0" * 64),
-            expected_issuer=ISSUER, expected_key_id=KEY_ID,
+            source,
+            anchor=AnchorSnapshot(owner, "0" * 64),
+            expected_issuer=ISSUER,
+            expected_key_id=KEY_ID,
         )
     if kind == "report":
         report = assess_readiness(source, AS_OF)
