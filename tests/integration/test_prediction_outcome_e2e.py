@@ -135,21 +135,29 @@ def test_invalid_inputs_fail_closed(
     case = source.evaluation.cases[0]
     if kind == "head":
         p = replace(case.prediction, journal_head="0" * 64)
-        source = replace(source, evaluation=replace(source.evaluation, cases=(EvidenceCase(p, case.future),)))
+        source = replace(
+            source, evaluation=replace(source.evaluation, cases=(EvidenceCase(p, case.future),))
+        )
     elif kind == "policy":
         source = replace(source, custody=replace(source.custody, prediction_policy_pin="0" * 64))
     elif kind == "strategy":
         doc = source.custody.workflow.to_dict()
         doc["strategy"]["strategy_version"] = "forged"
         forged = FrozenJSON.freeze(doc)
-        source = replace(source, custody=replace(source.custody, workflow=forged, workflow_pin=forged.identifier))
+        source = replace(
+            source, custody=replace(source.custody, workflow=forged, workflow_pin=forged.identifier)
+        )
     elif kind == "future":
         assert case.future is not None
-        source = replace(source, evaluation=replace(source.evaluation, cases=(EvidenceCase(case.prediction, None),)))
+        source = replace(
+            source, evaluation=replace(source.evaluation, cases=(EvidenceCase(case.prediction, None),))
+        )
     elif kind == "future_pin":
         assert case.future is not None
         bad = replace(case.future, request_pin="0" * 64)
-        source = replace(source, evaluation=replace(source.evaluation, cases=(EvidenceCase(case.prediction, bad),)))
+        source = replace(
+            source, evaluation=replace(source.evaluation, cases=(EvidenceCase(case.prediction, bad),))
+        )
     if kind == "report":
         report = rehearse(source, AS_OF)
         changed = report.to_dict()
@@ -183,7 +191,10 @@ def test_pinned_manifest_cli_replay_and_forgery(
     path = tmp_path / "input.json"
     path.write_text(doc.payload_json)
     args = ["--input", str(path), "--input-pin", doc.identifier, "--as-of", AS_OF.isoformat()]
-    assert inputs(doc, doc.identifier).evaluation.cases[0].prediction.prediction_id == source.evaluation.cases[0].prediction.prediction_id
+    assert (
+        inputs(doc, doc.identifier).evaluation.cases[0].prediction.prediction_id
+        == source.evaluation.cases[0].prediction.prediction_id
+    )
     assert main(args) == 0
     report = FrozenJSON(capsys.readouterr().out)
     saved = tmp_path / "report.json"
