@@ -190,6 +190,7 @@ def run(args: argparse.Namespace) -> int:
                 capture_pin=args.capture_pin,
                 batch_pin=args.batch_pin,
                 authorization=reference,
+                authorization_policy="operator_full_market_recurring_v1",
             )
         result = pilot_preflight(config, datetime.now(UTC), args.config, evidence=evidence)
     elif args.action == "preflight":
