@@ -24,7 +24,6 @@ from donghak_stock_vision.storage.prospective_evaluation_consumer import Evaluat
 from donghak_stock_vision.storage.prospective_evidence_audit import EvidenceCase
 from donghak_stock_vision.storage.prospective_prediction_workflow import WorkflowInputs
 
-
 pytest_plugins = ("tests.integration.test_prospective_prediction_workflow",)
 
 
