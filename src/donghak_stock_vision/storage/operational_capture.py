@@ -203,6 +203,7 @@ def verify_stored_capture(
     authorization: FrozenJSON | None = None,
     trust: FrozenJSON | None = None,
     authorization_policy: str = "independent_review_v1",
+    allow_synthetic_fixture: bool = False,
 ) -> FrozenJSON:
     """Read-only completion proof from independently pinned source and original batch.
 
@@ -219,6 +220,7 @@ def verify_stored_capture(
         authorization=authorization,
         trust=trust,
         authorization_policy=authorization_policy,
+        allow_synthetic_fixture=allow_synthetic_fixture,
     )
     with closing(OperationalMarketStore(storage_root)) as store, store.connection:
         store.connection.execute("BEGIN")
