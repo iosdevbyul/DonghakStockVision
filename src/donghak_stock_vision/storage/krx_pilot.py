@@ -33,7 +33,7 @@ class PilotEvidence:
     capture_pin: str
     batch_pin: str
     authorization: FrozenJSON | None = None
-    authorization_policy: str = "operator_full_market_recurring_v1"
+    authorization_policy: str = "independent_review_v1"
     allow_synthetic_fixture: bool = False
 
 
