@@ -12,6 +12,7 @@ from donghak_stock_vision.backtest.validation import require, sha
 from donghak_stock_vision.data.learning import timestamp
 from donghak_stock_vision.storage.prediction_binding import (
     bind_outcome,
+    inspect_prediction,
     verify_binding,
 )
 from donghak_stock_vision.storage.prospective_evaluation_consumer import (
@@ -41,15 +42,9 @@ def rehearse(source: RehearsalInputs, as_of: datetime) -> FrozenJSON:
     at = timestamp(as_of)
     # Original custody is re-derived from original raw capture bytes and the
     # immutable journal. Never accept a caller's completed custody report.
-    original = verify_workflow(
-        source.custody,
-        case.prediction,
-        timestamp(
-            # The original journal timestamp is independently replayed below.
-            # verify_workflow itself checks the journal and all owner pins.
-            source.custody.prediction_policy.to_dict()["created_at"]
-        ),
-    )
+    verified_prediction = inspect_prediction(case.prediction).to_dict()
+    recorded_at = timestamp(verified_prediction["prediction"]["recorded_at"])
+    original = verify_workflow(source.custody, case.prediction, recorded_at)
     binding = bind_outcome(case.prediction, at, case.future)
     status = binding.to_dict()["status"]
     require(status != "invalid", "e2e_invalid_outcome_evidence")
