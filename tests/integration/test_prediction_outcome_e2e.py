@@ -152,13 +152,15 @@ def test_invalid_inputs_fail_closed(
     elif kind == "future":
         assert case.future is not None
         source = replace(
-            source, evaluation=replace(source.evaluation, cases=(EvidenceCase(case.prediction, None),))
+            source,
+            evaluation=replace(source.evaluation, cases=(EvidenceCase(case.prediction, None),))
         )
     elif kind == "future_pin":
         assert case.future is not None
         bad = replace(case.future, request_pin="0" * 64)
         source = replace(
-            source, evaluation=replace(source.evaluation, cases=(EvidenceCase(case.prediction, bad),))
+            source,
+            evaluation=replace(source.evaluation, cases=(EvidenceCase(case.prediction, bad),))
         )
     if kind == "report":
         report = rehearse(source, AS_OF)
