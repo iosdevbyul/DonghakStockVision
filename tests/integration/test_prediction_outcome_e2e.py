@@ -1,7 +1,7 @@
 """Offline end-to-end original custody, future binding and evaluator integration."""
 
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -220,6 +220,7 @@ def test_future_owner_substitution_and_raw_tampering(
         original,
         tmp_path / "substituted-future",
         day=date(2025, 7, 14) if kind == "wrong_date" else date(2025, 7, 11),
+        at=AS_OF + timedelta(days=4) if kind == "wrong_date" else AS_OF - timedelta(seconds=3),
     )
     if kind == "wrong_ticker":
         request = future.request.to_dict()
