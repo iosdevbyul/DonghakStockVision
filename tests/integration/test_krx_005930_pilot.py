@@ -1,8 +1,10 @@
 """Samsung 005930 pilot audit: fixture evidence cannot authorize live collection."""
 
 from argparse import Namespace
+from datetime import UTC, datetime
 from dataclasses import replace
 from pathlib import Path
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -17,6 +19,7 @@ from donghak_stock_vision.storage.krx_pilot import (
     audit_stored_005930,
     pilot_preflight,
 )
+from donghak_stock_vision.storage.krx_scheduler import SchedulerConfig
 from donghak_stock_vision.storage.operational_market import (
     OperationalMarketStore,
     StorageLimits,
@@ -114,7 +117,7 @@ def fake_preflight(*, endpoint: str = ENDPOINT, ready: bool = True) -> FrozenJSO
 
 @pytest.mark.parametrize("ready", [True, False])
 def test_pilot_preflight_never_authorizes_network_or_trading(ready: bool) -> None:
-    config = object()
+    config = cast(SchedulerConfig, object())
     expected = fake_preflight(ready=ready)
     with (
         patch(
@@ -123,9 +126,7 @@ def test_pilot_preflight_never_authorizes_network_or_trading(ready: bool) -> Non
         ),
         patch("httpx.Client.send", side_effect=AssertionError("network forbidden")),
     ):
-        result = pilot_preflight(config, __import__("datetime").datetime.now(
-            __import__("datetime").UTC
-        ), Path("unused"))
+        result = pilot_preflight(config, datetime.now(UTC), Path("unused"))
     d = result.to_dict()
     assert d["request_contract_verified"] is ready
     assert d["configured_provider_ready_for_separate_review"] is ready
@@ -139,9 +140,7 @@ def test_wrong_endpoint_cannot_claim_005930_request_contract() -> None:
         "donghak_stock_vision.storage.krx_pilot.preflight",
         return_value=fake_preflight(endpoint="https://example.invalid"),
     ):
-        d = pilot_preflight(object(), __import__("datetime").datetime.now(
-            __import__("datetime").UTC
-        ), Path("unused")).to_dict()
+        d = pilot_preflight(cast(SchedulerConfig, object()), datetime.now(UTC), Path("unused")).to_dict()
     assert not d["request_contract_verified"]
     assert "005930_pilot_request_contract_not_verified" in d["blockers"]
 
