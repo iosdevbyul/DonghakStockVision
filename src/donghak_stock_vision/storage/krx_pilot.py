@@ -108,8 +108,7 @@ def pilot_preflight(
         request is not None
         and request["endpoint"] == ENDPOINT
         and request["method"] == "GET"
-        and request["parameters"]
-        == {"basDd": str(info["selected_trading_date"]).replace("-", "")}
+        and request["parameters"] == {"basDd": str(info["selected_trading_date"]).replace("-", "")}
         and request["requests_maximum"] == 1
         and request["retries"] == 0
         and request["concurrency"] == 1
