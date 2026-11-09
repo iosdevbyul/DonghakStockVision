@@ -22,6 +22,7 @@ def add_commands(sub: Any) -> None:
             "uninstall",
             "run-once",
             "preflight",
+            "pilot-preflight",
             "diagnose",
             "backlog",
             "run-due",
@@ -133,6 +134,64 @@ def run(args: argparse.Namespace) -> int:
         result = FrozenJSON.freeze(
             summarize(backlog(config, at).to_dict(), preflight(config, at, args.config).to_dict())
         )
+    elif args.action == "pilot-preflight":
+        from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
+        from donghak_stock_vision.storage.krx_authorization import bounded
+        from donghak_stock_vision.storage.krx_pilot import PilotEvidence, pilot_preflight
+
+        if any(
+            (
+                args.apply,
+                args.execute,
+                args.scheduled,
+                args.allow_network,
+                args.confirm_operator_authorization,
+            )
+        ):
+            raise ValueError("pilot_preflight_is_read_only")
+        supplied = [
+            args.source_plan,
+            args.source_plan_pin,
+            args.source_attempt,
+            args.capture_pin,
+            args.batch_pin,
+        ]
+        if any(value is not None for value in supplied) and not all(
+            value is not None for value in supplied
+        ):
+            raise ValueError("complete_pinned_pilot_source_required")
+        if bool(args.source_authorization_root) != bool(args.source_authorization_pin):
+            raise ValueError("complete_original_authorization_reference_required")
+        if args.source_plan is None and args.source_authorization_root is not None:
+            raise ValueError("unbound_source_authorization_reference")
+        evidence = None
+        if args.source_plan is not None:
+            assert args.source_plan_pin is not None
+            assert args.source_attempt is not None
+            assert args.capture_pin is not None
+            assert args.batch_pin is not None
+            reference = (
+                FrozenJSON.freeze(
+                    {
+                        "root": str(args.source_authorization_root),
+                        "grant_pin": args.source_authorization_pin,
+                    }
+                )
+                if args.source_authorization_root is not None
+                else config.reference
+            )
+            evidence = PilotEvidence(
+                capture_root=config.path("capture_root"),
+                plan=ForwardCapturePlan.from_dict(
+                    FrozenJSON(bounded(args.source_plan, 32768).decode()).to_dict()
+                ),
+                plan_pin=args.source_plan_pin,
+                attempt=args.source_attempt,
+                capture_pin=args.capture_pin,
+                batch_pin=args.batch_pin,
+                authorization=reference,
+            )
+        result = pilot_preflight(config, datetime.now(UTC), args.config, evidence=evidence)
     elif args.action == "preflight":
         from donghak_stock_vision.storage.krx_readiness import preflight
 
