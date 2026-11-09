@@ -99,6 +99,7 @@ def fake_preflight(*, endpoint: str = ENDPOINT, ready: bool = True) -> FrozenJSO
     return FrozenJSON.freeze(
         {
             "checked_at": "2026-11-10T00:00:00+00:00",
+            "selected_trading_date": "2026-11-09",
             "origin": "provider_https" if ready else None,
             "ready_for_manual_provider_capture": ready,
             "blockers": [] if ready else ["missing_original_grant"],
@@ -109,6 +110,7 @@ def fake_preflight(*, endpoint: str = ENDPOINT, ready: bool = True) -> FrozenJSO
                 "requests_maximum": 1,
                 "retries": 0,
                 "concurrency": 1,
+                "max_seconds": 30,
                 "max_response_bytes": 2097152,
             } if ready else None,
         }
