@@ -1,6 +1,7 @@
 """Offline end-to-end original custody, future binding and evaluator integration."""
 
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,6 +17,7 @@ from tests.integration.test_prospective_prediction_workflow import (
 
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
+from donghak_stock_vision.storage.forward_capture import DB
 from donghak_stock_vision.prediction_outcome_e2e_cli import inputs, main
 from donghak_stock_vision.storage.prediction_outcome_e2e import (
     RehearsalInputs,
@@ -110,7 +112,7 @@ def test_complete_offline_replay_without_network_or_mutation(
     original = source.evaluation.cases[0].prediction
     future = source.evaluation.cases[0].future
     assert future is not None
-    watched = (original.journal, original.capture_root / "forward_capture.sqlite3")
+    watched = (original.journal, original.capture_root / DB)
     before = {str(p): p.read_bytes() for p in watched if p.exists()}
     with patch("httpx.Client.send", side_effect=AssertionError("network forbidden")):
         report = rehearse(source, AS_OF)
@@ -204,3 +206,71 @@ def test_pinned_manifest_cli_replay_and_forgery(
     with pytest.raises(SystemExit) as blocked:
         main(args + ["--verify-report", str(saved), "--report-pin", "0" * 64])
     assert blocked.value.code == 2
+
+
+@pytest.mark.parametrize("kind", ["wrong_date", "wrong_ticker", "altered_bytes"])
+def test_future_owner_substitution_and_raw_tampering(
+    workflow: tuple[WorkflowInputs, Path], tmp_path: Path, kind: str
+) -> None:
+    source = assembled(workflow, tmp_path, future=False)
+    original = source.evaluation.cases[0].prediction
+    future = future_capture(
+        original,
+        tmp_path / "substituted-future",
+        day=date(2025, 7, 14) if kind == "wrong_date" else date(2025, 7, 11),
+    )
+    if kind == "wrong_ticker":
+        request = future.request.to_dict()
+        request["sources"][0]["plan"]["symbol"] = "000001"
+        forged = FrozenJSON.freeze(request)
+        future = replace(future, request=forged, request_pin=forged.identifier)
+    elif kind == "altered_bytes":
+        with (future.capture_root / DB).open("ab") as stream:
+            stream.write(b"modified original response archive")
+    case = EvidenceCase(original, future)
+    source = replace(source, evaluation=replace(source.evaluation, cases=(case,)))
+    with pytest.raises(ValueError, match="e2e_invalid_outcome_evidence"):
+        rehearse(source, AS_OF)
+
+
+def test_recovery_after_interrupted_verification_preserves_originals(
+    workflow: tuple[WorkflowInputs, Path], tmp_path: Path
+) -> None:
+    source = assembled(workflow, tmp_path)
+    journal = source.evaluation.cases[0].prediction.journal
+    before = journal.read_bytes()
+    with patch(
+        "donghak_stock_vision.storage.prediction_outcome_e2e.prepare_evaluation",
+        side_effect=KeyboardInterrupt,
+    ):
+        with pytest.raises(KeyboardInterrupt):
+            rehearse(source, AS_OF)
+    assert journal.read_bytes() == before
+    completed = rehearse(source, AS_OF)
+    verify_rehearsal(completed, completed.identifier, source, AS_OF)
+    assert journal.read_bytes() == before
+
+
+def test_manifest_rejects_self_rehashed_horizon_substitution(
+    workflow: tuple[WorkflowInputs, Path], tmp_path: Path
+) -> None:
+    source = assembled(workflow, tmp_path)
+    original = manifest(source)
+    changed = original.to_dict()
+    changed["horizon"]["owner"]["target_trading_date"] = "2025-07-14"
+    forged_horizon = FrozenJSON.freeze(changed["horizon"]["owner"])
+    changed["horizon"]["pin"] = forged_horizon.identifier
+    forged = FrozenJSON.freeze(changed)
+    with pytest.raises(ValueError, match="e2e_original_horizon_mismatch"):
+        inputs(forged, forged.identifier)
+
+
+def test_historical_result_v1_still_semantically_verified(
+    workflow: tuple[WorkflowInputs, Path], tmp_path: Path
+) -> None:
+    source = assembled(workflow, tmp_path)
+    report = rehearse(source, AS_OF)
+    data = report.to_dict()
+    assert data["evaluation_report"]["result"]["version"] == "prospective_evaluation_result_v1"
+    assert data["evaluation_report"]["version"] == "prospective_evaluation_preparation_v1"
+    assert report == rehearse(source, AS_OF)
