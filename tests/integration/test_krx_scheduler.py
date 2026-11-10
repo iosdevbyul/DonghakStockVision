@@ -591,9 +591,7 @@ def test_production_scheduler_005930_original_capture_to_verified_database_readb
             assert names == [("000660",), ("005930",)]
         again = run_once(config, execute=True, client=http, clock=lambda: AT).to_dict()
         assert again["reason"] == "already_collected"
-        assert audit_stored_005930(config.path("operational_root"), evidence) == (
-            audit_stored_005930(config.path("operational_root"), evidence)
-        )
+        assert audit_stored_005930(config.path("operational_root"), evidence).to_dict() == report
         assert snapshot(original_root) == before
     assert len(requests) == 1
 
