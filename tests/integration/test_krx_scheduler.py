@@ -1,5 +1,6 @@
 """No real LaunchAgent install/enable or provider requests: private temp fixtures only."""
 
+import hashlib
 import json
 import plistlib
 import sqlite3
@@ -23,7 +24,9 @@ from donghak_stock_vision.cli import main
 from donghak_stock_vision.data.schema import SEOUL
 from donghak_stock_vision.storage import krx_launchd
 from donghak_stock_vision.storage.krx_scheduler import (
+    ATTEMPT,
     SchedulerConfig,
+    _plan,
     _save,
     _state,
     control,
@@ -32,7 +35,9 @@ from donghak_stock_vision.storage.krx_scheduler import (
     run_once,
     set_enabled,
 )
+from donghak_stock_vision.storage.krx_pilot import PilotEvidence, audit_stored_005930
 from donghak_stock_vision.storage.operational_market import OperationalMarketStore, StorageLimits
+from donghak_stock_vision.storage.forward_capture import readback, verify_capture
 
 
 @pytest.fixture
@@ -516,3 +521,147 @@ def test_control_during_capture_cancels_without_trading(config: SchedulerConfig)
     assert result["outcome"] == "failed" and calls == [1]
     assert not control(config)["enabled"]
     assert inspect(config, AT).to_dict()["stored_observations"] == 0
+
+
+def test_production_scheduler_005930_original_capture_to_verified_database_readback(
+    config: SchedulerConfig,
+) -> None:
+    """One bounded mock HTTP request traverses real production capture, storage and audit."""
+    enabled(config)
+    plan, _ = _plan(config, AT)
+    raw = json.dumps(
+        {
+            "OutBlock_1": [
+                row("005930", day=plan.day),
+                row("000660", day=plan.day),
+            ]
+        },
+        separators=(",", ":"),
+    ).encode()
+    requests: list[httpx.Request] = []
+
+    def transport(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.method == "GET"
+        assert request.url.scheme == "https"
+        assert request.url.host == "data-dbg.krx.co.kr"
+        assert request.url.path == "/svc/apis/sto/stk_bydd_trd"
+        assert request.url.params == {"basDd": plan.day.strftime("%Y%m%d")}
+        assert request.headers["AUTH_KEY"] == KEY
+        return httpx.Response(200, content=raw)
+
+    with (
+        patch("socket.create_connection", side_effect=AssertionError("live network forbidden")),
+        httpx.Client(transport=httpx.MockTransport(transport), trust_env=False) as http,
+    ):
+        result = run_once(config, execute=True, client=http, clock=lambda: AT).to_dict()
+        assert result["outcome"] == "succeeded"
+        assert result["observation_count"] == 2
+        assert result["origin"] == "authorized_provider_mock_fixture"
+        source_pin = _state(config)["successes"][0]
+        capture_pin = source_pin["capture_pin"]
+        original_root = config.path("capture_root")
+        owner = verify_capture(original_root, plan, ATTEMPT, capture_pin)
+        assert readback(original_root, plan, ATTEMPT, capture_pin, 0) == raw
+        receipt = owner.to_dict()["responses"][0]["receipt"]
+        assert receipt["rawSha256"] == hashlib.sha256(raw).hexdigest()
+        before = snapshot(original_root)
+        evidence = PilotEvidence(
+            original_root,
+            plan,
+            plan.document.identifier,
+            ATTEMPT,
+            capture_pin,
+            source_pin["batch_pin"],
+            authorization=config.reference,
+            authorization_policy="operator_full_market_recurring_v1",
+        )
+        report = audit_stored_005930(config.path("operational_root"), evidence).to_dict()
+        assert report["ticker"] == "005930"
+        assert report["source_origin"] == "authorized_provider_mock_fixture"
+        assert report["verified_batch_pin"] == source_pin["batch_pin"]
+        assert report["locally_verified"]
+        assert report["independently_authenticated_market_origin"] is False
+        assert report["network_requests"] == 0
+        with closing(OperationalMarketStore(config.path("operational_root"))) as store:
+            assert store.validate().to_dict()["valid"]
+            names = store.connection.execute(
+                "SELECT ticker FROM market_observations ORDER BY ticker"
+            ).fetchall()
+            assert names == [("000660",), ("005930",)]
+        again = run_once(config, execute=True, client=http, clock=lambda: AT).to_dict()
+        assert again["reason"] == "already_collected"
+        assert audit_stored_005930(config.path("operational_root"), evidence) == (
+            audit_stored_005930(config.path("operational_root"), evidence)
+        )
+        assert snapshot(original_root) == before
+    assert len(requests) == 1
+
+
+def test_scheduler_persisted_batch_without_005930_cannot_pass_pilot_audit(
+    config: SchedulerConfig,
+) -> None:
+    """Successful full-market ingestion is not evidence that Samsung was present."""
+    enabled(config)
+    calls: list[int] = []
+    with client(calls) as http:
+        outcome = run_once(config, execute=True, client=http, clock=lambda: AT).to_dict()
+    assert outcome["outcome"] == "succeeded" and calls == [1]
+    plan, _ = _plan(config, AT)
+    source = _state(config)["successes"][0]
+    evidence = PilotEvidence(
+        config.path("capture_root"),
+        plan,
+        plan.document.identifier,
+        ATTEMPT,
+        source["capture_pin"],
+        source["batch_pin"],
+        authorization=config.reference,
+        authorization_policy="operator_full_market_recurring_v1",
+    )
+    with pytest.raises(ValueError, match="pilot_005930_missing_from_verified_batch"):
+        audit_stored_005930(config.path("operational_root"), evidence)
+    with closing(OperationalMarketStore(config.path("operational_root"))) as store:
+        assert store.validate().to_dict()["valid"]
+        assert store.status().to_dict()["observation_count"] == 940
+
+
+def test_005930_interrupted_storage_recovery_does_not_issue_second_request(
+    config: SchedulerConfig,
+) -> None:
+    """Pending ingestion may resume offline; capture-pending never silently retries."""
+    enabled(config)
+    plan, _ = _plan(config, AT)
+    body = {"OutBlock_1": [row("005930", day=plan.day), row("000660", day=plan.day)]}
+    requests: list[int] = []
+
+    def transport(_: httpx.Request) -> httpx.Response:
+        requests.append(1)
+        return httpx.Response(200, json=body)
+
+    with httpx.Client(transport=httpx.MockTransport(transport), trust_env=False) as http:
+        with patch(
+            "donghak_stock_vision.storage.krx_scheduler.ingest_capture",
+            side_effect=sqlite3.OperationalError("interrupted fixture ingestion"),
+        ):
+            failed = run_once(config, execute=True, client=http, clock=lambda: AT).to_dict()
+        assert failed["reason"] == "ingestion_pending"
+        assert _state(config)["pending"]["phase"] == "ingest_pending"
+        resumed = run_once(config, execute=True, client=http, clock=lambda: AT).to_dict()
+    assert resumed["reason"] == "offline_ingestion_resumed"
+    assert resumed["observation_count"] == 2
+    assert requests == [1]
+    source = _state(config)["successes"][0]
+    evidence = PilotEvidence(
+        config.path("capture_root"),
+        plan,
+        plan.document.identifier,
+        ATTEMPT,
+        source["capture_pin"],
+        source["batch_pin"],
+        authorization=config.reference,
+        authorization_policy="operator_full_market_recurring_v1",
+    )
+    assert audit_stored_005930(config.path("operational_root"), evidence).to_dict()[
+        "locally_verified"
+    ]
