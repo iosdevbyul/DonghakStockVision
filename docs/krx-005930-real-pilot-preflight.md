@@ -150,3 +150,153 @@ Python 3.12/3.13/3.14 protected CI, installed wheel regressions, protected
 data SHA-256 checks and full offline suite must be confirmed before merging.
 The real live observation, authorized transport, retention permissions and
 external chronology remain **unverified** after this PR.
+
+## Production execution-path E2E — Phase 7-A handoff
+
+The offline integration test
+`test_production_scheduler_005930_original_capture_to_verified_database_readback`
+now uses the unchanged **production** `krx_scheduler.run_once(execute=True,
+client=httpx.MockTransport(...))` path. It verifies the exact outgoing GET
+`https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd?basDd=YYYYMMDD`,
+`AUTH_KEY`, a representative two-instrument KOSPI `OutBlock_1` response
+including `005930`, the **original byte-for-byte HTTP response**, its receipt
+SHA-256, pinned original capture, SQLite transactional batch, reopened read-only
+observation storage and `audit_stored_005930`. Repeated completion of the
+same observed date cannot generate another HTTP call; original archive bytes
+remain unchanged. This uses a synthetic reviewed operator package and **does
+not verify current provider-side entitlements**. Two additional E2E tests
+reject a verified batch lacking 005930 and resume an interrupted ingestion
+without another request.
+
+### Important production handoff distinction
+
+The scheduler's `run_once(execute=True)` is intentionally guarded by a
+persistently enabled scheduler, recurring approval, original private state and
+pending-capture controls. **Do not turn on recurring scheduling merely for
+the first manually authorized pilot.** The existing bounded manual capture
+CLI followed by the existing storage CLI is the correct future *single
+request* workflow. Never run the following live section until a separate
+explicit user authorization covering endpoint, full-market response scope,
+completed date, credential, expected budget and applicable costs.
+
+### Preflight and review — no network
+
+Obtain a current account-side entitlement confirmation for `stk_bydd_trd`
+and verify original private permission/terms/specification files against the
+existing pinned recurring-policy owner. Confirm private-use and original-body
+retention rights, service validity, market/calendar, endpoint, and the
+provider-wide remaining request count; local counters alone cannot inspect
+requests from other clients. Check that the existing private credential
+is present and bound using preflight; **do not print its value or hash**.
+
+```sh
+dsv krx-scheduler preflight --config "$CONFIG" --config-pin "$CONFIG_PIN"
+dsv krx-scheduler pilot-preflight --config "$CONFIG" --config-pin "$CONFIG_PIN"
+dsv krx-scheduler status --config "$CONFIG" --config-pin "$CONFIG_PIN"
+dsv market-storage validate --root "$OPERATIONAL_ROOT"
+```
+
+Inspect `selected_trading_date`, `endpoint`, `parameters.basDd`,
+`requests_maximum=1`, `retries=0`, `concurrency=1`,
+`max_seconds<=30`, `max_response_bytes<=2097152`, credential binding
+and local quota. A read-only preflight can pass its local checks and still
+**cannot independently authorize a live request**. Do not infer an allowed
+session merely from weekday checks. No synthetic response can close this gate.
+
+Use the existing reviewed pinned-plan procedure in
+[KRX production readiness](krx-production-readiness.md#prepare-the-daily-plan-without-network-access).
+Verify the selected completed Seoul market date and the manual `manual-first`
+plan's independent pin before any request. Then inspect the original authorization:
+
+```sh
+dsv forward-capture authorization-readiness \\
+  --root "$CAPTURE_ROOT" --plan "$PLAN" --plan-pin "$PLAN_PIN" \\
+  --attempt manual-first \\
+  --authorization-root "$POLICY_ROOT" --authorization-pin "$POLICY_PIN" \\
+  --authorization-policy operator_full_market_recurring_v1
+dsv forward-capture dry-run \\
+  --root "$CAPTURE_ROOT" --plan "$PLAN" --plan-pin "$PLAN_PIN" \\
+  --attempt manual-first \\
+  --authorization-root "$POLICY_ROOT" --authorization-pin "$POLICY_PIN" \\
+  --authorization-policy operator_full_market_recurring_v1
+```
+
+### Future operator-approved capture — DO NOT EXECUTE UNTIL SEPARATELY APPROVED
+
+The next command issues a network request **only when authorized**. It is
+included here for controlled handoff, not executed or activated by this PR:
+
+```sh
+dsv forward-capture capture \\
+  --root "$CAPTURE_ROOT" --plan "$PLAN" --plan-pin "$PLAN_PIN" \\
+  --attempt manual-first \\
+  --authorization-root "$POLICY_ROOT" --authorization-pin "$POLICY_PIN" \\
+  --authorization-policy operator_full_market_recurring_v1 \\
+  --allow-network --confirm-operator-authorization
+```
+
+Persist the original returned `CAPTURE_PIN` separately. If HTTP status,
+body length, source identity, permission, date, data schema or request
+completion is uncertain, **STOP**; preserve original failed response and
+request counter, do not retry or reset state. A timeout/429 may have used
+the only permitted request. Do not substitute a fixture or an older archive.
+
+### Offline ingest/readback after authorized original capture
+
+With exact original `PLAN_PIN` and `CAPTURE_PIN` previously retained:
+
+```sh
+dsv forward-capture verify \\
+  --root "$CAPTURE_ROOT" --plan "$PLAN" --plan-pin "$PLAN_PIN" \\
+  --attempt manual-first --pin "$CAPTURE_PIN"
+dsv market-storage ingest-capture --root "$OPERATIONAL_ROOT" \\
+  --capture-root "$CAPTURE_ROOT" --plan "$PLAN" --plan-pin "$PLAN_PIN" \\
+  --attempt manual-first --capture-pin "$CAPTURE_PIN" \\
+  --authorization-root "$POLICY_ROOT" --authorization-pin "$POLICY_PIN" \\
+  --authorization-policy operator_full_market_recurring_v1
+dsv market-storage validate --root "$OPERATIONAL_ROOT"
+dsv market-storage status --root "$OPERATIONAL_ROOT"
+dsv market-storage duplicates --root "$OPERATIONAL_ROOT"
+```
+
+Independently retain the successful ingestion's `BATCH_PIN` from the output.
+Run the existing source-linked **read-only** pilot audit with all original
+pins; it fails for missing 005930, wrong batch/source, tampered raw bytes
+or invalid reviewed authorization:
+
+```sh
+dsv krx-scheduler pilot-preflight \\
+  --config "$CONFIG" --config-pin "$CONFIG_PIN" \\
+  --source-plan "$PLAN" --source-plan-pin "$PLAN_PIN" \\
+  --source-attempt manual-first --capture-pin "$CAPTURE_PIN" \\
+  --batch-pin "$BATCH_PIN"
+```
+
+A successful local audit is **not** independent authentication of a real KRX
+publication. The origin and capture timestamp remain locally asserted.
+Retain original source bytes and independent pins under approved data-rights
+and custody constraints. Never set genuine-forward, PIT, performance, paper
+or brokerage eligibility from this replay. Do not install/resume the recurring
+scheduler; any future recurring operation requires independent authorization.
+
+### Verification gates
+
+```sh
+pytest -q tests/integration/test_krx_scheduler.py \\
+  tests/integration/test_krx_005930_pilot.py \\
+  tests/integration/test_krx_pilot_readiness.py \\
+  tests/integration/test_operational_capture.py \\
+  tests/integration/test_operational_market_storage.py \\
+  tests/integration/test_krx_recurring.py \\
+  tests/integration/test_krx_production_readiness.py \\
+  tests/architecture/test_boundaries.py
+ruff check src tests
+ruff format --check src tests
+mypy
+python -m build
+```
+
+Check GitHub Python 3.12/3.13/3.14 required CI, wheel regression and protected
+dataset/database SHA-256 separately. The code change provides tests; it does
+**not** claim a local run, a protected hash comparison, a production
+entitlement, a live KRX capture or a real persisted 005930 observation.
