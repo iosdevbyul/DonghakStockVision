@@ -546,7 +546,7 @@ def test_production_scheduler_005930_original_capture_to_verified_database_readb
         assert request.url.scheme == "https"
         assert request.url.host == "data-dbg.krx.co.kr"
         assert request.url.path == "/svc/apis/sto/stk_bydd_trd"
-        assert request.url.params == {"basDd": plan.day.strftime("%Y%m%d")}
+        assert dict(request.url.params) == {"basDd": plan.day.strftime("%Y%m%d")}
         assert request.headers["AUTH_KEY"] == KEY
         return httpx.Response(200, content=raw)
 
