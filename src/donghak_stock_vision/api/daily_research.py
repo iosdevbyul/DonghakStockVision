@@ -15,7 +15,7 @@ from typing import Any, Literal
 from donghak_stock_vision.api.models import DailyResearchReaderError as DailyResearchReaderError
 from donghak_stock_vision.api.models import (
     DailyResearchRecord,
-    DailyResearchSeries,
+    DailyResearchSeries as DailyResearchSeries,
     ResearchPeriod,
     ResearchSourceReference,
 )
