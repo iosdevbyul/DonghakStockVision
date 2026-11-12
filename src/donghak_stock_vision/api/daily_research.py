@@ -12,8 +12,8 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
+from donghak_stock_vision.api.models import DailyResearchReaderError as DailyResearchReaderError
 from donghak_stock_vision.api.models import (
-    DailyResearchReaderError as DailyResearchReaderError,
     DailyResearchRecord,
     DailyResearchSeries,
     ResearchPeriod,
