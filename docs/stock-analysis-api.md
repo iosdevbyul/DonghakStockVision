@@ -13,3 +13,9 @@ JSON layout:
 Each optional record contains `id`, `ticker`, `analyzedAt` (timezone aware), `dataThrough` (YYYY-MM-DD), `modelId`, `modelVersion`, `direction` (up/down/neutral), `score` (0..1 or null), `validation` (verified/pending/blocked), `explanation` (string or null). Pending and blocked records may not have numeric scores. Maximum 500 records per ticker, duplicate IDs/tickers rejected. Unknown ticker returns an empty record list, not an invented prediction.
 
 Before adopting a real publisher, add provenance ties to immutable approved model artifacts, ticker identity, input data snapshot, inference execution time, look-ahead/leakage controls, and an explicit approval gate. This transport alone cannot prove the semantic validity of a record labeled verified. Do not turn on this endpoint using unreviewed external data.
+
+PR #227 daily research artifacts have a separate, explicitly configured read-only
+[research results API](daily-research-results-api.md) at
+`GET /api/v1/stocks/{ticker}/research-analysis`. Its uncalibrated research scores
+are not reviewed publications. This original endpoint and the existing
+TrisMarketLens publication validator retain their approval boundary unchanged.

@@ -36,6 +36,14 @@ def parser() -> argparse.ArgumentParser:
         "--analysis-publication", type=Path, help="reviewed per-security analysis JSON"
     )
     result.add_argument(
+        "--daily-research-snapshot",
+        type=Path,
+        help="quiescent daily AnalysisStore snapshot; read-only research view",
+    )
+    result.add_argument(
+        "--daily-research-snapshot-sha256", help="independently retained snapshot SHA"
+    )
+    result.add_argument(
         "--operations-root", type=Path, help="optional read-only DART evidence root"
     )
     result.add_argument(
@@ -67,6 +75,8 @@ def main(argv: list[str] | None = None) -> None:
                 args.market_db,
                 args.market_db_sha256,
                 args.analysis_publication,
+                args.daily_research_snapshot,
+                args.daily_research_snapshot_sha256,
                 args.security_metadata,
                 args.security_metadata_fingerprint,
                 args.portfolio_publications,
@@ -99,6 +109,26 @@ def main(argv: list[str] | None = None) -> None:
         parser().error(
             "--security-metadata and --security-metadata-fingerprint must be specified together"
         )
+    if bool(args.daily_research_snapshot) != bool(args.daily_research_snapshot_sha256):
+        parser().error(
+            "--daily-research-snapshot and --daily-research-snapshot-sha256 are required together"
+        )
+    daily_research_reader = None
+    if args.daily_research_snapshot:
+        if args.host not in {"127.0.0.1", "::1"}:
+            parser().error("daily research snapshots require a loopback bind")
+        from donghak_stock_vision.api.daily_research import (
+            DailyResearchReader,
+            DailyResearchReaderError,
+        )
+
+        try:
+            daily_research_reader = DailyResearchReader(
+                args.daily_research_snapshot,
+                expected_sha256=args.daily_research_snapshot_sha256,
+            )
+        except DailyResearchReaderError:
+            raise SystemExit("daily research snapshot unavailable or invalid") from None
     portfolio_reader = None
     if bool(args.portfolio_publications) != bool(args.portfolio_index_sha256):
         parser().error(
@@ -172,6 +202,7 @@ def main(argv: list[str] | None = None) -> None:
         ohlcv_reader=ohlcv_reader,
         operational_reader=operational_reader,
         analysis_reader=analysis_reader,
+        daily_research_reader=daily_research_reader,
         security_metadata_reader=metadata_reader,
         operations_reader=OperationsReader(
             args.operations_root,
@@ -180,7 +211,7 @@ def main(argv: list[str] | None = None) -> None:
             market=ohlcv_reader,
         ),
     )
-    if portfolio_reader is not None:
+    if portfolio_reader is not None or daily_research_reader is not None:
         uvicorn.run(app, host=args.host, port=args.port, proxy_headers=False)
     else:
         uvicorn.run(app, host=args.host, port=args.port)
