@@ -12,13 +12,6 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
-from donghak_stock_vision.storage.daily_research_public_models import (
-    DailyResearchReaderError,
-    DailyResearchRecord,
-    DailyResearchSeries,
-    ResearchPeriod,
-    ResearchSourceReference,
-)
 from donghak_stock_vision.backtest.validation import require, sha
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
 from donghak_stock_vision.data.learning import FEATURES, THRESHOLD, digest, timestamp
@@ -26,6 +19,13 @@ from donghak_stock_vision.data.schema import SEOUL
 from donghak_stock_vision.signals.dataset import context
 from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.daily_research import JOB, RESULT, VERSION
+from donghak_stock_vision.storage.daily_research_public_models import (
+    DailyResearchReaderError,
+    DailyResearchRecord,
+    DailyResearchSeries,
+    ResearchPeriod,
+    ResearchSourceReference,
+)
 
 MAX_DB_BYTES = 256 * 1024**2
 MAX_RESULTS = 100000
