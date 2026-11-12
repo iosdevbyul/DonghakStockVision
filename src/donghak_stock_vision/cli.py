@@ -87,10 +87,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     logging.Formatter.converter = time.gmtime
     logging.basicConfig(level=logging.INFO, format="%(asctime)sZ %(levelname)s %(message)s")
-    if args.command != "daily-research":
+    offline_real_training = args.command == "train" and (
+        getattr(args, "real_market_source", False)
+        or getattr(args, "research_source_contract", "receipt_archive_v1") != "receipt_archive_v1"
+    )
+    if args.command != "daily-research" and not offline_real_training:
         load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
+        if offline_real_training:
+            from donghak_stock_vision.learning_cli import run as run_real_training
+
+            if args.db is None:
+                raise ValueError("explicit_real_market_database_required")
+            return run_real_training(args, args.db)
         if args.command == "daily-research":
             from donghak_stock_vision.daily_research_cli import run as run_daily_research
 

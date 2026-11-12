@@ -29,6 +29,18 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             command.add_argument("--quality-manifest", type=Path)
         if name == "train":
             command.add_argument("--research-calendar", type=Path)
+            command.add_argument("--real-market-source", action="store_true")
+            command.add_argument("--market-sha256")
+            command.add_argument(
+                "--research-source-contract",
+                choices=("receipt_archive_v1", "legacy_research_v1"),
+                default="receipt_archive_v1",
+            )
+            command.add_argument("--access-split", type=Path)
+            command.add_argument("--access-split-pin")
+            command.add_argument("--fit-split", type=Path)
+            command.add_argument("--fit-split-pin")
+            command.add_argument("--prepare-only", action="store_true")
             command.add_argument("--start", type=date.fromisoformat, required=True)
             command.add_argument("--end", type=date.fromisoformat, required=True)
             command.add_argument("--snapshot-as-of", type=timestamp)
@@ -66,6 +78,26 @@ def run(args: argparse.Namespace, market_path: Path) -> int:
     market = None
     try:
         mode = mode_value(args.mode) if args.mode else None
+        if args.command == "train" and getattr(args, "real_market_source", False):
+            return _real_market(args, market_path)
+        if (
+            args.command == "train"
+            and getattr(args, "research_source_contract", "receipt_archive_v1")
+            != "receipt_archive_v1"
+        ):
+            raise AnalysisError("real_market_source_mode_required")
+        if args.command == "train" and any(
+            getattr(args, key, None)
+            for key in (
+                "market_sha256",
+                "access_split",
+                "access_split_pin",
+                "fit_split",
+                "fit_split_pin",
+                "prepare_only",
+            )
+        ):
+            raise AnalysisError("real_market_source_mode_required")
         needs_market = args.command == "train" or (
             args.command == "infer" and mode == "point_in_time"
         )
@@ -193,3 +225,56 @@ def run(args: argparse.Namespace, market_path: Path) -> int:
             market.close()
         if analysis:
             analysis.close()
+
+
+def _real_market(args: argparse.Namespace, market_path: Path) -> int:
+    from donghak_stock_vision.backtest.data import FrozenJSON
+    from donghak_stock_vision.data.research_split import ExplicitResearchSplit
+    from donghak_stock_vision.storage.krx_authorization import bounded
+    from donghak_stock_vision.storage.real_market_training import (
+        RealMarketTrainingRequest,
+        prepare_real_market_training,
+        train_real_market,
+    )
+
+    def split(path: Path) -> ExplicitResearchSplit:
+        value = FrozenJSON(bounded(path, 65536).decode()).to_dict()
+        return ExplicitResearchSplit.from_dict(value.get("split", value))
+
+    if (
+        args.mode != "historical-research"
+        or not args.acknowledge_research_limitations
+        or args.synthetic_test
+        or args.quality_manifest
+        or args.as_of
+        or not all(
+            (args.market_sha256, args.access_split, args.access_split_pin, args.snapshot_as_of)
+        )
+    ):
+        raise AnalysisError("explicit_real_research_source_contract_required")
+    if bool(args.fit_split) != bool(args.fit_split_pin):
+        raise AnalysisError("complete_development_split_reference_required")
+    request = RealMarketTrainingRequest(
+        market_path,
+        args.market_sha256,
+        split(args.access_split),
+        args.access_split_pin,
+        split(args.fit_split) if args.fit_split else None,
+        args.fit_split_pin,
+        tuple(sorted(set(args.tickers))),
+        args.snapshot_as_of,
+        ResearchCalendarPolicy.from_dict(json.loads(args.research_calendar.read_text()))
+        if args.research_calendar
+        else None,
+        args.research_source_contract,
+    )
+    request.validate()
+    if args.start != request.start or args.end != request.end:
+        raise AnalysisError("real_training_range_must_match_frozen_split")
+    if args.prepare_only:
+        _, report = prepare_real_market_training(request)
+    else:
+        report = train_real_market(request, args.analysis_db)
+    print(report.payload_json)
+    value = report.to_dict()
+    return int(not value.get("can_train", bool(value.get("training", {}).get("model_version"))))
