@@ -54,6 +54,7 @@ from donghak_stock_vision.api.stock_analysis import (
 )
 from donghak_stock_vision.storage.krx_operations_diagnostics import summarize
 
+
 def create_app(
     reader: ResearchAPIReader | None = None,
     ohlcv_reader: OhlcvMarketReader | None = None,
