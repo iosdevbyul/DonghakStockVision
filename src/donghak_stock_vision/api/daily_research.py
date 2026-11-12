@@ -8,9 +8,9 @@ import hashlib
 import math
 import sqlite3
 from contextlib import closing
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from donghak_stock_vision.api.models import (
     DailyResearchReaderError,
@@ -21,7 +21,7 @@ from donghak_stock_vision.api.models import (
 )
 from donghak_stock_vision.backtest.validation import require, sha
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
-from donghak_stock_vision.data.learning import FEATURES, digest, timestamp
+from donghak_stock_vision.data.learning import FEATURES, THRESHOLD, digest, timestamp
 from donghak_stock_vision.data.schema import SEOUL
 from donghak_stock_vision.signals.dataset import context
 from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
