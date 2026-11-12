@@ -328,6 +328,10 @@ def run_daily(
     )
     with closing(ReadOnlyAnalysisStore(model_db)) as models:
         model = load_model(models, model_version, "historical_research")
+        if model["data_origin"] == "real":
+            from donghak_stock_vision.storage.real_market_training import validate_real_daily_model
+
+            validate_real_daily_model(models, model, day)
     # Timestamp isn't part of identity: local retries do not change frozen inputs.
     job = {
         "version": VERSION,

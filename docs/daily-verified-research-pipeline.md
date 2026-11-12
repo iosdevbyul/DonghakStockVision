@@ -178,3 +178,11 @@ recovery, original-byte damage, policy/batch substitution, unsupported versions,
 model damage, conflicting jobs, source/output alias refusal, credentials-free CLI
 and the existing diagnostics API. Synthetic fixture results never demonstrate actual
 KRX acquisition, production model readiness, external authenticity or performance.
+
+## Real-market model source binding
+
+Real daily models additionally need the frozen original training source binding
+from [real-market model readiness](real-market-model-readiness.md). The generic
+Phase 2 model loader is unchanged; an unlinked existing real model is blocked by
+the daily consumer rather than silently promoted. This bridge does not train on
+operational SQLite, unseal the original Final Test, or change any collection policy.
