@@ -7,11 +7,6 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from donghak_stock_vision.api.daily_research import (
-    DailyResearchReader,
-    DailyResearchReaderError,
-    DailyResearchSeries,
-)
 from donghak_stock_vision.api.historical_portfolio_routes import portfolio_router
 from donghak_stock_vision.api.historical_portfolios import PortfolioPublicationReader
 from donghak_stock_vision.api.models import (
@@ -52,6 +47,11 @@ from donghak_stock_vision.api.stock_analysis import (
     AnalysisPublicationReader,
     PublishedStockAnalysis,
 )
+from donghak_stock_vision.storage.daily_research_public_models import (
+    DailyResearchReaderError,
+    DailyResearchSeries,
+)
+from donghak_stock_vision.storage.daily_research_reader import DailyResearchReader
 from donghak_stock_vision.storage.krx_operations_diagnostics import summarize
 
 
