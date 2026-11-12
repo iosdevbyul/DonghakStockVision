@@ -1,22 +1,21 @@
 """FastAPI transport for immutable research snapshots."""
 
+from __future__ import annotations
+
 from collections.abc import Callable, Mapping, Sequence
 from datetime import date
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from donghak_stock_vision.api.daily_research import (
-    DailyResearchReader,
-    DailyResearchReaderError,
-    DailyResearchSeries,
-)
 from donghak_stock_vision.api.historical_portfolio_routes import portfolio_router
 from donghak_stock_vision.api.historical_portfolios import PortfolioPublicationReader
 from donghak_stock_vision.api.models import (
     BaselineBacktestSnapshot,
     CoverageSummary,
+    DailyResearchReaderError,
+    DailyResearchSeries,
     EvidenceDetail,
     EvidenceLayerId,
     EvidenceLayerSummary,
@@ -53,6 +52,9 @@ from donghak_stock_vision.api.stock_analysis import (
     PublishedStockAnalysis,
 )
 from donghak_stock_vision.storage.krx_operations_diagnostics import summarize
+
+if TYPE_CHECKING:
+    from donghak_stock_vision.api.daily_research import DailyResearchReader
 
 
 def create_app(
