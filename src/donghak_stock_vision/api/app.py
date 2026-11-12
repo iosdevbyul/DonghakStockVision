@@ -59,6 +59,7 @@ def create_app(
     krx_diagnostics_reports: (
         Callable[[], tuple[Mapping[str, Any], Mapping[str, Any]]] | None
     ) = None,
+    daily_research_report: Callable[[], Mapping[str, Any]] | None = None,
     security_metadata_reader: SecurityMetadataReader | None = None,
     portfolio_reader: PortfolioPublicationReader | None = None,
     allowed_origins: Sequence[str] = (
@@ -250,7 +251,11 @@ def create_app(
         if krx_diagnostics_reports is None:
             raise HTTPException(status_code=503, detail="KRX diagnostics not configured")
         backlog_report, preflight_report = krx_diagnostics_reports()
-        return summarize(backlog_report, preflight_report)
+        return summarize(
+            backlog_report,
+            preflight_report,
+            daily_research_report() if daily_research_report is not None else None,
+        )
 
     @app.get("/api/v1/operations/runs", response_model=RunsPayload)
     def operation_runs(

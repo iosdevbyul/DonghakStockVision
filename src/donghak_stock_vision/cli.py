@@ -71,6 +71,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.krx_scheduler_cli import add_commands as add_scheduler
 
     add_scheduler(sub)
+    from donghak_stock_vision.daily_research_cli import add_commands as add_daily_research
+
+    add_daily_research(sub)
     from donghak_stock_vision.forward_signal_cli import add_commands as add_forward_signal
 
     add_forward_signal(sub)
@@ -84,9 +87,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     logging.Formatter.converter = time.gmtime
     logging.basicConfig(level=logging.INFO, format="%(asctime)sZ %(levelname)s %(message)s")
-    load_dotenv(Path.cwd() / ".env", override=False)
+    if args.command != "daily-research":
+        load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
+        if args.command == "daily-research":
+            from donghak_stock_vision.daily_research_cli import run as run_daily_research
+
+            if args.db is not None:
+                raise ValueError("daily_research_uses_explicit_sources")
+            return run_daily_research(args)
         if args.command == "krx-scheduler":
             from donghak_stock_vision.krx_scheduler_cli import run as run_scheduler
 
