@@ -12,7 +12,6 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from donghak_stock_vision.backtest.validation import require, sha
 from donghak_stock_vision.api.models import (
     DailyResearchReaderError,
     DailyResearchRecord,
@@ -20,6 +19,7 @@ from donghak_stock_vision.api.models import (
     ResearchPeriod,
     ResearchSourceReference,
 )
+from donghak_stock_vision.backtest.validation import require, sha
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
 from donghak_stock_vision.data.learning import FEATURES, digest, timestamp
 from donghak_stock_vision.data.schema import SEOUL
