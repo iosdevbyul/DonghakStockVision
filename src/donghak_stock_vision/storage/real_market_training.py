@@ -15,7 +15,7 @@ from typing import Any
 
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require, sha
-from donghak_stock_vision.backtest_cli import ReadOnlyMarketStore
+from donghak_stock_vision.storage.sqlite import OPERATIONAL_APPLICATION_ID, SQLiteStore
 from donghak_stock_vision.data.learning import AnalysisError, Direction, Minimums, digest, timestamp
 from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy
 from donghak_stock_vision.data.research_split import ExplicitResearchSplit
@@ -27,7 +27,6 @@ from donghak_stock_vision.signals.dataset import build_dataset, requirements, sp
 from donghak_stock_vision.storage.analysis import AnalysisStore
 from donghak_stock_vision.storage.capture_raw_source_contract import prepare_raw_source_custody
 from donghak_stock_vision.storage.historical_readiness import _file_hash, _OfflineKRXParser
-from donghak_stock_vision.storage.sqlite import OPERATIONAL_APPLICATION_ID
 
 VERSION = "real_market_training_source_v1"
 MAX_ROWS = 20000
@@ -138,7 +137,7 @@ def _quiescent(path: Path, pin: str) -> None:
     require(_file_hash(path) == pin, "training_database_pin_mismatch")
 
 
-class _VerifiedMarket(ReadOnlyMarketStore):
+class _VerifiedMarket(SQLiteStore):
     """Minimum read adapter; original tables and bar payloads are never rewritten.
 
     Inherits the MarketDataStore read API. All inherited write methods remain
