@@ -1,7 +1,5 @@
 """FastAPI transport for immutable research snapshots."""
 
-from __future__ import annotations
-
 from collections.abc import Callable, Mapping, Sequence
 from datetime import date
 from typing import TYPE_CHECKING, Annotated, Any
@@ -14,8 +12,6 @@ from donghak_stock_vision.api.historical_portfolios import PortfolioPublicationR
 from donghak_stock_vision.api.models import (
     BaselineBacktestSnapshot,
     CoverageSummary,
-    DailyResearchReaderError,
-    DailyResearchSeries,
     EvidenceDetail,
     EvidenceLayerId,
     EvidenceLayerSummary,
@@ -27,6 +23,7 @@ from donghak_stock_vision.api.models import (
     StockDetail,
     StockSummary,
 )
+from donghak_stock_vision.api.models import DailyResearchReaderError, DailyResearchSeries
 from donghak_stock_vision.api.ohlcv import (
     OhlcvMarketReader,
     OhlcvSeries,
@@ -63,7 +60,7 @@ def create_app(
     operational_reader: PinnedOperationalReader | None = None,
     *,
     analysis_reader: AnalysisPublicationReader | None = None,
-    daily_research_reader: DailyResearchReader | None = None,
+    daily_research_reader: "DailyResearchReader | None" = None,
     operations_reader: OperationsReader | None = None,
     krx_diagnostics_reports: (
         Callable[[], tuple[Mapping[str, Any], Mapping[str, Any]]] | None
