@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from donghak_stock_vision.api.models import (
-    DailyResearchReaderError,
+    DailyResearchReaderError as DailyResearchReaderError,
     DailyResearchRecord,
     DailyResearchSeries,
     ResearchPeriod,
