@@ -2,8 +2,11 @@
 
 Phase 2 retains its automatic common-date 60/20/20 split. Omitting the new
 configuration produces the original split document and uses the original behavior.
-The CLI currently retains automatic splitting; explicit splitting is available
-through the public Python service, without changing existing command semantics.
+The original CLI retains automatic splitting. Explicit splitting remains available
+through the public Python service. The opt-in `train --real-market-source` bridge
+also accepts separately pinned development splits inside the original training/
+tuning access ranges; see [real-market model readiness](real-market-model-readiness.md).
+Original command semantics and the protected outer Final Test remain unchanged.
 
 ## Public contract
 
