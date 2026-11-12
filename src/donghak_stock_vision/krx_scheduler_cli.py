@@ -40,6 +40,12 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--batch-pin")
     cmd.add_argument("--source-authorization-root", type=Path)
     cmd.add_argument("--source-authorization-pin")
+    for name in ("research-output-db", "research-model-db"):
+        cmd.add_argument(f"--{name}", type=Path)
+    cmd.add_argument("--research-model-version")
+    cmd.add_argument("--research-tickers", nargs="+")
+    cmd.add_argument("--research-lookback-days", type=int, default=60)
+    cmd.add_argument("--research-allow-synthetic-fixture", action="store_true")
     cmd.add_argument("--apply", action="store_true", help="explicitly apply LaunchAgent management")
     cmd.add_argument("--execute", action="store_true", help="run only if persistently enabled")
     cmd.add_argument("--scheduled", action="store_true")
@@ -51,6 +57,19 @@ def run(args: argparse.Namespace) -> int:
     if args.db is not None:
         raise ValueError("scheduler_uses_explicit_config_not_research_db")
     config = load_config(args.config, args.config_pin)
+    research_values = (
+        getattr(args, "research_output_db", None),
+        getattr(args, "research_model_db", None),
+        getattr(args, "research_model_version", None),
+        getattr(args, "research_tickers", None),
+    )
+    research_requested = any(value is not None for value in research_values)
+    if research_requested and (
+        not all(research_values) or args.action not in ("run-once", "run-due") or not args.execute
+    ):
+        raise ValueError("daily_research_requires_complete_explicit_post_collection_options")
+    if getattr(args, "research_allow_synthetic_fixture", False) and not research_requested:
+        raise ValueError("daily_research_options_required")
     if args.action in ("backlog", "run-due"):
         from donghak_stock_vision.storage.krx_backlog import run_due
 
@@ -227,7 +246,20 @@ def run(args: argparse.Namespace) -> int:
             allow_network=args.allow_network,
             operator_confirmed=args.confirm_operator_authorization,
         )
+    collection_failed = result.to_dict().get("outcome") == "failed"
+    if research_requested:
+        from donghak_stock_vision.storage.daily_research import after_collection
+
+        result = after_collection(
+            config,
+            result,
+            args.research_output_db,
+            args.research_model_db,
+            args.research_model_version,
+            tuple(sorted(set(args.research_tickers))),
+            datetime.now(UTC),
+            lookback_days=getattr(args, "research_lookback_days", 60),
+            allow_synthetic_fixture=getattr(args, "research_allow_synthetic_fixture", False),
+        )
     print(result.payload_json)
-    return int(
-        args.action in ("run-once", "run-due") and result.to_dict().get("outcome") == "failed"
-    )
+    return int(args.action in ("run-once", "run-due") and collection_failed)

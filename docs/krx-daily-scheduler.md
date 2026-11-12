@@ -400,3 +400,11 @@ requests even when those stored dates fall outside the current allowlist/lag. Mi
 quota history or usage lower than recorded same-KST-day responses is rejected; absence
 is never a quota reset. Restore and independently verify original history rather than
 creating an empty archive or changing pins to bypass the failure.
+
+## Optional daily research post-step
+
+The existing `run-once`/`run-due` CLI can explicitly chain successful collections
+into the existing research feature/model/artifact owners. Collection and research
+outcomes remain separate, and research recovery never requests market data.
+See [daily verified research pipeline](daily-verified-research-pipeline.md) for
+arguments, offline recovery, diagnostics projection and unchanged approval limits.

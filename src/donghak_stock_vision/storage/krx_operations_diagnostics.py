@@ -4,7 +4,11 @@ from collections.abc import Mapping
 from typing import Any
 
 
-def summarize(backlog: Mapping[str, Any], preflight: Mapping[str, Any]) -> dict[str, Any]:
+def summarize(
+    backlog: Mapping[str, Any],
+    preflight: Mapping[str, Any],
+    daily_research: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """Project existing evidence without changing authorization or scheduler state."""
     due = backlog["due_dates"]
     expired = backlog["expired_dates"]
@@ -29,7 +33,7 @@ def summarize(backlog: Mapping[str, Any], preflight: Mapping[str, Any]) -> dict[
         status = "collection_due"
     else:
         status = "no_due_sessions"
-    return {
+    result = {
         "version": "krx_operations_diagnostics_v1",
         "status": status,
         "schedulerEnabled": enabled,
@@ -51,3 +55,32 @@ def summarize(backlog: Mapping[str, Any], preflight: Mapping[str, Any]) -> dict[
         "schedulerChanged": False,
         "paperExecutionEligible": False,
     }
+
+    if daily_research is not None:
+        if (
+            daily_research.get("version") != "daily_research_v1"
+            or daily_research.get("future_prediction_recording_available") is not False
+        ):
+            raise ValueError("invalid daily research diagnostic source")
+        result["dailyResearch"] = {
+            key: daily_research[key]
+            for key in (
+                "day",
+                "analysis_status",
+                "completed_tickers",
+                "failed_tickers",
+                "blocked_tickers",
+                "pending_tickers",
+                "collection_status",
+                "storage_status",
+                "input_latest_trading_date",
+                "input_age_calendar_days",
+                "last_successful_analysis_day",
+                "model_version",
+                "data_origin",
+                "usage_restriction",
+                "future_prediction_recording_available",
+                "future_prediction_blocker",
+            )
+        }
+    return result
