@@ -6,11 +6,11 @@ from pydantic import BaseModel, ConfigDict
 
 from donghak_stock_vision.storage.daily_research_public_models import (
     DailyResearchReaderError as DailyResearchReaderError,
+    DailyResearchRecord as DailyResearchRecord,
+    DailyResearchSeries as DailyResearchSeries,
     PublicModel as PublicModel,
     ResearchPeriod as ResearchPeriod,
     ResearchSourceReference as ResearchSourceReference,
-    DailyResearchRecord as DailyResearchRecord,
-    DailyResearchSeries as DailyResearchSeries,
 )
 
 ProjectState = Literal["verified", "in_progress", "blocked", "not_started"]
