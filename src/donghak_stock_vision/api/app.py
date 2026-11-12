@@ -1,6 +1,7 @@
 """FastAPI transport for immutable research snapshots."""
 
 from collections.abc import Callable, Mapping, Sequence
+from datetime import date
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, status
@@ -46,6 +47,11 @@ from donghak_stock_vision.api.stock_analysis import (
     AnalysisPublicationReader,
     PublishedStockAnalysis,
 )
+from donghak_stock_vision.storage.daily_research_public_models import (
+    DailyResearchReaderError,
+    DailyResearchSeries,
+)
+from donghak_stock_vision.storage.daily_research_reader import DailyResearchReader
 from donghak_stock_vision.storage.krx_operations_diagnostics import summarize
 
 
@@ -55,6 +61,7 @@ def create_app(
     operational_reader: PinnedOperationalReader | None = None,
     *,
     analysis_reader: AnalysisPublicationReader | None = None,
+    daily_research_reader: DailyResearchReader | None = None,
     operations_reader: OperationsReader | None = None,
     krx_diagnostics_reports: (
         Callable[[], tuple[Mapping[str, Any], Mapping[str, Any]]] | None
@@ -221,6 +228,29 @@ def create_app(
         if series is None:
             raise HTTPException(status_code=404, detail="operational stock bars not found")
         return series
+
+    @app.get("/api/v1/stocks/{ticker}/research-analysis", response_model=DailyResearchSeries)
+    def stock_research_analysis(
+        ticker: Annotated[str, Path(pattern=r"^[0-9A-Z]{6}$")],
+        trading_date: Annotated[date | None, Query(alias="tradingDate")] = None,
+        start: Annotated[date | None, Query(alias="fromDate")] = None,
+        end: Annotated[date | None, Query(alias="toDate")] = None,
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+        offset: Annotated[int, Query(ge=0, le=100000)] = 0,
+    ) -> DailyResearchSeries:
+        if daily_research_reader is None:
+            raise HTTPException(status_code=503, detail="daily research snapshot not configured")
+        try:
+            return daily_research_reader.series(
+                ticker,
+                trading_date=trading_date,
+                start=start,
+                end=end,
+                limit=limit,
+                offset=offset,
+            )
+        except DailyResearchReaderError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from None
 
     @app.get("/api/v1/stocks/{ticker}/analysis", response_model=PublishedStockAnalysis)
     def stock_analysis(
