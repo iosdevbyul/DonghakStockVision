@@ -58,17 +58,17 @@ def run(args: argparse.Namespace) -> int:
         raise ValueError("scheduler_uses_explicit_config_not_research_db")
     config = load_config(args.config, args.config_pin)
     research_values = (
-        args.research_output_db,
-        args.research_model_db,
-        args.research_model_version,
-        args.research_tickers,
+        getattr(args, "research_output_db", None),
+        getattr(args, "research_model_db", None),
+        getattr(args, "research_model_version", None),
+        getattr(args, "research_tickers", None),
     )
     research_requested = any(value is not None for value in research_values)
     if research_requested and (
         not all(research_values) or args.action not in ("run-once", "run-due") or not args.execute
     ):
         raise ValueError("daily_research_requires_complete_explicit_post_collection_options")
-    if args.research_allow_synthetic_fixture and not research_requested:
+    if getattr(args, "research_allow_synthetic_fixture", False) and not research_requested:
         raise ValueError("daily_research_options_required")
     if args.action in ("backlog", "run-due"):
         from donghak_stock_vision.storage.krx_backlog import run_due
@@ -258,8 +258,8 @@ def run(args: argparse.Namespace) -> int:
             args.research_model_version,
             tuple(sorted(set(args.research_tickers))),
             datetime.now(UTC),
-            lookback_days=args.research_lookback_days,
-            allow_synthetic_fixture=args.research_allow_synthetic_fixture,
+            lookback_days=getattr(args, "research_lookback_days", 60),
+            allow_synthetic_fixture=getattr(args, "research_allow_synthetic_fixture", False),
         )
     print(result.payload_json)
     return int(args.action in ("run-once", "run-due") and collection_failed)

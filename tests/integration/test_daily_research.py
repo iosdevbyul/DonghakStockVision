@@ -566,3 +566,24 @@ def test_modified_research_result_is_rejected_not_silently_repaired(
         daily.daily_status(output, DAY, AS_OF)
     with pytest.raises(ValueError, match="invalid_daily_research_result"):
         execute(collected, model, output)
+
+
+def test_legacy_scheduler_namespace_keeps_read_only_status(
+    config: SchedulerConfig,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from argparse import Namespace
+
+    from donghak_stock_vision.krx_scheduler_cli import run
+
+    path = tmp_path / "scheduler.json"
+    path.write_text(config.document.payload_json)
+    path.chmod(0o600)
+    # Existing programmatic callers predate all optional research arguments.
+    args = Namespace(db=None, action="status", config=path, config_pin=config.document.identifier)
+    assert run(args) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["enabled"] is False and result["network_requests"] == 0
+    assert not config.path("runner_root").exists()
+    assert not config.path("capture_root").exists()
