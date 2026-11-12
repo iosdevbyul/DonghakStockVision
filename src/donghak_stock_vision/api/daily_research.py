@@ -15,10 +15,10 @@ from typing import Any, Literal
 from donghak_stock_vision.api.models import DailyResearchReaderError as DailyResearchReaderError
 from donghak_stock_vision.api.models import (
     DailyResearchRecord,
-    DailyResearchSeries as DailyResearchSeries,
     ResearchPeriod,
     ResearchSourceReference,
 )
+from donghak_stock_vision.api.models import DailyResearchSeries as DailyResearchSeries
 from donghak_stock_vision.backtest.validation import require, sha
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
 from donghak_stock_vision.data.learning import FEATURES, THRESHOLD, digest, timestamp
