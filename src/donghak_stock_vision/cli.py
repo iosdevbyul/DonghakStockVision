@@ -53,6 +53,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.real_market_dataset_cli import add_commands as add_real_dataset
 
     add_real_dataset(sub)
+    from donghak_stock_vision.real_model_evaluation_cli import add_commands as add_real_evaluation
+
+    add_real_evaluation(sub)
     from donghak_stock_vision.decision_cli import add_commands as add_decisions
 
     add_decisions(sub)
@@ -98,7 +101,8 @@ def main(argv: list[str] | None = None) -> int:
         or getattr(args, "research_source_contract", "receipt_archive_v1") != "receipt_archive_v1"
     )
     if (
-        args.command not in ("daily-research", "krx-backfill", "real-market-dataset")
+        args.command
+        not in ("daily-research", "krx-backfill", "real-market-dataset", "real-model-evaluation")
         and not offline_real_training
     ):
         load_dotenv(Path.cwd() / ".env", override=False)
@@ -152,6 +156,10 @@ def main(argv: list[str] | None = None) -> int:
             from donghak_stock_vision.backtest_cli import run as run_backtest
 
             return run_backtest(args)
+        if args.command == "real-model-evaluation":
+            from donghak_stock_vision.real_model_evaluation_cli import run as run_real_evaluation
+
+            return run_real_evaluation(args)
         if args.command == "real-market-dataset":
             from donghak_stock_vision.real_market_dataset_cli import run as run_real_dataset
 
