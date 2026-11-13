@@ -43,6 +43,15 @@ def _open(path: Path, *, create: bool = False) -> sqlite3.Connection:
             os.close(fd)
             created = True
     require(path.is_file() and path.stat().st_size <= MAX_BYTES, "journal_missing_or_size_limit")
+    if not created:
+        with path.open("rb") as stream:
+            header = stream.read(100)
+        require(
+            header[:16] == b"SQLite format 3\x00"
+            and len(header) >= 72
+            and int.from_bytes(header[68:72], "big") == APPLICATION_ID,
+            "not_a_signal_journal_or_interrupted_initialization",
+        )
     connection = sqlite3.connect(
         path.resolve().as_uri() + ("?mode=rw" if create else "?mode=ro"), uri=True, timeout=5
     )
@@ -95,23 +104,52 @@ def _entries(connection: sqlite3.Connection, expected_head: str) -> list[dict[st
     ):
         owner = FrozenJSON(document)
         d = owner.to_dict()
-        prediction_entry = d.get("version") == "forward_signal_entry_v2"
-        require(
-            set(d)
-            == {"version", "sequence", "previous_pin", "inserted_at", "decision", "decision_pin"}
-            | ({"prediction"} if prediction_entry else set()),
-            "journal_entry_fields",
-        )
-        decision = FrozenJSON.freeze(d["decision"])
-        require(
-            d["version"] in {"forward_signal_entry_v1", "forward_signal_entry_v2"}
-            and seq == len(entries) + 1 == d["sequence"]
-            and signal_id == d["decision"]["signal_id"]
-            and d["previous_pin"] == previous
-            and decision.identifier == d["decision_pin"]
-            and owner.identifier == entry_pin,
-            "journal_integrity_mismatch",
-        )
+        shadow = d.get("version") == "research_shadow_journal_entry_v1"
+        if shadow:
+            from donghak_stock_vision.data.shadow_prediction import validate_event
+
+            require(
+                set(d)
+                == {"version", "sequence", "previous_pin", "inserted_at", "event", "event_pin"},
+                "shadow_journal_fields",
+            )
+            event = FrozenJSON.freeze(d["event"])
+            verified = validate_event(event)
+            require(
+                seq == len(entries) + 1 == d["sequence"]
+                and signal_id == verified["event_id"]
+                and d["previous_pin"] == previous
+                and event.identifier == d["event_pin"]
+                and owner.identifier == entry_pin
+                and d["inserted_at"] == verified["recorded_at"],
+                "shadow_journal_integrity",
+            )
+            prediction_entry = False
+        else:
+            prediction_entry = d.get("version") == "forward_signal_entry_v2"
+            require(
+                set(d)
+                == {
+                    "version",
+                    "sequence",
+                    "previous_pin",
+                    "inserted_at",
+                    "decision",
+                    "decision_pin",
+                }
+                | ({"prediction"} if prediction_entry else set()),
+                "journal_entry_fields",
+            )
+            decision = FrozenJSON.freeze(d["decision"])
+            require(
+                d["version"] in {"forward_signal_entry_v1", "forward_signal_entry_v2"}
+                and seq == len(entries) + 1 == d["sequence"]
+                and signal_id == d["decision"]["signal_id"]
+                and d["previous_pin"] == previous
+                and decision.identifier == d["decision_pin"]
+                and owner.identifier == entry_pin,
+                "journal_integrity_mismatch",
+            )
         inserted = timestamp(d["inserted_at"])
         if prediction_entry:
             from donghak_stock_vision.storage.prospective_prediction import evidence
@@ -129,7 +167,7 @@ def _entries(connection: sqlite3.Connection, expected_head: str) -> list[dict[st
             )
         require(
             inserted.isoformat() == d["inserted_at"]
-            and inserted >= timestamp(d["decision"]["calculated_at"]),
+            and (shadow or inserted >= timestamp(d["decision"]["calculated_at"])),
             "journal_timestamp_mismatch",
         )
         if entries:
@@ -225,6 +263,7 @@ def append_signal(
         if path.exists():
             existing = history(path, expected_head, limit=MAX_ENTRIES).to_dict()
             for entry in existing["entries"]:
+                require("decision" in entry["entry"], "separate_signal_journal_required")
                 if entry["entry"]["decision"]["signal_id"] == decision.to_dict()["signal_id"]:
                     stored = entry["entry"].get("prediction")
                     require(
@@ -250,6 +289,9 @@ def append_signal(
         try:
             connection.execute("BEGIN IMMEDIATE")
             entries = _entries(connection, expected_head)
+            require(
+                all("decision" in e["entry"] for e in entries), "separate_signal_journal_required"
+            )
             signal_id = decision.to_dict()["signal_id"]
             for entry in entries:
                 if entry["entry"]["decision"]["signal_id"] == signal_id:
@@ -303,4 +345,85 @@ def append_signal(
             "entry": {"entry": owner.to_dict(), "entry_pin": owner.identifier},
             "head_pin": owner.identifier,
         }
+    )
+
+
+def append_shadow_event(path: Path, event: FrozenJSON, expected_head: str) -> FrozenJSON:
+    """Separate research event version, same bounded immutable journal/commit owner.
+
+    Structural chain verification is not source replay or independent chronology.
+    The research consumer must rederive events from verified original inputs.
+    """
+    from donghak_stock_vision.data.shadow_prediction import validate_event
+
+    value = validate_event(event)
+    with closing(_open(path, create=True)) as connection:
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            entries = _entries(connection, expected_head)
+            require(
+                all(e["entry"]["version"] == "research_shadow_journal_entry_v1" for e in entries),
+                "separate_shadow_journal_required",
+            )
+            for entry in entries:
+                old = entry["entry"]["event"]
+                if old["event_id"] == value["event_id"]:
+                    require(old == value, "shadow_conflicting_event")
+                    return FrozenJSON.freeze(
+                        dict(duplicate=True, head_pin=expected_head, event=old)
+                    )
+            require(len(entries) < MAX_ENTRIES, "journal_capacity_exhausted")
+            require(
+                not entries
+                or timestamp(value["recorded_at"])
+                >= timestamp(entries[-1]["entry"]["inserted_at"]),
+                "journal_insertion_clock_regression",
+            )
+            owner = FrozenJSON.freeze(
+                dict(
+                    version="research_shadow_journal_entry_v1",
+                    sequence=len(entries) + 1,
+                    previous_pin=expected_head,
+                    inserted_at=value["recorded_at"],
+                    event=value,
+                    event_pin=event.identifier,
+                )
+            )
+            require(len(owner.payload_json.encode()) <= MAX_ENTRY, "entry_output_budget")
+            connection.execute(
+                "INSERT INTO signal_entries VALUES(?,?,?,?)",
+                (len(entries) + 1, value["event_id"], owner.payload_json, owner.identifier),
+            )
+            _commit(connection)
+        except BaseException:
+            connection.rollback()
+            raise
+    return FrozenJSON.freeze(dict(duplicate=False, head_pin=owner.identifier, event=value))
+
+
+def recover_shadow_event(path: Path, event: FrozenJSON, previous_head: str) -> FrozenJSON:
+    """Recover one committed, unacknowledged event from a separately pinned intent.
+
+    Never append or infer an old prediction time. More than one unknown suffix
+    requires operator reconciliation; a self-reported tail is not independent trust.
+    """
+    from donghak_stock_vision.data.shadow_prediction import validate_event
+
+    validate_event(event)
+    with closing(_open(path)) as connection:
+        connection.execute("BEGIN")
+        tail = connection.execute(
+            "SELECT entry_pin FROM signal_entries ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+        require(tail is not None, "shadow_recovery_missing_commit")
+        entries = _entries(connection, tail[0])
+        last = entries[-1]["entry"]
+        require(
+            last["version"] == "research_shadow_journal_entry_v1"
+            and last["previous_pin"] == previous_head
+            and last["event"] == event.to_dict(),
+            "shadow_recovery_requires_exact_single_intent",
+        )
+    return FrozenJSON.freeze(
+        dict(duplicate=True, recovered=True, head_pin=tail[0], event=event.to_dict())
     )

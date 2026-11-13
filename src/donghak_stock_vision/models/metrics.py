@@ -80,11 +80,20 @@ def evaluate_metrics(labels: list[int], scores: list[float]) -> dict[str, Any]:
 def baseline_scores(
     samples: list[Sample], direction: Direction, prior: float
 ) -> dict[str, list[float]]:
-    sign = -1 if direction == "up" else 1
     return {
         "prior": [prior] * len(samples),
-        "reversal_strength": [sigmoid(sign * s.values[2] / s.values[4]) for s in samples],
+        "reversal_strength": [
+            baseline_values(s.values, direction, prior)["reversal_strength"] for s in samples
+        ],
     }
+
+
+def baseline_values(
+    values: tuple[float, ...], direction: Direction, prior: float
+) -> dict[str, float]:
+    """Same frozen baseline rule for a journal's already verified feature vector."""
+    sign = -1 if direction == "up" else 1
+    return {"prior": prior, "reversal_strength": sigmoid(sign * values[2] / values[4])}
 
 
 def report(samples: list[Sample], scores: list[float]) -> dict[str, Any]:
