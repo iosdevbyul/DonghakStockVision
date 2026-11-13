@@ -663,3 +663,33 @@ def test_005930_interrupted_storage_recovery_does_not_issue_second_request(
     assert audit_stored_005930(config.path("operational_root"), evidence).to_dict()[
         "locally_verified"
     ]
+
+
+@pytest.mark.parametrize(
+    "override,expected", [("true", False), ("false", True), ("enabled", True), ("disabled", False)]
+)
+def test_native_launchd_override_output_variants(
+    config: SchedulerConfig, tmp_path: Path, override: str, expected: bool
+) -> None:
+    path = tmp_path / "settings.json"
+    fake = krx_launchd._agent_path()
+    fake.parent.mkdir()
+    fake.write_bytes(krx_launchd.plist_bytes(config, path))
+    fake.chmod(0o600)
+    enabled(config)
+
+    def command(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        output = (
+            (f'"{krx_launchd.LABEL}" => {override}').encode()
+            if args[1] == "print-disabled"
+            else b""
+        )
+        return subprocess.CompletedProcess(args, 0, stdout=output, stderr=b"")
+
+    with (
+        patch("donghak_stock_vision.storage.krx_launchd.sys.platform", "darwin"),
+        patch("subprocess.run", side_effect=command),
+    ):
+        result = krx_launchd.status(config, path)
+    assert result["loaded"] and result["application_enabled"]
+    assert result["launchd_enabled"] == result["enabled"] == expected

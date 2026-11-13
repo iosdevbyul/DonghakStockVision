@@ -192,7 +192,19 @@ def _validate_capture_reference(request: FrozenJSON) -> None:
         "version capture_id capture_pin plan_pin authorization_pin trust_pin "
         "sequence raw_id receipt_pin raw_sha256 market day response_at origin",
     )
-    require(source["version"] == "operational_capture_reference_v1", "capture_reference_version")
+    require(
+        source["version"]
+        in {"operational_capture_reference_v1", "operational_backfill_reference_v1"},
+        "capture_reference_version",
+    )
+    if source["version"] == "operational_backfill_reference_v1":
+        require(
+            source["authorization_pin"] is not None
+            and source["trust_pin"] is None
+            and source["origin"]
+            in {"real_provider_https_local_capture", "authorized_provider_mock_fixture"},
+            "backfill_reference_requires_separate_operator_policy",
+        )
     for key in ("capture_id", "capture_pin", "plan_pin", "receipt_pin", "raw_sha256"):
         sha(source[key])
     for key in ("authorization_pin", "trust_pin"):

@@ -19,6 +19,7 @@ HOLIDAY_LABELS = {
     "\ucd94\uc11d": "chuseok",
     "\ucd94\uc11d\uc775\uc77c": "chuseok_following_day",
     "\ub300\uccb4\uacf5\ud734\uc77c": "source_label_substitute_holiday",
+    "\ub300\uccb4\ud734\uc77c": "source_label_substitute_holiday",
     "\uac1c\ucc9c\uc808": "national_foundation_day",
     "\ud55c\uae00\ub0a0": "hangul_day",
     "\uc131\ud0c4\uc808": "christmas",
