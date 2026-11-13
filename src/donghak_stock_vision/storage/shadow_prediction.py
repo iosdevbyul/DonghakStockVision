@@ -355,7 +355,7 @@ def record(
             generated = timestamp(clock())
             require(
                 verified_at <= feature_at <= generated
-                and (timestamp(clock()) - generated).total_seconds() <= 300,
+                and 0 <= (timestamp(clock()) - generated).total_seconds() <= 300,
                 "shadow_execution_clock_order",
             )
             source = _source(bars, proofs)

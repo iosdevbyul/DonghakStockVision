@@ -432,3 +432,22 @@ def test_semantic_replay_rejects_forged_vectors_and_horizon(
     forged["features"][0] += 1
     with pytest.raises(ValueError, match="feature_mismatch"):
         _verify_prediction(forged, model, info, rows, proofs)
+
+
+def test_clock_regression_does_not_record_prediction(
+    shadow_fixture: tuple[dict[str, Any], datetime, datetime],
+    tmp_path: Path,
+) -> None:
+    d, at, _ = shadow_fixture
+    calls = iter((at, at, at, at - timedelta(seconds=1)))
+
+    def clock() -> datetime:
+        return next(calls, at)
+
+    r = record(
+        d, tmp_path / "journal.sqlite3", GENESIS, tmp_path / "i", tmp_path / "p", clock=clock
+    ).to_dict()
+    assert r["results"][0]["status"] == "blocked"
+    assert r["results"][0]["reason"] == "shadow_execution_clock_order"
+    first = events(tmp_path / "journal.sqlite3", r["head_pin"])[0]
+    assert first["kind"] == "failure"
