@@ -632,3 +632,64 @@ def test_archive_missing_evidence_table_is_not_recreated(policy: BackfillPolicy)
         db.execute("DROP TABLE backfill_responses")
     with pytest.raises(ValueError, match="incomplete_backfill_archive_rejected"):
         execute(policy, plan)
+
+
+def test_explicit_date_failure_continuation_never_retries(policy: BackfillPolicy) -> None:
+    plan = prepare_plan(policy, AT)
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        day = request.url.params["basDd"]
+        calls.append(day)
+        value = date(int(day[:4]), int(day[4:6]), int(day[6:]))
+        return httpx.Response(
+            200,
+            json={
+                "OutBlock_1": []
+                if day == "20250605"
+                else [row("005930", value), row("000660", value)]
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler), trust_env=False) as client:
+        result = execute(
+            policy,
+            plan,
+            client,
+            allow_network=True,
+            operator_confirmed=True,
+            continue_date_failures=True,
+            max_dates=4,
+        ).to_dict()
+        assert result["http_requests"] == 4 and result["successful_dates"] == 3
+        assert result["new_observations"] == 6 and result["results"][0]["outcome"] == "no_data"
+        replay = execute(
+            policy,
+            plan,
+            client,
+            allow_network=True,
+            operator_confirmed=True,
+            continue_date_failures=True,
+            max_dates=4,
+        ).to_dict()
+    assert replay["http_requests"] == 0 and len(calls) == 4
+
+
+@pytest.mark.parametrize("status", [403, 429])
+def test_date_continuation_cannot_ignore_account_errors(
+    policy: BackfillPolicy, status: int
+) -> None:
+    plan = prepare_plan(policy, AT)
+    calls: list[str] = []
+    with response_client(calls, status=status) as client:
+        result = execute(
+            policy,
+            plan,
+            client,
+            allow_network=True,
+            operator_confirmed=True,
+            continue_date_failures=True,
+            max_dates=4,
+        ).to_dict()
+    assert result["http_requests"] == 1 and len(calls) == 1
+    assert result["stop_reason"] == "http_or_transport_failure"

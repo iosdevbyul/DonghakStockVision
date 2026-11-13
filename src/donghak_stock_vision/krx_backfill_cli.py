@@ -33,6 +33,7 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--allow-network", action="store_true")
     cmd.add_argument("--confirm-operator-authorization", action="store_true")
     cmd.add_argument("--allow-synthetic-fixture", action="store_true")
+    cmd.add_argument("--continue-date-failures", action="store_true")
     cmd.add_argument("--max-dates", type=int, default=2)
     cmd.add_argument("--max-seconds", type=int, default=120)
 
@@ -107,6 +108,7 @@ def run(args: argparse.Namespace) -> int:
                 allow_network=args.allow_network,
                 operator_confirmed=args.confirm_operator_authorization,
                 allow_synthetic_fixture=args.allow_synthetic_fixture,
+                continue_date_failures=args.continue_date_failures,
                 max_dates=args.max_dates,
                 max_seconds=args.max_seconds,
             )

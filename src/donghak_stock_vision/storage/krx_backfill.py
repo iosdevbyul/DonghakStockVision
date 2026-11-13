@@ -56,6 +56,11 @@ from donghak_stock_vision.storage.krx_scheduler import (
 from donghak_stock_vision.storage.operational_market import OperationalMarketStore, _parse
 from donghak_stock_vision.storage.sqlite import SQLiteStore, archive_raw_page
 
+DATE_FAILURES = {
+    "empty_market_response",
+    "invalid_market_response",
+    "market_coverage_below_reviewed_bound",
+}
 DB = "backfill.sqlite3"
 ENDPOINT = "https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd"
 
@@ -735,6 +740,7 @@ def run_backfill(
     allow_network: bool = False,
     operator_confirmed: bool = False,
     allow_synthetic_fixture: bool = False,
+    continue_date_failures: bool = False,
     max_dates: int = 2,
     max_seconds: int = 120,
     client: httpx.Client | None = None,
@@ -806,6 +812,8 @@ def run_backfill(
                     verified = _complete(db, policy, plan, c, original, day, ingest=False)
                     require(verified.payload_json == previous[0], "backfill_completion_modified")
                     if verified.to_dict()["outcome"] != "succeeded":
+                        if continue_date_failures and verified.to_dict()["reason"] in DATE_FAILURES:
+                            continue
                         reason = "backfill_previous_failure_requires_review_no_retry"
                         break
                     continue
@@ -945,6 +953,8 @@ def run_backfill(
                 results.append(safe)
                 if result.to_dict()["outcome"] != "succeeded":
                     reason = result.to_dict()["reason"]
+                    if continue_date_failures and reason in DATE_FAILURES:
+                        continue
                     break
             require(
                 _hash(research_file) == policy.values["research_database_sha256"],

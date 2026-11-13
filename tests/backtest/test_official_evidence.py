@@ -268,3 +268,13 @@ def test_empty_query_is_not_no_event_certificate() -> None:
     assert result["rows"] == []
     assert result["no_event_certified"] is False
     assert result["complete_result_semantics_verified"] is False
+
+
+def test_retained_kind_substitute_holiday_label_variant() -> None:
+    raw, source = month(2026, 10)
+    raw = raw.replace(b">5</td>", ">5 \ub300\uccb4\ud734\uc77c</td>".encode())
+    source["raw_sha256"] = hashlib.sha256(raw).hexdigest()
+    result = normalize_month(raw, source).to_dict()
+    assert result["days"]["2026-10-05"] == "holiday"
+    assert result["annotations"]["2026-10-05"] == "source_label_substitute_holiday"
+    assert result["days"]["2026-10-02"] == "session"
