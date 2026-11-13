@@ -137,7 +137,24 @@ def _request(d: dict[str, Any]) -> tuple[RealMarketTrainingRequest, ExplicitRese
 def _operational(
     d: dict[str, Any], request: RealMarketTrainingRequest, fit: ExplicitResearchSplit
 ) -> tuple[list[DailyBar], list[dict[str, Any]]]:
-    value = fields(d["operational"], "root pin evidence")
+    return verify_operational_window(d["operational"], request.tickers, fit.final_test)
+
+
+def verify_operational_window(
+    value: dict[str, Any],
+    tickers: tuple[str, ...],
+    window: ResearchDateRange,
+    *,
+    strict_forward_membership: bool = True,
+    allow_synthetic_fixture: bool = False,
+) -> tuple[list[DailyBar], list[dict[str, Any]]]:
+    """Reuse original capture/batch owners for one explicitly bounded read window."""
+    require(
+        0 < len(tickers) <= 25 and tuple(sorted(set(tickers))) == tickers,
+        "dataset_ticker_window_bound",
+    )
+    require((window.end - window.start).days <= 3660, "dataset_operational_window_bound")
+    value = fields(value, "root pin evidence")
     root = Path(value["root"])
     _quiescent(root / DB, sha(value["pin"]))
     require(
@@ -148,6 +165,36 @@ def _operational(
     with closing(OperationalMarketStore(root)) as store:
         store.connection.execute("BEGIN")
         for entry in value["evidence"]:
+            if entry["kind"] == "offline_fixture_batch":
+                require(allow_synthetic_fixture, "dataset_fixture_is_not_real_source")
+                e = fields(entry, "kind batch_id batch_pin")
+                row = store.connection.execute(
+                    "SELECT raw_id,substr(document,1,16385),length(document) "
+                    "FROM ingestion_batches WHERE batch_id=?",
+                    (e["batch_id"],),
+                ).fetchone()
+                require(row is not None and row[2] <= 16384, "dataset_original_batch_missing")
+                declared = FrozenJSON(row[1])
+                request = declared.to_dict()["request"]
+                require(
+                    declared.identifier == e["batch_pin"]
+                    and request["declared_origin"] == "synthetic_fixture"
+                    and "source_capture" not in request,
+                    "dataset_fixture_owner_mismatch",
+                )
+                if not window.start.isoformat() <= request["source_date"] <= window.end.isoformat():
+                    continue
+                batch = store._verify_batch(e["batch_id"], row[0])
+                require(batch == declared, "dataset_fixture_owner_mismatch")
+                proofs.append(
+                    dict(
+                        batch_id=e["batch_id"],
+                        batch_pin=batch.identifier,
+                        day=request["source_date"],
+                        origin="offline_fixture",
+                    )
+                )
+                continue
             if entry["kind"] == "backfill":
                 e = fields(entry, "kind policy policy_pin_file plan plan_pin_file")
                 policy = load_policy(Path(e["policy"]), read_pin(Path(e["policy_pin_file"])))
@@ -159,7 +206,7 @@ def _operational(
                     for day in plan.document.to_dict()["dates"]:
                         parsed = date.fromisoformat(day)
                         # Restrict before original response replay, including the protected test.
-                        if not fit.final_test.start <= parsed <= fit.final_test.end:
+                        if not window.start <= parsed <= window.end:
                             continue
                         page, meta, owner = _source(db, policy, plan, day)
                         _, original = context(policy, page.collected_at)
@@ -178,8 +225,10 @@ def _operational(
                     "batch_pin_file authorization authorization_policy",
                 )
                 plan_doc = ForwardCapturePlan.from_dict(document(e["plan"]))
+                if not strict_forward_membership and not window.start <= plan_doc.day <= window.end:
+                    continue
                 require(
-                    fit.final_test.start <= plan_doc.day <= fit.final_test.end,
+                    window.start <= plan_doc.day <= window.end,
                     "dataset_forward_source_outside_diagnostic_test",
                 )
                 proof = verify_stored_capture(
@@ -208,9 +257,9 @@ def _operational(
                 "SELECT o.payload FROM market_observations o JOIN observation_sources s "
                 "USING(market,trading_date,ticker) JOIN ingestion_batches b ON b.raw_id=s.raw_id "
                 "WHERE b.batch_id=? AND o.ticker IN ("
-                + ",".join("?" for _ in request.tickers)
+                + ",".join("?" for _ in tickers)
                 + ") ORDER BY o.ticker,o.trading_date LIMIT ?",
-                (batch_id, *request.tickers, MAX_ROWS + 1),
+                (batch_id, *tickers, MAX_ROWS + 1),
             ).fetchall()
             require(len(bars) + len(rows) <= MAX_ROWS, "dataset_operational_row_bound")
             bars.extend(DailyBar.from_dict(FrozenJSON(row[0]).to_dict()) for row in rows)
