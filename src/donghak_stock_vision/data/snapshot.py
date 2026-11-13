@@ -10,7 +10,7 @@ from donghak_stock_vision.data.research_calendar import (
     excluded_dates,
 )
 from donghak_stock_vision.data.schema import SEOUL, DailyBar, validate_range, validate_ticker
-from donghak_stock_vision.storage.base import MarketDataStore
+from donghak_stock_vision.storage.base import MarketDataReader
 
 
 def validate_quality(value: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -58,7 +58,7 @@ def covered(quality: dict[str, Any] | None, ticker: str, start: date, end: date)
 
 
 def capture(
-    store: MarketDataStore,
+    store: MarketDataReader,
     tickers: list[str],
     start: date,
     end: date,
