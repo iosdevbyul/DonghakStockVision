@@ -17,7 +17,7 @@ from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require, sha
 from donghak_stock_vision.data.learning import AnalysisError, Direction, Minimums, digest, timestamp
 from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy
-from donghak_stock_vision.data.research_split import ExplicitResearchSplit
+from donghak_stock_vision.data.research_split import ExplicitResearchSplit, ResearchDateRange
 from donghak_stock_vision.data.schema import SEOUL, DailyBar, validate_ticker
 from donghak_stock_vision.data.snapshot import capture
 from donghak_stock_vision.models.service import TrainingService, load_model
@@ -144,9 +144,25 @@ class _VerifiedMarket(SQLiteStore):
     forbidden by SQLite query_only. Only selected raw-source owners are replayed.
     """
 
-    def __init__(self, request: RealMarketTrainingRequest) -> None:
+    def __init__(
+        self, request: RealMarketTrainingRequest, *, source_window: ResearchDateRange | None = None
+    ) -> None:
         request.validate()
         self.request = request
+        self.window = source_window or ResearchDateRange(request.start, request.end)
+        if source_window is not None:
+            # New versioned dataset consumers may verify separate nonprotected
+            # windows. The original v1 training request/split semantics stay intact.
+            protected = request.access_split.final_test
+            require(
+                self.window.end < protected.start or self.window.start > protected.end,
+                "training_protected_source_window",
+            )
+            require(
+                self.window.end < timestamp(request.cutoff).astimezone(SEOUL).date()
+                and (self.window.end - self.window.start).days <= 3660,
+                "training_source_window_bound",
+            )
         _quiescent(request.database, request.database_pin)
         self.connection = sqlite3.connect(
             request.database.resolve().as_uri() + "?mode=ro&immutable=1", uri=True
@@ -166,7 +182,7 @@ class _VerifiedMarket(SQLiteStore):
             != OPERATIONAL_APPLICATION_ID,
             "research_source_schema_required",
         )
-        start, end = r.start, r.end
+        start, end = self.window.start, self.window.end
         tables = {
             row[0]
             for row in self.connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -293,13 +309,14 @@ class _VerifiedMarket(SQLiteStore):
             self.sources.append(identity)
             # No body or whole-market parsed-response cache survives this iteration.
         require(set(selected) == matched, "training_bar_not_reproduced_from_original")
+        self.raw_bytes_verified = total
+        self.raw_responses_verified = len(grouped)
         self.row_count = len(selected)
         self._bars = selected
 
     def read(self, ticker: str, start: date, end: date) -> list[DailyBar]:
         require(
-            ticker in self.request.tickers
-            and self.request.start <= start <= end <= self.request.end,
+            ticker in self.request.tickers and self.window.start <= start <= end <= self.window.end,
             "training_read_outside_verified_scope",
         )
         return [
@@ -455,6 +472,9 @@ def validate_real_daily_model(
     """Local frozen-input compatibility, never independent authority or publication."""
     snapshot = store.get("snapshot", model["snapshot_id"])
     source = snapshot.get("real_market_source")
+    if isinstance(source, dict) and source.get("version") == "real_market_dataset_source_v1":
+        validate_dataset_model(store, model, snapshot, day)
+        return
     require(
         type(source) is dict and source.get("version") == VERSION,
         "real_model_verified_training_source_required",
@@ -497,3 +517,63 @@ def validate_real_daily_model(
         and snapshot["end"] == fit.final_test.end.isoformat(),
         "real_model_split_binding",
     )
+
+
+def validate_dataset_model(
+    store: AnalysisStore, model: dict[str, Any], snapshot: dict[str, Any], day: date | None
+) -> None:
+    source = snapshot["real_market_source"]
+    r = source["request"]
+    require(
+        source["version"] == "real_market_dataset_source_v1"
+        and source["local_originals_verified"] is True
+        and source["protected_final_test_read"] is False
+        and digest(r) == source["request_pin"]
+        and digest(snapshot["rows"]) == source["selected_rows_pin"],
+        "dataset_model_source_binding",
+    )
+    protected_span = ExplicitResearchSplit.from_dict(r["access_split"]).final_test
+    require(
+        snapshot["research_calendar"] == r["research_calendar"]
+        and all(
+            days
+            == r["known_missing_sessions"]
+            + [protected_span.start.isoformat(), protected_span.end.isoformat()]
+            for days in snapshot["unavailable_dates"].values()
+        ),
+        "dataset_model_gap_binding",
+    )
+    access = ExplicitResearchSplit.from_dict(r["access_split"])
+    fit = ExplicitResearchSplit.from_dict(r["fit_split"])
+    require(
+        fit.training == access.training
+        and fit.validation == access.validation
+        and fit.final_test.start > access.final_test.end,
+        "dataset_original_roles_must_be_preserved",
+    )
+    require(
+        snapshot["cutoff"] == r["cutoff"]
+        and sorted(snapshot["rows"]) == r["tickers"]
+        and all(
+            not access.final_test.start.isoformat()
+            <= b["trading_date"]
+            <= access.final_test.end.isoformat()
+            for rows in snapshot["rows"].values()
+            for b in rows
+        ),
+        "dataset_model_protected_rows",
+    )
+    require(
+        model["data_origin"] == "real"
+        and model["usage_restriction"] == "research_only"
+        and model["profiles"] == [["krx", "unadjusted", ""]],
+        "real_daily_model_incompatible",
+    )
+    dataset = store.get("dataset", model["dataset_id"])
+    require(dataset["split"]["configuration"] == fit.to_dict(), "dataset_model_split_binding")
+    if day is not None:
+        require(
+            not access.final_test.start <= day <= access.final_test.end,
+            "daily_protected_final_test_forbidden",
+        )
+        require(day > fit.final_test.end, "daily_model_training_overlap")

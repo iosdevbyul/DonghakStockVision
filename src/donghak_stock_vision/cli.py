@@ -50,6 +50,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.learning_cli import add_commands
 
     add_commands(sub)
+    from donghak_stock_vision.real_market_dataset_cli import add_commands as add_real_dataset
+
+    add_real_dataset(sub)
     from donghak_stock_vision.decision_cli import add_commands as add_decisions
 
     add_decisions(sub)
@@ -94,7 +97,10 @@ def main(argv: list[str] | None = None) -> int:
         getattr(args, "real_market_source", False)
         or getattr(args, "research_source_contract", "receipt_archive_v1") != "receipt_archive_v1"
     )
-    if args.command not in ("daily-research", "krx-backfill") and not offline_real_training:
+    if (
+        args.command not in ("daily-research", "krx-backfill", "real-market-dataset")
+        and not offline_real_training
+    ):
         load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
@@ -146,6 +152,10 @@ def main(argv: list[str] | None = None) -> int:
             from donghak_stock_vision.backtest_cli import run as run_backtest
 
             return run_backtest(args)
+        if args.command == "real-market-dataset":
+            from donghak_stock_vision.real_market_dataset_cli import run as run_real_dataset
+
+            return run_real_dataset(args)
         all_market = args.command == "collect" and args.all
         if all_market and args.provider != "krx":
             raise ValueError("--all is only supported with --provider krx")

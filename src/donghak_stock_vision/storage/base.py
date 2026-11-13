@@ -8,9 +8,12 @@ from donghak_stock_vision.data.schema import DailyBar
 from donghak_stock_vision.providers.base import RawPage
 
 
-class MarketDataStore(Protocol):
+class MarketDataReader(Protocol):
     def read(self, ticker: str, start: date, end: date) -> list[DailyBar]: ...
     def latest(self, ticker: str, start: date, end: date) -> date | None: ...
+
+
+class MarketDataStore(MarketDataReader, Protocol):
     def archive(self, run_id: str, provider: str, ticker: str, page: RawPage) -> int: ...
     def save(self, bars: Sequence[DailyBar], raw_ids: Sequence[int]) -> int: ...
     def record_run(
