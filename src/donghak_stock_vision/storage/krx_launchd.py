@@ -97,10 +97,10 @@ def status(config: SchedulerConfig, config_path: Path) -> dict[str, Any]:
             launchd_enabled = None
         else:
             match = re.search(
-                r'"' + re.escape(LABEL) + r'"\s*=>\s*(true|false)',
+                r'"' + re.escape(LABEL) + r'"\s*=>\s*(true|false|enabled|disabled)',
                 result.stdout.decode("utf-8", errors="replace"),
             )
-            launchd_enabled = bool(match and match.group(1) == "false")
+            launchd_enabled = bool(match and match.group(1) in ("false", "enabled"))
     application_enabled = control(config)["enabled"]
     return dict(
         installed=installed,

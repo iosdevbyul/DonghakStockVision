@@ -120,7 +120,12 @@ commit together; an independent source seal follows. A 403/429, timeout, size er
 malformed/wrong-date market response, coverage failure or valid zero-row page stops
 the batch without retry. `no_data` is distinct from `failed`. Both are retained;
 repeating the same plan stops at that date and never repeats its HTTP request.
-Failure/no-data runs exit nonzero. Inspect and review before any newly approved plan;
+Failure/no-data runs exit nonzero. With explicit operator authorization,
+`--continue-date-failures` proceeds past isolated empty/invalid/coverage-failed dates
+and skips their retained outcomes on replay; it never repeats their HTTP requests.
+HTTP/transport failures (including 403/429/timeouts), uncertain outcomes, and source
+integrity errors still stop execution. Without this flag the original stop behavior
+is unchanged. Inspect and review before any newly approved plan;
 retain the same archive and include prior archives in known ledgers.
 
 A committed response/seal with interrupted ingestion can resume with the SAME
