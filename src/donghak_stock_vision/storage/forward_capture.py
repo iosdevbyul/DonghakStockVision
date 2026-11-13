@@ -11,7 +11,6 @@ import logging
 import math
 import re
 import sqlite3
-import ssl
 import time
 from collections.abc import Callable, Iterator
 from contextlib import closing, contextmanager
@@ -32,7 +31,7 @@ from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.data.schema import SEOUL
 from donghak_stock_vision.ingestion.market import KRXMarketPipeline
 from donghak_stock_vision.providers.base import ProviderError, RawPage, krx_market_scope
-from donghak_stock_vision.providers.forward_capture import CaptureHTTP
+from donghak_stock_vision.providers.forward_capture import CaptureHTTP, verify_capture_client
 from donghak_stock_vision.providers.http import RequestGate
 from donghak_stock_vision.providers.krx import ENDPOINTS, KRXProvider
 from donghak_stock_vision.providers.krx_response import decode_response
@@ -491,41 +490,14 @@ def run_capture(
         assert authorization is not None
         grant = verifier(plan, attempt, authorization, authorization_trust, observed)
         verify_credential(grant, api_key)
-        # A caller-supplied client must not change the reviewed request scope.
-        require(
-            not client.params
-            and not client.cookies
-            and not {"host", "cookie", "authorization", "proxy-authorization"}.intersection(
-                client.headers
-            ),
-            "provider_client_default_parameters_or_cookies_forbidden",
-        )
         if operator_policy:
             require(
                 len(api_key) <= 1024 and api_key.isascii() and api_key.isprintable(),
                 "invalid_operator_credential_header",
             )
         transport_kind = grant.to_dict()["transport"]
-        transport = client._transport_for_url(httpx.URL(_endpoint(plan)))
-        if transport_kind == "mock_fixture":
-            require(
-                type(transport) is httpx.MockTransport, "review_requires_explicit_mock_transport"
-            )
-        else:
-            pool = getattr(transport, "_pool", None)
-            context = getattr(pool, "_ssl_context", None)
-            require(
-                type(transport) is httpx.HTTPTransport
-                and type(pool).__name__ == "ConnectionPool"
-                and getattr(pool, "_retries", None) == 0
-                and isinstance(context, ssl.SSLContext)
-                and context.verify_mode == ssl.CERT_REQUIRED
-                and context.check_hostname
-                and not client.trust_env
-                and not client.follow_redirects
-                and not any(client.event_hooks.values()),
-                "verified_direct_https_transport_required",
-            )
+        verify_capture_client(client, _endpoint(plan), transport_kind)
+        if transport_kind != "mock_fixture":
             # Live permission/freshness/deadlines cannot be backdated with fixture clocks.
             verifier(plan, attempt, authorization, authorization_trust, datetime.now(UTC))
 

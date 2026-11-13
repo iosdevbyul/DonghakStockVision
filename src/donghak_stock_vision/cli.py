@@ -71,6 +71,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.krx_scheduler_cli import add_commands as add_scheduler
 
     add_scheduler(sub)
+    from donghak_stock_vision.krx_backfill_cli import add_commands as add_backfill
+
+    add_backfill(sub)
     from donghak_stock_vision.daily_research_cli import add_commands as add_daily_research
 
     add_daily_research(sub)
@@ -91,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
         getattr(args, "real_market_source", False)
         or getattr(args, "research_source_contract", "receipt_archive_v1") != "receipt_archive_v1"
     )
-    if args.command != "daily-research" and not offline_real_training:
+    if args.command not in ("daily-research", "krx-backfill") and not offline_real_training:
         load_dotenv(Path.cwd() / ".env", override=False)
     store = None
     try:
@@ -101,6 +104,10 @@ def main(argv: list[str] | None = None) -> int:
             if args.db is None:
                 raise ValueError("explicit_real_market_database_required")
             return run_real_training(args, args.db)
+        if args.command == "krx-backfill":
+            from donghak_stock_vision.krx_backfill_cli import run as run_backfill
+
+            return run_backfill(args)
         if args.command == "daily-research":
             from donghak_stock_vision.daily_research_cli import run as run_daily_research
 

@@ -1,5 +1,6 @@
 """Opt-in bounded HTTP recorder for the original KRX provider, never auto-started."""
 
+import ssl
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -7,7 +8,9 @@ from typing import Any
 
 import httpx
 
+from donghak_stock_vision.backtest.validation import require
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
+from donghak_stock_vision.data.krx_backfill import BackfillRequestLimits
 from donghak_stock_vision.providers.base import ProviderError
 from donghak_stock_vision.providers.http import RequestGate, RetryingHTTP
 
@@ -15,6 +18,36 @@ from donghak_stock_vision.providers.http import RequestGate, RetryingHTTP
 def capture_client(*, transport: httpx.BaseTransport | None = None) -> httpx.Client:
     """Shared capture client defaults; origin/TLS/retry checks remain in run_capture."""
     return httpx.Client(transport=transport, trust_env=False, follow_redirects=False, timeout=20)
+
+
+def verify_capture_client(client: httpx.Client, url: str, transport_kind: str) -> None:
+    """Shared original capture transport checks; no client or network is created here."""
+    require(
+        not client.params
+        and not client.cookies
+        and not {"host", "cookie", "authorization", "proxy-authorization"}.intersection(
+            client.headers
+        ),
+        "provider_client_default_parameters_or_cookies_forbidden",
+    )
+    transport = client._transport_for_url(httpx.URL(url))
+    if transport_kind == "mock_fixture":
+        require(type(transport) is httpx.MockTransport, "review_requires_explicit_mock_transport")
+    else:
+        pool = getattr(transport, "_pool", None)
+        context = getattr(pool, "_ssl_context", None)
+        require(
+            type(transport) is httpx.HTTPTransport
+            and type(pool).__name__ == "ConnectionPool"
+            and getattr(pool, "_retries", None) == 0
+            and isinstance(context, ssl.SSLContext)
+            and context.verify_mode == ssl.CERT_REQUIRED
+            and context.check_hostname
+            and not client.trust_env
+            and not client.follow_redirects
+            and not any(client.event_hooks.values()),
+            "verified_direct_https_transport_required",
+        )
 
 
 class CaptureHTTP(RetryingHTTP):
@@ -28,7 +61,7 @@ class CaptureHTTP(RetryingHTTP):
         self,
         client: httpx.Client,
         gate: RequestGate,
-        plan: ForwardCapturePlan,
+        plan: ForwardCapturePlan | BackfillRequestLimits,
         record: Callable[[dict[str, Any], bytes], None],
         *,
         cancelled: Callable[[], bool] = lambda: False,
