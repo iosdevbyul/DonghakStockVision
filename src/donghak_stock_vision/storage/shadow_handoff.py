@@ -129,7 +129,9 @@ def _derived_request(
     return derived, lineage
 
 
-def schedule_alignment(config: SchedulerConfig, d: dict[str, Any], at: datetime) -> FrozenJSON:
+def schedule_alignment(
+    config: SchedulerConfig, d: dict[str, Any], at: datetime, *, explain: bool = False
+) -> FrozenJSON:
     """Compare existing weekday wall-clock scheduling with the unmodified event.
 
     A policy lower bound is not an assertion that KRX has published the data.
@@ -137,7 +139,7 @@ def schedule_alignment(config: SchedulerConfig, d: dict[str, Any], at: datetime)
     """
     _request(d)
     require(d["mode"] == "research_forward_candidate", "handoff_forward_mode_required")
-    days, _ = _calendar(d)
+    days, calendar_pin = _calendar(d)
     target = d["target_trading_date"]
     require(days.get(target) == "session", "shadow_target_session_unverified")
     prior = sorted(day for day, state in days.items() if state == "session" and day < target)
@@ -160,27 +162,64 @@ def schedule_alignment(config: SchedulerConfig, d: dict[str, Any], at: datetime)
         and slot < timestamp(policy["valid_until"])
         and 1 <= (slot.date() - input_day).days <= policy["max_observation_lag_days"]
     )
-    return FrozenJSON.freeze(
-        dict(
-            version="research_shadow_schedule_alignment_v1",
-            input_trading_date=input_day.isoformat(),
-            target_trading_date=target,
-            policy_delay_lower_bound=earliest.isoformat(),
-            next_configured_weekday_slot=slot.isoformat(),
-            slot_is_in_existing_policy_scope=in_scope,
-            generation_deadline_exclusive=deadline.isoformat(),
-            configured_slot_before_prediction_deadline=slot < deadline,
-            configured_schedule_aligned=in_scope and slot < deadline,
-            official_api_publication_time="UNKNOWN",
-            provider_response_still_requires_validation=True,
-            scheduler_enabled_not_assessed=True,
-            policy_changed=False,
-            schedule_changed=False,
-            pit_qualified=False,
-            performance_approved=False,
-            network_requests=0,
-        )
+    result = dict(
+        version="research_shadow_schedule_alignment_v1",
+        input_trading_date=input_day.isoformat(),
+        target_trading_date=target,
+        policy_delay_lower_bound=earliest.isoformat(),
+        next_configured_weekday_slot=slot.isoformat(),
+        slot_is_in_existing_policy_scope=in_scope,
+        generation_deadline_exclusive=deadline.isoformat(),
+        configured_slot_before_prediction_deadline=slot < deadline,
+        configured_schedule_aligned=in_scope and slot < deadline,
+        official_api_publication_time="UNKNOWN",
+        provider_response_still_requires_validation=True,
+        scheduler_enabled_not_assessed=True,
+        policy_changed=False,
+        schedule_changed=False,
+        pit_qualified=False,
+        performance_approved=False,
+        network_requests=0,
     )
+    if explain:
+        lag = policy["max_observation_lag_days"]
+        require(type(lag) is int and 1 <= lag <= 7, "recurring_observation_lag_invalid")
+        lower = max(earliest, timestamp(policy["valid_from"]).astimezone(SEOUL))
+        upper = min(
+            deadline,
+            timestamp(policy["valid_until"]).astimezone(SEOUL),
+            datetime.combine(input_day + timedelta(days=lag + 1), time(), SEOUL),
+        )
+        blockers = []
+        if input_day not in scope.permitted_days:
+            blockers.append("input_not_in_policy_scope")
+        if lower >= upper:
+            blockers.append("no_policy_prediction_time_window")
+        current = list(blockers)
+        if checked < lower:
+            current.append("capture_not_yet_allowed")
+        elif checked >= upper:
+            current.append("policy_prediction_window_elapsed")
+        result.update(
+            version="research_shadow_schedule_alignment_v2",
+            calendar_pin=calendar_pin,
+            minimum_lag_basis="seoul_calendar_date_difference",
+            minimum_calendar_day_lag=1,
+            requires_24_elapsed_hours=False,
+            counts_trading_sessions_for_lag=False,
+            input_to_target_calendar_days=(deadline.date() - input_day).days,
+            policy_window_start=lower.isoformat(),
+            policy_window_end_exclusive=upper.isoformat(),
+            structural_blockers=blockers,
+            current_time_blockers=current,
+            policy_prediction_window_exists=not blockers,
+            current_time_in_policy_window=not blockers and lower <= checked < upper,
+            configured_slot_in_policy_prediction_window=(not blockers and lower <= slot < upper),
+            publication_time_is_policy_bound=False,
+            model_event_changed=False,
+            automatic_execution_authorized=False,
+        )
+    return FrozenJSON.freeze(result)
 
 
 def alignment(d: dict[str, Any], *, clock: Clock = now) -> FrozenJSON:

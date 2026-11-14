@@ -16,6 +16,7 @@ from donghak_stock_vision.storage.krx_backfill import read_pin, write_new
 from donghak_stock_vision.storage.real_market_dataset import document
 from donghak_stock_vision.storage.shadow_prediction import (
     correct,
+    evaluation_readiness,
     record,
     recover,
     resolve,
@@ -28,7 +29,16 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     p = sub.add_parser("shadow-prediction")
     p.add_argument(
         "action",
-        choices=("record", "resolve", "status", "correct", "recover", "verify", "alignment"),
+        choices=(
+            "record",
+            "resolve",
+            "status",
+            "correct",
+            "recover",
+            "verify",
+            "alignment",
+            "evaluation-readiness",
+        ),
     )
     p.add_argument("--request", type=Path)
     p.add_argument("--request-pin-file", type=Path)
@@ -43,11 +53,31 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     p.add_argument("--intent-pin-file", type=Path)
     p.add_argument("--scheduler-config", type=Path)
     p.add_argument("--scheduler-config-pin-file", type=Path)
+    p.add_argument("--explain-timing", action="store_true")
 
 
 def run(args: argparse.Namespace) -> int:
     require(not args.report.exists(), "shadow_new_report_required")
     try:
+        explain = getattr(args, "explain_timing", False)
+        require(not explain or args.action == "alignment", "shadow_explain_requires_alignment")
+        config = None
+        config_path = getattr(args, "scheduler_config", None)
+        config_pin_file = getattr(args, "scheduler_config_pin_file", None)
+        require(
+            bool(config_path) == bool(config_pin_file),
+            "shadow_complete_scheduler_reference_required",
+        )
+        if config_path is not None:
+            from donghak_stock_vision.storage.krx_scheduler import load_config
+
+            require(
+                args.action in ("alignment", "evaluation-readiness"),
+                "shadow_scheduler_reference_action",
+            )
+            assert config_pin_file is not None
+            config = load_config(config_path, read_pin(config_pin_file))
+        require(not explain or config is not None, "shadow_explain_requires_scheduler_reference")
         if args.action != "alignment":
             require(
                 args.journal is not None and args.head_pin_file is not None,
@@ -63,29 +93,23 @@ def run(args: argparse.Namespace) -> int:
             d = document(str(args.request))
             require(digest(d) == read_pin(args.request_pin_file), "shadow_request_pin_mismatch")
         if args.action == "alignment":
-            from donghak_stock_vision.storage.krx_scheduler import load_config
             from donghak_stock_vision.storage.shadow_handoff import (
                 alignment,
                 schedule_alignment,
             )
 
             result = alignment(d)
-            require(
-                bool(args.scheduler_config) == bool(args.scheduler_config_pin_file),
-                "shadow_complete_scheduler_reference_required",
-            )
-            if args.scheduler_config is not None:
-                config = load_config(
-                    args.scheduler_config, read_pin(args.scheduler_config_pin_file)
-                )
+            if config is not None:
                 result = FrozenJSON.freeze(
                     result.to_dict()
                     | {
                         "collection_schedule": schedule_alignment(
-                            config, d, datetime.now(UTC)
+                            config, d, datetime.now(UTC), explain=explain
                         ).to_dict()
                     }
                 )
+        elif args.action == "evaluation-readiness":
+            result = evaluation_readiness(d, args.journal, head, config=config)
         elif args.action == "status":
             result = status(args.journal, head)
         elif args.action == "verify":
@@ -134,6 +158,14 @@ def run(args: argparse.Namespace) -> int:
                     **(
                         {"input_timing_ready": value.get("input_timing_ready")}
                         if args.action == "alignment"
+                        else {}
+                    ),
+                    **(
+                        {
+                            "pending": value["pending"],
+                            "resolve_time_eligible": value["resolve_time_eligible"],
+                        }
+                        if args.action == "evaluation-readiness"
                         else {}
                     ),
                 )

@@ -5,7 +5,7 @@ import copy
 import hashlib
 import json
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -32,12 +32,13 @@ from tests.integration.test_shadow_prediction import (
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.official_evidence import KIND_URL, normalize_month
 from donghak_stock_vision.cli import main, parser
+from donghak_stock_vision.data.forward_capture import FullMarketScope
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.data.schema import SEOUL
 from donghak_stock_vision.storage import forward_signal_journal as journal_owner
 from donghak_stock_vision.storage.forward_signal_journal import GENESIS, history
 from donghak_stock_vision.storage.krx_backlog import _records, _verify
-from donghak_stock_vision.storage.krx_scheduler import SchedulerConfig, run_once
+from donghak_stock_vision.storage.krx_scheduler import SchedulerConfig, _plan, _policy, run_once
 from donghak_stock_vision.storage.operational_market import DB
 from donghak_stock_vision.storage.shadow_handoff import (
     _derived_request,
@@ -425,3 +426,114 @@ def test_handoff_sealed_window_before_collection_source_replay(
     result = after_collection(cfg, collection, *paths).to_dict()
     assert result["research"]["reason"] == "shadow_protected_final_test_forbidden"
     assert not paths[2].exists()
+
+
+def timing_fixture(
+    config: SchedulerConfig, tmp_path: Path, input_day: date, target: date
+) -> tuple[SchedulerConfig, dict[str, Any]]:
+    """Calendar-only synthetic policy review; never a provider authorization."""
+    from tests.backtest.test_official_evidence import month
+
+    raw, source = month(input_day.year, input_day.month)
+    body, metadata = tmp_path / "month.html", tmp_path / "month.json"
+    body.write_bytes(raw)
+    metadata.write_text(json.dumps(source))
+    p = _policy(config)
+    scope = FullMarketScope(
+        datetime.combine(input_day - timedelta(days=1), datetime.min.time(), SEOUL).astimezone(UTC),
+        datetime.combine(target + timedelta(days=10), datetime.min.time(), SEOUL).astimezone(UTC),
+        (input_day,),
+    )
+    p.update(
+        full_market_scope=scope.to_dict(),
+        valid_from=scope.valid_from.isoformat(),
+        valid_until=scope.valid_until.isoformat(),
+    )
+    owner = FrozenJSON.freeze(p)
+    (config.path("policy_root") / "recurring-policy.json").write_text(owner.payload_json)
+    cfg = SchedulerConfig(
+        FrozenJSON.freeze(config.document.to_dict() | {"policy_pin": owner.identifier})
+    )
+    request = dict(
+        version="research_shadow_request_v1",
+        mode="research_forward_candidate",
+        source_kind="offline_fixture",
+        target_trading_date=target.isoformat(),
+        tickers=["005930"],
+        model={},
+        operational={},
+        calendars=[
+            dict(
+                raw=str(body),
+                source=str(metadata),
+                normalized_pin=normalize_month(raw, source).identifier,
+            )
+        ],
+    )
+    return cfg, request
+
+
+@pytest.mark.parametrize(
+    "input_day,target,exists",
+    [
+        (date(2025, 7, 7), date(2025, 7, 8), False),
+        (date(2025, 7, 11), date(2025, 7, 14), True),
+        (date(2025, 6, 5), date(2025, 6, 9), True),
+    ],
+)
+def test_weekday_weekend_and_verified_holiday_windows(
+    config: SchedulerConfig, tmp_path: Path, input_day: date, target: date, exists: bool
+) -> None:
+    cfg, d = timing_fixture(config, tmp_path, input_day, target)
+    at = datetime.combine(input_day + timedelta(days=1), datetime.min.time(), SEOUL)
+    old = schedule_alignment(cfg, d, at).to_dict()
+    detailed = schedule_alignment(cfg, d, at, explain=True).to_dict()
+    assert old["version"] == "research_shadow_schedule_alignment_v1"
+    assert all(detailed[k] == v for k, v in old.items() if k != "version")
+    assert detailed["policy_prediction_window_exists"] is exists
+    assert detailed["current_time_in_policy_window"] is exists
+    assert detailed["minimum_lag_basis"] == "seoul_calendar_date_difference"
+    assert not detailed["requires_24_elapsed_hours"]
+    if not exists:
+        assert detailed["policy_window_start"] == detailed["policy_window_end_exclusive"]
+        assert "no_policy_prediction_time_window" in detailed["structural_blockers"]
+    elif input_day.month == 7:
+        assert not detailed["configured_slot_in_policy_prediction_window"]
+    else:
+        assert detailed["configured_slot_in_policy_prediction_window"]
+    assert detailed["official_api_publication_time"] == "UNKNOWN"
+    assert not detailed["automatic_execution_authorized"]
+
+
+def test_original_minimum_lag_is_seoul_date_boundary(
+    config: SchedulerConfig, tmp_path: Path
+) -> None:
+    cfg, d = timing_fixture(config, tmp_path, date(2025, 7, 7), date(2025, 7, 8))
+    boundary = datetime.fromisoformat("2025-07-07T15:00:00+00:00")
+    with pytest.raises(ValueError, match="no_eligible_completed_trading_date"):
+        _plan(cfg, boundary - timedelta(microseconds=1))
+    plan, _ = _plan(cfg, boundary)
+    assert plan.day.isoformat() == "2025-07-07"
+    with pytest.raises(ValueError, match="no_eligible_completed_trading_date"):
+        _plan(cfg, boundary + timedelta(days=7))
+    result = schedule_alignment(cfg, d, boundary, explain=True).to_dict()
+    assert not result["policy_prediction_window_exists"]
+
+
+def test_policy_window_elapsed_and_calendar_pin_tampering(
+    config: SchedulerConfig, tmp_path: Path
+) -> None:
+    cfg, d = timing_fixture(config, tmp_path, date(2025, 7, 11), date(2025, 7, 14))
+    before = datetime.fromisoformat("2025-07-13T23:59:59.999999+09:00")
+    assert schedule_alignment(cfg, d, before, explain=True).to_dict()[
+        "current_time_in_policy_window"
+    ]
+    at = before + timedelta(microseconds=1)
+    result = schedule_alignment(cfg, d, at, explain=True).to_dict()
+    assert (
+        not result["current_time_in_policy_window"]
+        and "policy_prediction_window_elapsed" in result["current_time_blockers"]
+    )
+    d["calendars"][0]["normalized_pin"] = "0" * 64
+    with pytest.raises(ValueError):
+        schedule_alignment(cfg, d, at, explain=True)

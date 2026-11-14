@@ -212,6 +212,113 @@ changing only LaunchAgent's hour would not solve that boundary.
 
 ## Manual commands and post-collection interface
 
+### Weekday windows and read-only evaluation readiness
+
+Add `--explain-timing` to the existing `alignment` command, together with the
+retained scheduler config/PIN reference, for opt-in
+`research_shadow_schedule_alignment_v2`. Without this option the original v1
+report remains unchanged. V2 distinguishes structural blockers from the current
+time and configured-trigger blockers. Its policy window is the intersection of:
+
+- input date + one Seoul calendar day, and policy valid-from (inclusive);
+- the original target-date midnight, policy expiry, and the end of the inclusive
+  maximum calendar-day lag (exclusive).
+
+The original scheduler/backlog use Seoul **date subtraction**, not 24 elapsed
+hours and not a count of exchange sessions. For consecutive calendar-day sessions,
+input November 16 has earliest capture November 17 00:00 KST, equal to the exclusive
+November 17 prediction deadline. `no_policy_prediction_time_window` is structural:
+waiting or choosing another hour cannot repair it. November 13→16 has a weekend
+gap; a retained-calendar holiday can likewise widen the window. A nonempty window
+does not establish provider availability, budget, network permission or activation.
+
+```sh
+dsv shadow-prediction alignment \
+  --request "$REVIEWED_REQUEST" --request-pin-file "$REQUEST_PIN_FILE" \
+  --scheduler-config "$CONFIG" --scheduler-config-pin-file "$CONFIG_PIN_FILE" \
+  --explain-timing --report "$NEW_TIMING_REPORT"
+
+dsv shadow-prediction evaluation-readiness \
+  --request "$CURRENT_SOURCE_REQUEST" --request-pin-file "$CURRENT_REQUEST_PIN_FILE" \
+  --journal "$EXISTING_JOURNAL" --head-pin-file "$LATEST_ACKNOWLEDGED_HEAD_PIN_FILE" \
+  --scheduler-config "$CONFIG" --scheduler-config-pin-file "$CONFIG_PIN_FILE" \
+  --report "$NEW_EVALUATION_READINESS_REPORT"
+```
+
+`research_shadow_evaluation_readiness_v1` semantically verifies the original journal,
+inputs, model, features and any retained terminal outcomes through the existing
+`verify` owner. It projects each immutable ID/ticker, original event sessions,
+state and local resolve-time guard. It does not append Pending events, read new
+pending-result sources, label events or introduce another evaluator. Historical
+Replay and fixture classifications remain explicit. A passed time guard means
+only that the existing `resolve` may be attempted; five original future sources,
+their availability clocks and the original label are still mandatory. Metrics
+and baselines remain available through the existing `status` command after actual
+resolution, without performance or PIT promotion.
+
+The optional scheduler reference supplies a separate earliest-last-outcome capture
+bound and whether its dates/time fall within the configured policy. It never
+authenticates publication, checks live quota or grants a future network request.
+No config reference means those policy fields remain null. A backwards query
+clock or a query before retained event timestamps fails closed.
+
+For the four actual November 16–20 candidates, the original resolve-time guard is
+November 20 **16:00 KST**. Under the unchanged collection policy the final November
+20 bar cannot be collected before November 21 **00:00 KST**. Neither bound proves
+when KRX will provide that bar. The weekday LaunchAgent does not run on Saturday;
+any separate November 21 collection timing must be reviewed using the existing
+one-shot path and approved request budget. Do not install another scheduler or
+enable automatic research to paper over that gap.
+
+After each authorized collection, first inspect `krx-scheduler status`, `backlog`
+and `availability`. The original `run-once`/`run-due` Handoff remains opt-in and
+keeps collection/research outcomes independent. For evaluation after DB append,
+retain a **new**, reviewed `research_shadow_request_v1` and separate PIN with the
+current quiescent DB fingerprint and all original outcome plan/capture/batch
+references. Keep its original model/calendar/event target, all old requests/PINs
+and prediction entries. A stale whole-DB PIN or missing original source must fail;
+never replace it by changing the original prediction's input projection.
+
+Run the existing `verify` and `evaluation-readiness`, then the existing `resolve`
+with the latest acknowledged head, retained intents and separate PIN directory.
+If a write is interrupted, inspect the existing checkpoints and use `recover` for
+the exact retained intent before continuing. A read-only query requires no recovery
+and must not alter the head. Missing results stay Pending; no filling, threshold
+tuning or retraining is performed.
+
+Source-range validation in `verify` now precedes raw replay: the retained input
+dates and terminal outcome dates must match the original model/calendar horizon
+before they can determine a SQLite read range. Rehashed/tampered ranges therefore
+cannot extend replay into a sealed Final Test or an unrelated future interval.
+Valid historical verification reports and journal bytes retain their semantics;
+no source, journal or approval schema migration occurs.
+
+On November 14, 2026, actual read-only execution preserved all four candidates and
+their IDs, Source PINs, model hashes, feature version, scores, threshold and UTC
+generation times. Duplicate recording created zero predictions; repeated Pending
+resolution kept the exact head. Operational data remained **26,302 rows**, latest
+November 13; **0 API requests, 0 added rows, 0 new candidates, 4 Pending, 0 evaluated**.
+All **399 protected files** retained SHA-256. Evidence is separately retained under
+`Research/weekday-readiness-20261114T044119Z`; full original candidate metadata is
+private in `original-predictions.json`. Saturday/Sunday execution does not establish
+weekday KRX release hours; those and official first publication remain UNKNOWN.
+
+The existing installed LaunchAgent, policy, PINs and model are unchanged. Resolving
+the consecutive-day conflict requires evidence-backed review of either the minimum
+capture-date restriction or a separately verified pre-event timing contract. The
+model's next-session five-observation event need not be moved to manufacture a
+window, and is not changed here. Research automation remains inactive; independently
+authenticated chronology, PIT/performance approval and trading remain unavailable.
+
+The date restriction also exists in the original `DailyBar` schema: a trading
+date must precede the Seoul collection date. Same-day collection would therefore
+need evidence-backed, versioned ingestion/schema **and** policy review, not just a
+new scheduler hour or a silently changed PIN. A pre-open approach would instead
+need a separately reviewed prediction timing contract (both recorder and event
+validator currently reject same-date targets) and retained session-specific opening
+evidence. Neither approach is authorized or implemented here; the model/event can
+remain fixed while those evidence and timing contracts are reviewed separately.
+
 Store new requests, journal, intents and reports under a new private Research
 folder. Store request/intent/head PINs separately under a new ResearchPins folder.
 Never point writable outputs at model/operational sources. The request version
