@@ -113,6 +113,7 @@ def main(argv: list[str] | None = None) -> int:
             "shadow-prediction",
         )
         and not offline_real_training
+        and not (args.command == "krx-scheduler" and args.action == "availability")
     ):
         load_dotenv(Path.cwd() / ".env", override=False)
     store = None

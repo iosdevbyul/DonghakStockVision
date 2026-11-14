@@ -27,6 +27,7 @@ def add_commands(sub: Any) -> None:
             "backlog",
             "run-due",
             "register-completion",
+            "availability",
         ),
     )
     cmd.add_argument("--config", type=Path, required=True)
@@ -40,6 +41,8 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--batch-pin")
     cmd.add_argument("--source-authorization-root", type=Path)
     cmd.add_argument("--source-authorization-pin")
+    cmd.add_argument("--availability-request", type=Path)
+    cmd.add_argument("--availability-request-pin-file", type=Path)
     for name in ("research-output-db", "research-model-db"):
         cmd.add_argument(f"--{name}", type=Path)
     cmd.add_argument("--research-model-version")
@@ -59,6 +62,11 @@ def run(args: argparse.Namespace) -> int:
     if args.db is not None:
         raise ValueError("scheduler_uses_explicit_config_not_research_db")
     config = load_config(args.config, args.config_pin)
+    if args.action != "availability" and (
+        getattr(args, "availability_request", None) is not None
+        or getattr(args, "availability_request_pin_file", None) is not None
+    ):
+        raise ValueError("availability_options_require_read_only_availability_action")
     research_values = (
         getattr(args, "research_output_db", None),
         getattr(args, "research_model_db", None),
@@ -105,6 +113,56 @@ def run(args: argparse.Namespace) -> int:
             max_runs=args.max_runs,
             max_seconds=args.max_batch_seconds,
             clock=lambda: datetime.now(UTC),
+        )
+    elif args.action == "availability":
+        from donghak_stock_vision.backtest.validation import require
+        from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
+        from donghak_stock_vision.data.learning import digest
+        from donghak_stock_vision.storage.krx_availability import assess_availability
+        from donghak_stock_vision.storage.krx_backfill import read_pin
+        from donghak_stock_vision.storage.prospective_operational_readiness import CaptureSource
+        from donghak_stock_vision.storage.real_market_dataset import document
+
+        require(
+            not any(
+                (
+                    args.execute,
+                    args.scheduled,
+                    args.apply,
+                    args.allow_network,
+                    args.confirm_operator_authorization,
+                )
+            ),
+            "availability_is_read_only",
+        )
+        require(
+            all((args.source_plan, args.source_plan_pin, args.source_attempt, args.capture_pin)),
+            "availability_original_pinned_source_required",
+        )
+        require(
+            args.source_authorization_root is None and args.source_authorization_pin is None,
+            "availability_uses_configured_original_authorization",
+        )
+        require(
+            bool(args.availability_request) == bool(args.availability_request_pin_file),
+            "availability_complete_research_reference_required",
+        )
+        request = None
+        if args.availability_request is not None:
+            request = document(str(args.availability_request))
+            require(
+                digest(request) == read_pin(args.availability_request_pin_file),
+                "availability_research_request_pin",
+            )
+        source = CaptureSource(
+            config.path("capture_root"),
+            ForwardCapturePlan.from_dict(document(str(args.source_plan))),
+            args.source_plan_pin,
+            args.source_attempt,
+            args.capture_pin,
+        )
+        result = assess_availability(
+            config, source, datetime.now(UTC), batch_pin=args.batch_pin, research_request=request
         )
     elif args.action == "register-completion":
         from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
