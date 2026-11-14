@@ -31,6 +31,7 @@ from donghak_stock_vision.storage.operational_market import (
 from donghak_stock_vision.storage.shadow_prediction import (
     _horizon,
     correct,
+    evaluation_readiness,
     events,
     record,
     recover,
@@ -451,3 +452,183 @@ def test_clock_regression_does_not_record_prediction(
     assert r["results"][0]["reason"] == "shadow_execution_clock_order"
     first = events(tmp_path / "journal.sqlite3", r["head_pin"])[0]
     assert first["kind"] == "failure"
+
+
+def test_read_only_pending_time_guard_and_existing_result_owner(
+    shadow_fixture: tuple[dict[str, Any], datetime, datetime],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    d, at, mature = shadow_fixture
+    journal, intents, pins = tmp_path / "journal.sqlite3", tmp_path / "intents", tmp_path / "pins"
+    first = record(d, journal, GENESIS, intents, pins, clock=lambda: at).to_dict()
+    head = first["head_pin"]
+    before = (
+        sha(journal),
+        sha(Path(d["operational"]["root"]) / DB),
+        sha(Path(d["model"]["database"])),
+    )
+    calls = []
+    original = OperationalMarketStore._verify_batch
+
+    def spy(self: OperationalMarketStore, batch: str, raw_id: int) -> FrozenJSON:
+        result = original(self, batch, raw_id)
+        calls.append(result.to_dict()["request"]["source_date"])
+        return result
+
+    monkeypatch.setattr(OperationalMarketStore, "_verify_batch", spy)
+    pending = evaluation_readiness(d, journal, head, clock=lambda: at).to_dict()
+    assert pending["pending"] == 5 and pending["resolve_time_eligible"] == 0
+    assert all(day < d["target_trading_date"] for day in calls)
+    assert all(r["reason"] == "horizon_not_elapsed" for r in pending["results"])
+    calls.clear()
+    elapsed = evaluation_readiness(d, journal, head, clock=lambda: mature).to_dict()
+    assert elapsed["pending"] == 5 and elapsed["resolve_time_eligible"] == 5
+    assert all(not r["pending_result_sources_checked"] for r in elapsed["results"])
+    assert all(day < d["target_trading_date"] for day in calls)
+    assert before == (
+        sha(journal),
+        sha(Path(d["operational"]["root"]) / DB),
+        sha(Path(d["model"]["database"])),
+    )
+    final = resolve(d, journal, head, intents, pins, clock=lambda: mature).to_dict()
+    finished = evaluation_readiness(d, journal, final["head_pin"], clock=lambda: mature).to_dict()
+    assert finished["evaluated"] == 5 and finished["pending"] == 0
+    assert all(r["terminal_outcome_replayed"] for r in finished["results"])
+    assert finished["performance_metrics"] is None and not finished["performance_approved"]
+    assert (
+        resolve(d, journal, final["head_pin"], intents, pins, clock=lambda: mature).to_dict()
+        == final
+    )
+
+
+def test_readiness_clock_and_head_rejection(
+    shadow_fixture: tuple[dict[str, Any], datetime, datetime], tmp_path: Path
+) -> None:
+    d, at, _ = shadow_fixture
+    journal = tmp_path / "journal.sqlite3"
+    first = record(d, journal, GENESIS, tmp_path / "i", tmp_path / "p", clock=lambda: at).to_dict()
+    head = first["head_pin"]
+    before = sha(journal)
+    with pytest.raises(ValueError, match="before_recorded_event"):
+        evaluation_readiness(d, journal, head, clock=lambda: at - timedelta(seconds=1))
+    times = iter([at + timedelta(seconds=2), at + timedelta(seconds=1)])
+    with pytest.raises(ValueError, match="clock_order"):
+        evaluation_readiness(d, journal, head, clock=lambda: next(times))
+    with pytest.raises(ValueError):
+        evaluation_readiness(d, journal, "0" * 64, clock=lambda: at)
+    assert sha(journal) == before
+
+
+@pytest.mark.parametrize("part", ["inputs", "outcome"])
+def test_rehashed_read_ranges_rejected_before_any_source_replay(
+    shadow_fixture: tuple[dict[str, Any], datetime, datetime],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    part: str,
+) -> None:
+    from donghak_stock_vision.data.learning import digest, timestamp
+    from donghak_stock_vision.storage.shadow_prediction import _event, _model
+
+    d, at, mature = shadow_fixture
+    journal = tmp_path / "original.sqlite3"
+    first = record(d, journal, GENESIS, tmp_path / "i", tmp_path / "p", clock=lambda: at).to_dict()
+    head = first["head_pin"]
+    if part == "outcome":
+        head = resolve(
+            d, journal, head, tmp_path / "i", tmp_path / "p", clock=lambda: mature
+        ).to_dict()["head_pin"]
+    source = events(journal, head)
+    prediction = next(e for e in source if e["kind"] == "prediction")
+    _, info = _model(d)
+    sealed = date.fromisoformat(info["access_split"]["final_test"]["start"])
+    forged = tmp_path / "forged.sqlite3"
+    if part == "inputs":
+        bad = json.loads(json.dumps(prediction))
+        p = bad["payload"]
+        for i, b in enumerate(p["inputs"]["bars"]):
+            b["trading_date"] = (sealed + timedelta(days=i)).isoformat()
+        p["input_latest_trading_date"] = p["inputs"]["bars"][-1]["trading_date"]
+        p["input_source_pin"] = digest(p["inputs"])
+        result = journal_owner.append_shadow_event(forged, FrozenJSON.freeze(bad), GENESIS)
+        reason = "shadow_original_horizon_mismatch"
+    else:
+        original = next(
+            e
+            for e in source
+            if e["kind"] == "outcome" and e["payload"]["prediction_id"] == prediction["event_id"]
+        )
+        payload = json.loads(json.dumps(original["payload"]))
+        payload["future"]["bars"][0]["trading_date"] = sealed.isoformat()
+        payload["future_source_pin"] = digest(payload["future"])
+        previous = journal_owner.append_shadow_event(forged, FrozenJSON.freeze(prediction), GENESIS)
+        result = journal_owner.append_shadow_event(
+            forged,
+            _event("outcome", payload, timestamp(original["recorded_at"])),
+            previous.to_dict()["head_pin"],
+        )
+        reason = "shadow_original_outcome_horizon_mismatch"
+    before = sha(journal)
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("forged source range must not be read")
+
+    monkeypatch.setattr("donghak_stock_vision.storage.shadow_prediction._rows", forbidden)
+    with pytest.raises(ValueError, match=reason):
+        verify(d, forged, result.to_dict()["head_pin"])
+    assert sha(journal) == before
+
+
+def test_evaluation_readiness_cli_uses_real_verifiers_and_no_credentials(
+    shadow_fixture: tuple[dict[str, Any], datetime, datetime],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from functools import partial
+
+    from donghak_stock_vision.data.learning import digest
+
+    d, at, _ = shadow_fixture
+    journal = tmp_path / "journal.sqlite3"
+    first = record(d, journal, GENESIS, tmp_path / "i", tmp_path / "p", clock=lambda: at).to_dict()
+    request, pin, head = tmp_path / "request.json", tmp_path / "request.pin", tmp_path / "head.pin"
+    request.write_text(json.dumps(d))
+    pin.write_text(digest(d))
+    pin.chmod(0o600)
+    head.write_text(first["head_pin"])
+    head.chmod(0o600)
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("credentials forbidden")
+
+    monkeypatch.setattr("donghak_stock_vision.cli.load_dotenv", forbidden)
+    # Inject only the deterministic fixture clock; all verification remains real.
+    monkeypatch.setattr(
+        "donghak_stock_vision.shadow_prediction_cli.evaluation_readiness",
+        partial(evaluation_readiness, clock=lambda: at),
+    )
+    before = sha(journal)
+    report = tmp_path / "readiness.json"
+    args = [
+        "shadow-prediction",
+        "evaluation-readiness",
+        "--request",
+        str(request),
+        "--request-pin-file",
+        str(pin),
+        "--journal",
+        str(journal),
+        "--head-pin-file",
+        str(head),
+        "--report",
+        str(report),
+    ]
+    assert main(args) == 0
+    result = json.loads(report.read_text())
+    assert result["pending"] == 5 and result["resolve_time_eligible"] == 0
+    assert sha(journal) == before
+    assert json.loads(capsys.readouterr().out)["pending"] == 5
+    args[-1] = str(tmp_path / "wrong-action.json")
+    assert main(args + ["--explain-timing"]) == 2
+    assert sha(journal) == before

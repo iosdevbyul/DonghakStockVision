@@ -3,13 +3,14 @@
 import re
 from collections.abc import Callable
 from contextlib import closing
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.historical_readiness import CalendarMonthSource
 from donghak_stock_vision.backtest.validation import fields, require
+from donghak_stock_vision.data.forward_capture import FullMarketScope
 from donghak_stock_vision.data.learning import FEATURES, Minimums, digest, timestamp
 from donghak_stock_vision.data.research_split import ExplicitResearchSplit, ResearchDateRange
 from donghak_stock_vision.data.schema import SEOUL, DailyBar
@@ -29,6 +30,7 @@ from donghak_stock_vision.storage.forward_signal_journal import (
 )
 from donghak_stock_vision.storage.krx_authorization import bounded
 from donghak_stock_vision.storage.krx_backfill import read_pin, write_new
+from donghak_stock_vision.storage.krx_scheduler import SchedulerConfig, _policy
 from donghak_stock_vision.storage.real_market_dataset import document, verify_operational_window
 from donghak_stock_vision.storage.real_market_training import _quiescent, validate_real_daily_model
 
@@ -790,12 +792,8 @@ def verify(d: dict[str, Any], journal: Path, head: str) -> FrozenJSON:
         if e["kind"] == "outcome" and e["payload"]["future"] is not None
     ]
     if predictions:
-        start = min(p["inputs"]["bars"][0]["trading_date"] for p in predictions.values())
-        end = max(
-            [p["input_latest_trading_date"] for p in predictions.values()]
-            + [b["trading_date"] for outcome in terminal for b in outcome["future"]["bars"]]
-        )
-        rows, proofs = _rows(d, start, end)
+        # Reject altered calendar/horizon/input dates, including sealed windows,
+        # before deriving any raw-source read range from a retained event.
         for p in predictions.values():
             expected_history, expected_future = _horizon(
                 {**d, "target_trading_date": p["target_trading_date"]}, info, days
@@ -806,6 +804,19 @@ def verify(d: dict[str, Any], journal: Path, head: str) -> FrozenJSON:
                 and [b["trading_date"] for b in p["inputs"]["bars"]] == expected_history,
                 "shadow_original_horizon_mismatch",
             )
+        for outcome in terminal:
+            require(
+                [b["trading_date"] for b in outcome["future"]["bars"]]
+                == predictions[outcome["prediction_id"]]["outcome_sessions"],
+                "shadow_original_outcome_horizon_mismatch",
+            )
+        start = min(p["inputs"]["bars"][0]["trading_date"] for p in predictions.values())
+        end = max(
+            [p["input_latest_trading_date"] for p in predictions.values()]
+            + [b["trading_date"] for outcome in terminal for b in outcome["future"]["bars"]]
+        )
+        rows, proofs = _rows(d, start, end)
+        for p in predictions.values():
             _verify_prediction(p, model, info, rows, proofs)
         for outcome in terminal:
             p = predictions[outcome["prediction_id"]]
@@ -856,5 +867,134 @@ def verify(d: dict[str, Any], journal: Path, head: str) -> FrozenJSON:
             genuine_forward_evidence=False,
             independent_publication_time_verified=False,
             network_requests=0,
+        )
+    )
+
+
+def evaluation_readiness(
+    d: dict[str, Any],
+    journal: Path,
+    head: str,
+    *,
+    clock: Clock = now,
+    config: SchedulerConfig | None = None,
+) -> FrozenJSON:
+    """Read-only time/retention projection; resolve remains the only outcome owner.
+
+    Do not read uncommitted future bars, infer their publication, label events or
+    append Pending events here. A passed local time guard only permits attempting
+    the existing verifier; it never establishes that five result sources exist.
+    """
+    _request(d)
+    started = timestamp(clock())
+    entries = events(journal, head)
+    require(
+        all(timestamp(e["recorded_at"]) <= started for e in entries),
+        "shadow_readiness_before_recorded_event",
+    )
+    proof = verify(d, journal, head).to_dict()
+    checked = timestamp(clock())
+    require(started <= checked, "shadow_readiness_clock_order")
+    scope = None
+    if config is not None:
+        require(
+            d["operational"]["root"] == str(config.path("operational_root")),
+            "shadow_readiness_operational_owner",
+        )
+        policy = _policy(config)
+        scope = FullMarketScope.from_dict(policy["full_market_scope"])
+    withdrawn = {e["payload"]["prediction_id"] for e in entries if e["kind"] == "correction"}
+    latest = {
+        e["payload"]["prediction_id"]: e["payload"] for e in entries if e["kind"] == "outcome"
+    }
+    rows = []
+    for event in entries:
+        if event["kind"] != "prediction":
+            continue
+        p = event["payload"]
+        outcome = latest.get(p["prediction_id"], {})
+        state = "withdrawn" if p["prediction_id"] in withdrawn else outcome.get("state", "pending")
+        not_before = timestamp(p["outcome_not_before"])
+        pending = state == "pending"
+        capture_bound = None
+        if scope is not None:
+            last = date.fromisoformat(p["outcome_sessions"][-1])
+            capture_bound = max(
+                datetime.combine(last + timedelta(days=1), time(), SEOUL), scope.valid_from
+            )
+        rows.append(
+            dict(
+                prediction_id=p["prediction_id"],
+                ticker=p["ticker"],
+                mode=p["mode"],
+                source_classification=p["source_classification"],
+                input_latest_trading_date=p["input_latest_trading_date"],
+                target_trading_date=p["target_trading_date"],
+                outcome_sessions=p["outcome_sessions"],
+                state=state,
+                original_generated_at=p["generated_at"],
+                resolve_local_not_before=p["outcome_not_before"],
+                local_time_guard_elapsed=checked >= not_before,
+                can_attempt_existing_resolve=pending and checked >= not_before,
+                reason=(
+                    "horizon_not_elapsed"
+                    if checked < not_before
+                    else "result_source_verification_required"
+                )
+                if pending
+                else "retained_" + state,
+                last_recorded_outcome_reason=outcome.get("reason"),
+                pending_result_sources_checked=False,
+                terminal_outcome_replayed=state in ("evaluated", "unavailable"),
+                earliest_last_outcome_capture_by_policy=capture_bound.isoformat()
+                if capture_bound
+                else None,
+                configured_policy_covers_outcome_dates=(
+                    all(
+                        date.fromisoformat(day) in scope.permitted_days
+                        for day in p["outcome_sessions"]
+                    )
+                    if scope is not None
+                    else None
+                ),
+                policy_capture_bound_is_publication_guarantee=False,
+                configured_policy_active_at_capture_bound=(
+                    scope.valid_from <= capture_bound < scope.valid_until
+                    if scope is not None and capture_bound is not None
+                    else None
+                ),
+            )
+        )
+    pending = [r for r in rows if r["state"] == "pending"]
+    return FrozenJSON.freeze(
+        dict(
+            version="research_shadow_evaluation_readiness_v1",
+            checked_at=checked.isoformat(),
+            head_pin=head,
+            status_pin=proof["status_pin"],
+            predictions_verified=proof["predictions_verified"],
+            results=rows,
+            pending=len(pending),
+            evaluated=sum(r["state"] == "evaluated" for r in rows),
+            resolve_time_eligible=sum(r["can_attempt_existing_resolve"] for r in rows),
+            next_local_resolve_guard=min(
+                (
+                    r["resolve_local_not_before"]
+                    for r in pending
+                    if not r["local_time_guard_elapsed"]
+                ),
+                default=None,
+            ),
+            result_source_verification_owner="existing_shadow_resolve",
+            network_permission_and_budget_checked=False,
+            independent_result_publication_time_verified=False,
+            new_predictions=0,
+            journal_changed=False,
+            network_requests=0,
+            pit_qualified=False,
+            performance_approved=False,
+            performance_metrics=None,
+            genuine_forward_evidence=False,
+            execution_authorized=False,
         )
     )
