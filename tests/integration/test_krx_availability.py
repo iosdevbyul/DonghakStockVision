@@ -6,7 +6,7 @@ import socket
 import sqlite3
 from contextlib import closing
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -15,9 +15,13 @@ import pytest
 from tests.integration.test_krx_recurring import AT
 from tests.integration.test_krx_scheduler import client, enabled
 from tests.integration.test_krx_scheduler import config as config
+from tests.integration.test_market_collection import row
 
 from donghak_stock_vision.cli import main
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
+from donghak_stock_vision.data.schema import SEOUL
+from donghak_stock_vision.providers.base import ProviderError, RawPage
+from donghak_stock_vision.storage.forward_capture import _RecordedProvider, _recurring_state
 from donghak_stock_vision.storage.krx_availability import _timing, assess_availability
 from donghak_stock_vision.storage.krx_backlog import _records
 from donghak_stock_vision.storage.krx_scheduler import (
@@ -272,3 +276,41 @@ def test_market_database_cannot_substitute_for_model(
     with pytest.raises((ValueError, sqlite3.Error)):
         assess_availability(config, stored[0], AT, research_request=request)
     assert sha(database) == before
+
+
+def test_explicit_operator_enablement_cannot_request_same_day(
+    config: SchedulerConfig,
+) -> None:
+    # Same-day contract guard, not an empirical claim about KRX publication.
+    # Existing enablement must not act as an undocumented day-zero exception.
+    enabled(config)
+    at = datetime(2025, 7, 7, 19, tzinfo=SEOUL)
+    database = config.path("operational_root") / DB
+    before = sha(database)
+    calls: list[int] = []
+    with client(calls) as http:
+        result = run_once(config, execute=True, client=http, clock=lambda: at).to_dict()
+    assert result["reason"] == "no_eligible_completed_trading_date"
+    assert not calls and not config.path("capture_root").exists()
+    assert sha(database) == before
+    plan = _daily_plan(_policy(config), at.date())
+    budget = _recurring_state(config.path("capture_root"), plan, at)
+    assert budget["locally_used_requests"] == 0
+
+
+def test_nonempty_supplied_body_cannot_override_same_day_schema(
+    config: SchedulerConfig,
+) -> None:
+    # The body is a synthetic parser fixture, not a successful provider request.
+    # Accepting it after midnight does not establish the provider's 08:00 update.
+    collected = datetime(2025, 7, 7, 19, tzinfo=SEOUL)
+    plan = _daily_plan(_policy(config), collected.date())
+    body = json.dumps({"OutBlock_1": [row("005930", plan.day)]}).encode()
+    page = RawPage(body, collected, plan.day)
+    with pytest.raises(ProviderError):
+        _RecordedProvider(plan, page).parse_market(page)
+    next_midnight = datetime(2025, 7, 8, tzinfo=SEOUL)
+    later = RawPage(body, next_midnight, plan.day)
+    bars = _RecordedProvider(plan, later).parse_market(later)
+    assert len(bars) == 1 and bars[0].trading_date == plan.day
+    assert bars[0].collected_at == next_midnight

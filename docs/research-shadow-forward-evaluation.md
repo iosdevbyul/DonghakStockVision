@@ -195,7 +195,8 @@ The stored official `Spec.docx` identifies `stk_bydd_trd`, `basDd` and `OutBlock
 but contains no availability hour. The [official KRX service description](https://openapi.krx.co.kr/contents/OPP/USES/service/OPPUSES002_S2.cmd?BO_ID=JvJFzlAENzZlPBDNGAWC)
 confirms the daily service and coverage, not its publication hour. Public HTML
 retrieval was refused (403); no authenticated sample API was invoked. Consequently
-the exact official publication time and same-day availability remain UNKNOWN.
+at that review the exact official publication time and same-day availability remained
+UNKNOWN. The later FAQ finding below supersedes the same-day support uncertainty.
 No third-party claimed hour is promoted to an operating rule. The local policy's
 delay bound is not a provider publication guarantee.
 
@@ -301,7 +302,8 @@ November 13; **0 API requests, 0 added rows, 0 new candidates, 4 Pending, 0 eval
 All **399 protected files** retained SHA-256. Evidence is separately retained under
 `Research/weekday-readiness-20261114T044119Z`; full original candidate metadata is
 private in `original-predictions.json`. Saturday/Sunday execution does not establish
-weekday KRX release hours; those and official first publication remain UNKNOWN.
+weekday KRX release hours. The later FAQ finding below supplies declared provider
+guidance; actual first publication for each date remains UNKNOWN.
 
 The existing installed LaunchAgent, policy, PINs and model are unchanged. Resolving
 the consecutive-day conflict requires evidence-backed review of either the minimum
@@ -422,3 +424,27 @@ source ranges, block sockets and explicitly segregate simulated forward records.
 Actual private runs must report Replay, candidate, failure, Pending and completed
 counts separately, source protection hashes, and unresolved future/publication
 requirements. A working research interface is not production investment approval.
+
+## Official availability follow-up (November 14, 2026)
+
+The [official KRX FAQ](https://openapi.krx.co.kr/contents/OPP/COMM/faq/OPPCOMM004.cmd)
+now checked in the rendered browser explicitly excludes same-day queries and
+queries before next-day 08:00, with updates described on a business-day basis.
+See [availability evidence and guarded next operations](krx-data-availability.md#official-guidance-checked-november-14-2026).
+This supports Case C, not a day-zero exception. Original v1 availability reports,
+historical review conclusions and retained PINs are preserved as originally issued.
+The FAQ is declared guidance, not an authenticated publication clock or per-date
+completeness guarantee. The single Saturday success proves no weekday release time.
+
+The existing next-session midnight deadline precedes that declared update guidance.
+No scheduler-hour change can solve the consecutive-day conflict under these fixed
+contracts. Neither the model's event nor its deadline is changed. A separately
+reviewed pre-event timing contract would need actual availability evidence and its
+own compatibility review; no automatic research execution is enabled here.
+
+Read-only replay verified the original four predictions and unchanged journal head;
+repeated Pending resolution produced no new event. Five actual, verified future
+observations are still required for outcome attachment. No new API request,
+Historical Replay, candidate, outcome, model training or performance result was
+created. Existing collection, journal, Final Test, policy and LaunchAgent protections
+remain effective, with PIT/performance/execution approvals false.

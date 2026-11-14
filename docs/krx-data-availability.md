@@ -26,17 +26,39 @@ or performance. `official_publication_time` and account-wide remaining quota sta
 UNKNOWN. Mock responses retain `authorized_provider_mock_fixture` origin and never
 set `provider_data_observed`. No original policy or historical receipt is changed.
 
-The [official terms, article 5](https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO002.jsp)
-describe generally continuous service access with maintenance/service exceptions.
-Article 8 sets a per-key daily cap of 10,000 requests. These provisions do not
-guarantee the publication hour of a particular market date. The
-[official KOSPI daily-service description](https://openapi.krx.co.kr/contents/OPP/USES/service/OPPUSES002_S2.cmd?BO_ID=JvJFzlAENzZlPBDNGAWC),
-usage instructions and retained `Spec.docx` do not establish an exact publication
-hour in the material verified here. Same-day availability, per-API release-hour
-differences, and a general weekend/holiday release timetable remain unverified.
-The existing minimum one-calendar-day capture delay is a local policy/schema
-restriction, not an authenticated KRX release guarantee. Do not replace it with
-a third-party claimed hour or infer a universal timetable from one response.
+## Official guidance checked November 14, 2026
+
+The rendered [official KRX OpenAPI FAQ](https://openapi.krx.co.kr/contents/OPP/COMM/faq/OPPCOMM004.cmd),
+under the question about dates returning no data, explicitly excludes same-day
+queries and queries before 08:00 the following day. It describes all API data as
+updated at 08:00 the following day on a business-day basis. **Same-day collection
+is therefore unsupported under the published guidance (Case C).** General service
+access hours in the [terms, article 5](https://openapi.krx.co.kr/contents/OPP/INFO/OPPINFO002.jsp)
+do not override that data-specific restriction; article 8's 10,000 requests per
+key per day is a limit, not evidence of remaining account quota.
+
+This is declared provider guidance, not proof of a particular date's first
+publication, final completeness, absence of revision, or independently authenticated
+chronology. The existing v1 report's `official_publication_time` remains UNKNOWN:
+it does not represent this newly found general guidance. Preserve historical report
+bytes and their as-of interpretation. The FAQ's business-day wording does not
+establish a complete weekend/holiday publication timetable. Its exclusion of data
+*for* weekends/holidays must not be interpreted as prohibiting access on weekends:
+the retained Friday response was received on Saturday.
+
+The retained specification and a newly downloaded official `Spec.docx` have identical
+extracted text, including `basDd` and `OutBlock_1`, and do not specify a release hour.
+The original document was preserved. The FAQ also describes reference-date finalized
+values without correction history, correction timestamps or version fields. Original
+byte hashes cannot recover those missing histories or establish PIT qualification.
+
+No conditional day-zero exception, schema change, new observer, or policy amendment
+is introduced. Existing `availability`, backlog, guarded collection and Handoff
+already provide the reusable observation/decision path. Explicit operator enablement
+cannot bypass the existing minimum lag, and even a supplied nonempty response cannot
+bypass `DailyBar`'s same-day rejection. New integration tests exercise both boundaries
+without contacting KRX. Next-midnight parser acceptance in a fixture establishes
+only the local schema boundary; it does not establish provider availability at 00:00.
 
 ## Read-only audit command
 
@@ -148,6 +170,68 @@ Friday-to-Monday or a verified holiday gap can provide a nonempty window, as the
 actual Saturday observation demonstrates; the event start must not be moved.
 Even a next-morning pre-open schedule would require a separately
 reviewed session-time contract; changing an hour alone cannot relax that guard.
-No general release timetable or safe new recurring research schedule has been
-verified, so none is activated. Deployment review, suitable collection timing and
-actual repeated-cycle validation remain necessary for unattended research operation.
+The newly verified FAQ's next-day 08:00 guidance is later still than that exclusive
+midnight deadline. No recurring research schedule is activated. A new pre-event timing
+contract would require separate review and actual timing evidence; this task changes
+neither the event, label, deadline, model nor threshold.
+
+## Read-only follow-up: November 14, 2026
+
+The new public FAQ evidence resolves the earlier documentation's UNKNOWN same-day
+support question; exact per-date first publication remains UNKNOWN. The original
+four candidates, acknowledged journal head, model and source binding verified again.
+Repeated Pending resolution appended nothing. Results were **0 new market API
+requests, 0 added SQLite rows, 0 new predictions, 4 Pending, 0 evaluated**. The
+operational archive remained 26,302 observations / 28 trading dates / 942 tickers,
+last date November 13. All 412 pre-existing protected file hashes were unchanged.
+Research automation, investment execution, PIT and performance approval remain off.
+
+Date-only metadata inspection of the existing archives found no same-day KRX
+capture record. The legacy October 2 empty body was retained on October 3 at
+02:28:07.614123 KST, outside sealed Final Test. Its stored bytes match their SHA-256
+and decode to an empty `OutBlock_1`; that legacy archive has no original receipt
+table, so receipt verification and original HTTP status remain unavailable. It
+cannot prove the response's row trading date, a holiday, or a publication instant.
+The retained calendar identifies October 2 as a session. Nothing was filled,
+deleted, repaired or requested again. These observations are consistent with, but
+do not independently prove, the FAQ's pre-08:00 limitation.
+
+New private reports and the separately retained public-document copy reside under
+`Research/same-day-policy-review-20261114T124322Z`. The browser-read FAQ excerpt is
+explicitly a locally retained observation, not an original HTTP receipt, signed
+publication, policy authorization or independent timestamp authority. No missing
+receipt or field was synthesized.
+
+### Next eligible observation and rollback boundary
+
+1. Use existing `krx-scheduler preflight`, `pilot-preflight`, `status` and `backlog`
+   with the pinned approved configuration. Skip committed dates; never re-request
+   November 13 or the retained October 2 empty response. Check the policy's allowed
+   dates, expiry, local daily budget and runner lock. Account-wide quota remains
+   UNKNOWN; the local counter is not an account-wide balance.
+2. November 16 is the next missing approved session. Its policy lower bound is
+   November 17 00:00 KST, while the published next-day update guidance is 08:00.
+   Neither bound proves actual availability. Do not issue a midnight probe simply
+   because the local policy allows it. Keep the existing weekday 19:00 LaunchAgent;
+   this review installs, schedules and activates nothing.
+3. At a separately reviewed permitted execution time, the existing one-shot
+   `krx-scheduler run-due --execute --max-runs 1` path uses the original config/PINs,
+   authorized dates, single lock, daily request limit, zero retries and size/timeout
+   limits. Do not add `--scheduled` to a manual invocation. Preserve failures and
+   valid empty responses; stop without retry on 403, 429, timeout or invalid data.
+4. Audit the resulting original source and batch with `availability` above. Its
+   original response-completion time is the local observability bound. Use existing
+   opt-in Shadow Handoff only if its unchanged deadline, model and feature guards
+   pass. Collection success remains independent of a blocked research handoff.
+5. Continue existing append-only `resolve` only after all five November 16–20
+   observations actually exist and pass their source and timing guards. November 20
+   16:00 KST is the existing result-link guard; November 21 00:00 is only the policy
+   lower bound for the last input, not a claim it has been published. Until then
+   keep all four predictions Pending and metrics null.
+
+There is no new exception to activate or roll back: default policy, original PINs,
+LaunchAgent and runtime code are preserved. Under the present event and deadline,
+consecutive weekdays cannot gain a forward window by changing the scheduler hour
+or relaxing a local lag. Same-day unsupported-provider behavior cannot be fixed
+by authorization. Any future timing-contract proposal must be reviewed separately,
+with no retroactive relabeling of the existing predictions.
