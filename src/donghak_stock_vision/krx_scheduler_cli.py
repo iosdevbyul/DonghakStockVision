@@ -46,6 +46,8 @@ def add_commands(sub: Any) -> None:
     cmd.add_argument("--research-tickers", nargs="+")
     cmd.add_argument("--research-lookback-days", type=int, default=60)
     cmd.add_argument("--research-allow-synthetic-fixture", action="store_true")
+    for name in ("request", "request-pin-file", "journal", "head-pin-file", "intents", "pins-root"):
+        cmd.add_argument(f"--shadow-{name}", type=Path)
     cmd.add_argument("--apply", action="store_true", help="explicitly apply LaunchAgent management")
     cmd.add_argument("--execute", action="store_true", help="run only if persistently enabled")
     cmd.add_argument("--scheduled", action="store_true")
@@ -70,6 +72,25 @@ def run(args: argparse.Namespace) -> int:
         raise ValueError("daily_research_requires_complete_explicit_post_collection_options")
     if getattr(args, "research_allow_synthetic_fixture", False) and not research_requested:
         raise ValueError("daily_research_options_required")
+    shadow_values = tuple(
+        getattr(args, "shadow_" + name, None)
+        for name in (
+            "request",
+            "request_pin_file",
+            "journal",
+            "head_pin_file",
+            "intents",
+            "pins_root",
+        )
+    )
+    shadow_requested = any(value is not None for value in shadow_values)
+    if shadow_requested and (
+        not all(shadow_values)
+        or args.action not in ("run-once", "run-due")
+        or not args.execute
+        or research_requested
+    ):
+        raise ValueError("shadow_requires_complete_exclusive_post_collection_options")
     if args.action in ("backlog", "run-due"):
         from donghak_stock_vision.storage.krx_backlog import run_due
 
@@ -247,6 +268,21 @@ def run(args: argparse.Namespace) -> int:
             operator_confirmed=args.confirm_operator_authorization,
         )
     collection_failed = result.to_dict().get("outcome") == "failed"
+    if shadow_requested:
+        from donghak_stock_vision.storage.shadow_handoff import (
+            after_collection as shadow_after_collection,
+        )
+
+        result = shadow_after_collection(
+            config,
+            result,
+            args.shadow_request,
+            args.shadow_request_pin_file,
+            args.shadow_journal,
+            args.shadow_head_pin_file,
+            args.shadow_intents,
+            args.shadow_pins_root,
+        )
     if research_requested:
         from donghak_stock_vision.storage.daily_research import after_collection
 

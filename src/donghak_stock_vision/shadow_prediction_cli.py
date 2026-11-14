@@ -6,8 +6,10 @@ import argparse
 import json
 import re
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 
+from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.storage.krx_backfill import read_pin, write_new
@@ -25,12 +27,13 @@ from donghak_stock_vision.storage.shadow_prediction import (
 def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     p = sub.add_parser("shadow-prediction")
     p.add_argument(
-        "action", choices=("record", "resolve", "status", "correct", "recover", "verify")
+        "action",
+        choices=("record", "resolve", "status", "correct", "recover", "verify", "alignment"),
     )
     p.add_argument("--request", type=Path)
     p.add_argument("--request-pin-file", type=Path)
-    p.add_argument("--journal", type=Path, required=True)
-    p.add_argument("--head-pin-file", type=Path, required=True)
+    p.add_argument("--journal", type=Path)
+    p.add_argument("--head-pin-file", type=Path)
     p.add_argument("--intents", type=Path)
     p.add_argument("--pins-root", type=Path)
     p.add_argument("--report", type=Path, required=True)
@@ -38,12 +41,19 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     p.add_argument("--reason")
     p.add_argument("--intent", type=Path)
     p.add_argument("--intent-pin-file", type=Path)
+    p.add_argument("--scheduler-config", type=Path)
+    p.add_argument("--scheduler-config-pin-file", type=Path)
 
 
 def run(args: argparse.Namespace) -> int:
     require(not args.report.exists(), "shadow_new_report_required")
     try:
-        head = read_pin(args.head_pin_file)
+        if args.action != "alignment":
+            require(
+                args.journal is not None and args.head_pin_file is not None,
+                "shadow_journal_required",
+            )
+        head = read_pin(args.head_pin_file) if args.head_pin_file is not None else ""
         d = {}
         if args.action not in ("status", "correct"):
             require(
@@ -52,7 +62,31 @@ def run(args: argparse.Namespace) -> int:
             )
             d = document(str(args.request))
             require(digest(d) == read_pin(args.request_pin_file), "shadow_request_pin_mismatch")
-        if args.action == "status":
+        if args.action == "alignment":
+            from donghak_stock_vision.storage.krx_scheduler import load_config
+            from donghak_stock_vision.storage.shadow_handoff import (
+                alignment,
+                schedule_alignment,
+            )
+
+            result = alignment(d)
+            require(
+                bool(args.scheduler_config) == bool(args.scheduler_config_pin_file),
+                "shadow_complete_scheduler_reference_required",
+            )
+            if args.scheduler_config is not None:
+                config = load_config(
+                    args.scheduler_config, read_pin(args.scheduler_config_pin_file)
+                )
+                result = FrozenJSON.freeze(
+                    result.to_dict()
+                    | {
+                        "collection_schedule": schedule_alignment(
+                            config, d, datetime.now(UTC)
+                        ).to_dict()
+                    }
+                )
+        elif args.action == "status":
             result = status(args.journal, head)
         elif args.action == "verify":
             result = verify(d, args.journal, head)
@@ -97,10 +131,15 @@ def run(args: argparse.Namespace) -> int:
                     performance_approved=False,
                     pit_qualified=False,
                     network_requests=0,
+                    **(
+                        {"input_timing_ready": value.get("input_timing_ready")}
+                        if args.action == "alignment"
+                        else {}
+                    ),
                 )
             )
         )
-        return int(bool(value.get("blocked")))
+        return int(bool(value.get("blocked")) or value.get("input_timing_ready") is False)
     except (ValueError, OSError, sqlite3.Error) as error:
         args.report.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         value = dict(
