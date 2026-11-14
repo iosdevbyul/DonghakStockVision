@@ -194,3 +194,8 @@ report, recovery/verification reports and independently retained PINs. Exact
 future outcome verification remains Pending. The current collection policy does
 not cover November 23; a separately approved collection period is required for
 that source and subsequent outcome attachment. No policy was amended here.
+
+For repeatable manual post-collection recording, separate v1/v2 Pending resolution,
+retained report/head checkpoints and recovery, use the
+[research cycle runbook](krx-v2-research-cycle.md). It reuses these contracts and
+does not activate automatic research or change the collection schedule.

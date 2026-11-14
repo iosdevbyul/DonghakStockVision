@@ -144,7 +144,9 @@ def schedule_alignment(
     require(days.get(target) == "session", "shadow_target_session_unverified")
     prior = sorted(day for day, state in days.items() if state == "session" and day < target)
     require(bool(prior), "handoff_input_session_missing")
-    input_day = datetime.fromisoformat(prior[-1]).date()
+    offset = 2 if d["version"] == "research_shadow_request_v2" else 1
+    require(len(prior) >= offset, "handoff_input_session_missing")
+    input_day = datetime.fromisoformat(prior[-offset]).date()
     policy = _policy(config)
     scope = FullMarketScope.from_dict(policy["full_market_scope"])
     checked = timestamp(at).astimezone(SEOUL)
@@ -181,6 +183,12 @@ def schedule_alignment(
         performance_approved=False,
         network_requests=0,
     )
+    if d["version"] == "research_shadow_request_v2":
+        result.update(
+            version="research_shadow_schedule_alignment_v3",
+            prediction_contract="next_day_forward_contract_v2",
+            skipped_sessions=1,
+        )
     if explain:
         lag = policy["max_observation_lag_days"]
         require(type(lag) is int and 1 <= lag <= 7, "recurring_observation_lag_invalid")
@@ -219,6 +227,8 @@ def schedule_alignment(
             model_event_changed=False,
             automatic_execution_authorized=False,
         )
+    if d["version"] == "research_shadow_request_v2":
+        result["version"] = "research_shadow_schedule_alignment_v3"
     return FrozenJSON.freeze(result)
 
 
@@ -254,12 +264,16 @@ def alignment(d: dict[str, Any], *, clock: Clock = now) -> FrozenJSON:
         results.append(dict(ticker=ticker, missing_input_dates=missing, reasons=reasons))
     return FrozenJSON.freeze(
         dict(
-            version="research_shadow_alignment_v1",
+            version="research_shadow_alignment_v2"
+            if d["version"] == "research_shadow_request_v2"
+            else "research_shadow_alignment_v1",
             checked_at=checked.isoformat(),
             input_latest_trading_date=history[-1],
             target_trading_date=future[0],
             outcome_sessions=future,
-            event_rule="reversal_barrier_v1",
+            event_rule="delayed_reversal_barrier_v2"
+            if d["version"] == "research_shadow_request_v2"
+            else "reversal_barrier_v1",
             generation_deadline_exclusive=deadline.isoformat(),
             deadline_basis="existing_shadow_calendar_day_guard_not_exchange_open_time",
             input_collection_latest_at=max(

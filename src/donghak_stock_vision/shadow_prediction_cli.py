@@ -30,6 +30,7 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     p.add_argument(
         "action",
         choices=(
+            "cycle",
             "record",
             "resolve",
             "status",
@@ -54,11 +55,56 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     p.add_argument("--scheduler-config", type=Path)
     p.add_argument("--scheduler-config-pin-file", type=Path)
     p.add_argument("--explain-timing", action="store_true")
+    p.add_argument("--resume-report", type=Path)
+    p.add_argument("--resume-pin-file", type=Path)
 
 
 def run(args: argparse.Namespace) -> int:
     require(not args.report.exists(), "shadow_new_report_required")
     try:
+        if args.action == "cycle":
+            from donghak_stock_vision.storage.krx_scheduler import load_config
+            from donghak_stock_vision.storage.research_cycle import run_cycle
+
+            require(
+                args.request is not None
+                and args.request_pin_file is not None
+                and args.scheduler_config is not None
+                and args.scheduler_config_pin_file is not None
+                and args.pins_root is not None
+                and not args.explain_timing,
+                "cycle_complete_references_required",
+            )
+            d = document(str(args.request))
+            require(digest(d) == read_pin(args.request_pin_file), "cycle_request_pin_mismatch")
+            cfg = load_config(args.scheduler_config, read_pin(args.scheduler_config_pin_file))
+            value = run_cycle(
+                cfg,
+                d,
+                args.report,
+                args.pins_root,
+                resume_report=args.resume_report,
+                resume_pin=args.resume_pin_file,
+            ).to_dict()
+            print(
+                json.dumps(
+                    dict(
+                        action="cycle",
+                        new_predictions=value["new_predictions"],
+                        blocked=value["blocked"],
+                        network_requests=0,
+                        pit_qualified=False,
+                        performance_approved=False,
+                        execution_authorized=False,
+                    )
+                )
+            )
+            return int(any(r["status"] == "blocked" for r in value["streams"].values()))
+        require(
+            getattr(args, "resume_report", None) is None
+            and getattr(args, "resume_pin_file", None) is None,
+            "cycle_resume_requires_cycle_action",
+        )
         explain = getattr(args, "explain_timing", False)
         require(not explain or args.action == "alignment", "shadow_explain_requires_alignment")
         config = None

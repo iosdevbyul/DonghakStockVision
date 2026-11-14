@@ -270,12 +270,11 @@ def test_calendar_gap_including_weekend_and_holiday(target: str) -> None:
         _horizon(dict(version="research_shadow_request_v2", target_trading_date=target), info, days)
 
 
-def test_shadow_lifecycle_and_cross_contract_rejection(
-    monkeypatch: pytest.MonkeyPatch,
+def make_shadow_v2(
     v2_model: tuple[Path, dict[str, Any], Path],
     shadow_fixture: tuple[dict[str, Any], datetime, datetime],
-    tmp_path: Path,
-) -> None:
+    root: Path,
+) -> tuple[dict[str, Any], datetime, datetime, Path]:
     path, trained, pins = v2_model
     d, at, mature = copy.deepcopy(shadow_fixture)
     d["version"] = "research_shadow_request_v2"
@@ -286,7 +285,7 @@ def test_shadow_lifecycle_and_cross_contract_rejection(
         source_pins_root=str(pins),
     )
     original_root = Path(d["operational"]["root"])
-    op = tmp_path / "op"
+    op = root / "op"
     shutil.copytree(original_root, op)
     d["operational"]["root"] = str(op)
     days, _ = _calendar(d)
@@ -319,6 +318,17 @@ def test_shadow_lifecycle_and_cross_contract_rejection(
         dict(kind="offline_fixture_batch", batch_id="v2-earliest", batch_pin=batch.identifier)
     )
     d["operational"]["pin"] = sha(op / DB)
+    return d, at, mature, original_root
+
+
+def test_shadow_lifecycle_and_cross_contract_rejection(
+    monkeypatch: pytest.MonkeyPatch,
+    v2_model: tuple[Path, dict[str, Any], Path],
+    shadow_fixture: tuple[dict[str, Any], datetime, datetime],
+    tmp_path: Path,
+) -> None:
+    d, at, mature, original_root = make_shadow_v2(v2_model, shadow_fixture, tmp_path)
+    op = Path(d["operational"]["root"])
     before = sha(op / DB)
     journal, intents, output_pins = (
         tmp_path / "v2.sqlite3",
