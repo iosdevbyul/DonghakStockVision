@@ -448,3 +448,12 @@ observations are still required for outcome attachment. No new API request,
 Historical Replay, candidate, outcome, model training or performance result was
 created. Existing collection, journal, Final Test, policy and LaunchAgent protections
 remain effective, with PIT/performance/execution approvals false.
+
+## Separate delayed-input v2 research
+
+[Next-day forward research v2](krx-next-day-forward-v2.md) adds an explicit
+`research_shadow_request_v2` path with separately fitted weights and a one-session
+gap before the five-session event. It never reinterprets existing v1 predictions.
+Models, requests and journal files remain separate; the original v1 defaults,
+midnight deadline, sealed Final Test and approval boundaries are preserved.
+Research automation remains off.

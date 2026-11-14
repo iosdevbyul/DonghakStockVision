@@ -31,8 +31,12 @@ def run(args: argparse.Namespace) -> int:
     d = document(str(args.request))
     require(digest(d) == read_pin(args.request_pin_file), "dataset_request_pin_mismatch")
     require(args.pins_root is not None, "dataset_independent_pins_required")
+    prepare = prepare_dataset
+    train = train_dataset
+    if d.get("version") == "next_day_research_request_v2":
+        from donghak_stock_vision.storage.next_day_research import prepare, train
     if args.action == "verify":
-        snapshot, manifest = prepare_dataset(d)
+        snapshot, manifest = prepare(d)
         if args.output.is_dir():
             require(
                 document(str(args.output / "snapshot.json"), 16 * 1024**2) == snapshot.to_dict()
@@ -71,7 +75,7 @@ def run(args: argparse.Namespace) -> int:
         "dataset_separate_new_pin_directory_required",
     )
     if args.action == "train":
-        result = train_dataset(d, args.output)
+        result = train(d, args.output)
         with closing(ReadOnlyAnalysisStore(args.output)) as store:
             manifest_value = store.get("real_market_dataset", result.to_dict()["manifest_id"])
         source_pin = digest(manifest_value["source"])
@@ -80,7 +84,7 @@ def run(args: argparse.Namespace) -> int:
         value = result.to_dict()
         value["can_train"] = manifest_value["can_train"]
     else:
-        snapshot, manifest = prepare_dataset(d)
+        snapshot, manifest = prepare(d)
         require(not args.output.exists(), "new_dataset_output_required")
         args.output.mkdir(mode=0o700, parents=True)
         write_new(args.output / "snapshot.json", snapshot.payload_json)

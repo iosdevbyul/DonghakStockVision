@@ -64,8 +64,15 @@ def _model(d: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     _quiescent(path, ref["pin"])
     with closing(ReadOnlyAnalysisStore(path)) as store:
         store.connection.execute("BEGIN")
-        model = load_model(store, ref["model_version"], "historical_research")
-        validate_real_daily_model(store, model, None)
+        v2 = d.get("version") == "research_shadow_request_v2"
+        if v2:
+            from donghak_stock_vision.storage.next_day_research import load
+
+            model = load(store, ref["model_version"])
+            require(model["data_origin"] == "real", "shadow_real_source_model_required")
+        else:
+            model = load_model(store, ref["model_version"], "historical_research")
+            validate_real_daily_model(store, model, None)
         require(
             model["operational_status"] == "unregistered"
             and store.connection.execute(
@@ -93,12 +100,16 @@ def _model(d: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
             identifier=ref["model_version"],
             artifact_sha256=digest(model),
             database_pin=ref["pin"],
-            created_at=store.created_at("model", ref["model_version"]).isoformat(),
+            created_at=store.created_at(
+                "next_day_model" if v2 else "model", ref["model_version"]
+            ).isoformat(),
             snapshot_pin=model["snapshot_id"],
             dataset_version=manifest["dataset_version"],
             access_split=snapshot["real_market_source"]["request"]["access_split"],
             fit_split=snapshot["real_market_source"]["request"]["fit_split"],
         )
+    if v2:
+        info["contract"] = model["contract"]
     _quiescent(path, ref["pin"])
     return model, info
 
@@ -106,7 +117,8 @@ def _model(d: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
 def _request(d: dict[str, Any]) -> None:
     fields(d, "version mode source_kind target_trading_date tickers model operational calendars")
     require(
-        d["version"] == "research_shadow_request_v1" and d["mode"] in MODES,
+        d["version"] in ("research_shadow_request_v1", "research_shadow_request_v2")
+        and d["mode"] in MODES,
         "shadow_request_version_or_mode",
     )
     require(d["source_kind"] in ("local_provider_capture", "offline_fixture"), "shadow_source_kind")
@@ -122,6 +134,18 @@ def _request(d: dict[str, Any]) -> None:
     )
 
 
+def _journal_contract(d: dict[str, Any], entries: list[dict[str, Any]]) -> None:
+    expected = (
+        "delayed_reversal_barrier_v2"
+        if d.get("version") == "research_shadow_request_v2"
+        else "reversal_barrier_v1"
+    )
+    require(
+        all(e["payload"]["event_rule"] == expected for e in entries if e["kind"] == "prediction"),
+        "shadow_cross_contract_journal",
+    )
+
+
 def _horizon(
     d: dict[str, Any], info: dict[str, Any], days: dict[str, str]
 ) -> tuple[list[str], list[str]]:
@@ -129,13 +153,28 @@ def _horizon(
     require(days.get(target) == "session", "shadow_target_session_unverified")
     sessions = sorted(day for day, state in days.items() if state == "session")
     i = sessions.index(target)
-    require(i >= 12 and len(sessions[i : i + 5]) == 5, "shadow_calendar_history_or_horizon_missing")
-    history_days, future = sessions[i - 12 : i], sessions[i : i + 5]
+    skip = 1 if d.get("version") == "research_shadow_request_v2" else 0
+    require(
+        i >= 12 + skip and len(sessions[i : i + 5]) == 5,
+        "shadow_calendar_history_or_horizon_missing",
+    )
+    history_days, future = sessions[i - 12 - skip : i - skip], sessions[i : i + 5]
+    if skip:
+        first = date.fromisoformat(history_days[0])
+        last = date.fromisoformat(future[-1])
+        require(
+            all(
+                days.get((first + timedelta(days=n)).isoformat())
+                in ("session", "weekend", "holiday")
+                for n in range((last - first).days + 1)
+            ),
+            "shadow_v2_calendar_coverage_gap",
+        )
     protected = ExplicitResearchSplit.from_dict(info["access_split"]).final_test
     require(
         all(
             not protected.start.isoformat() <= day <= protected.end.isoformat()
-            for day in history_days + future
+            for day in history_days + sessions[i - skip : i] + future
         ),
         "shadow_protected_final_test_forbidden",
     )
@@ -179,7 +218,9 @@ def _event(kind: str, payload: dict[str, Any], at: datetime) -> FrozenJSON:
     )
     owner = FrozenJSON.freeze(
         dict(
-            version=VERSION,
+            version="research_shadow_event_v2"
+            if payload.get("event_rule") == "delayed_reversal_barrier_v2"
+            else VERSION,
             kind=kind,
             event_id=event_id,
             recorded_at=timestamp(at).isoformat(),
@@ -295,6 +336,7 @@ def record(
     _request(d)
     _paths(d, journal, intents, pins)
     old = events(journal, head)
+    _journal_contract(d, old)
     model, info = _model(d)
     days, calendar_pin = _calendar(d)
     history_days, future = _horizon(d, info, days)
@@ -367,7 +409,9 @@ def record(
                 ticker=ticker,
                 mode=d["mode"],
                 source_classification=d["source_kind"],
-                event_rule="reversal_barrier_v1",
+                event_rule="delayed_reversal_barrier_v2"
+                if d.get("version") == "research_shadow_request_v2"
+                else "reversal_barrier_v1",
                 horizon_observations=5,
                 target_trading_date=d["target_trading_date"],
                 outcome_sessions=future,
@@ -537,12 +581,34 @@ def _verify_prediction(
     )
 
 
+def _gap_rows(p: dict[str, Any], days: dict[str, str], rows: list[DailyBar]) -> list[DailyBar]:
+    if p["event_rule"] != "delayed_reversal_barrier_v2":
+        return []
+    expected = sorted(
+        day
+        for day, state in days.items()
+        if state == "session" and p["input_latest_trading_date"] < day < p["target_trading_date"]
+    )
+    require(len(expected) == 1, "shadow_v2_gap_calendar_mismatch")
+    return [bar for bar in rows if bar.trading_date.isoformat() in expected]
+
+
+def _outcome_source(
+    future: list[DailyBar], gap: list[DailyBar], proofs: list[dict[str, Any]]
+) -> dict[str, Any]:
+    result = _source(future, proofs)
+    if gap:
+        result["gap"] = _source(gap, proofs)
+    return result
+
+
 def resolve(
     d: dict[str, Any], journal: Path, head: str, intents: Path, pins: Path, *, clock: Clock = now
 ) -> FrozenJSON:
     _request(d)
     _paths(d, journal, intents, pins)
     entries = events(journal, head)
+    _journal_contract(d, entries)
     model, info = _model(d)
     days, calendar_pin = _calendar(d)
     at = timestamp(clock())
@@ -585,9 +651,12 @@ def resolve(
                 for b in histories[p["ticker"]]
                 if b.trading_date.isoformat() in p["outcome_sessions"]
             ]
-            if [b.trading_date.isoformat() for b in future] != p["outcome_sessions"]:
+            gap = _gap_rows(p, days, histories[p["ticker"]])
+            if p["event_rule"] == "delayed_reversal_barrier_v2" and len(gap) != 1:
+                reason = "missing_required_gap_session"
+            elif [b.trading_date.isoformat() for b in future] != p["outcome_sessions"]:
                 reason = "missing_required_outcome_session"
-            elif any(b.collected_at > at for b in future):
+            elif any(b.collected_at > at for b in gap + future):
                 reason = "outcome_not_locally_available"
             else:
                 require(
@@ -597,10 +666,14 @@ def resolve(
                 )
                 past = [DailyBar.from_dict(row) for row in p["inputs"]["bars"]]
                 anchor = datetime.combine(
-                    date.fromisoformat(p["input_latest_trading_date"]), time(16), SEOUL
+                    gap[0].trading_date
+                    if gap
+                    else date.fromisoformat(p["input_latest_trading_date"]),
+                    time(16),
+                    SEOUL,
                 )
                 label, first, last, observed, label_status = label_event(
-                    past + future,
+                    past + gap + future,
                     len(past) - 1,
                     anchor,
                     tuple(p["features"]),
@@ -608,7 +681,7 @@ def resolve(
                         quality=None, unavailable_dates={}, session_basis="observed_bars_unverified"
                     ),
                 )
-                source = _source(future, proofs)
+                source = _outcome_source(future, gap, proofs)
                 label_start = first.isoformat() if first else None
                 label_end = last.isoformat() if last else None
                 available = observed.isoformat() if observed else None
@@ -783,6 +856,7 @@ def verify(d: dict[str, Any], journal: Path, head: str) -> FrozenJSON:
     """Read-only semantic replay of recorded predictions and terminal outcomes."""
     _request(d)
     entries = events(journal, head)
+    _journal_contract(d, entries)
     model, info = _model(d)
     days, calendar_pin = _calendar(d)
     predictions = {e["event_id"]: e["payload"] for e in entries if e["kind"] == "prediction"}
@@ -823,16 +897,25 @@ def verify(d: dict[str, Any], journal: Path, head: str) -> FrozenJSON:
             future = [
                 b for b in rows[p["ticker"]] if b.trading_date.isoformat() in p["outcome_sessions"]
             ]
+            gap = _gap_rows(p, days, rows[p["ticker"]])
             require(
-                _source(future, proofs) == outcome["future"],
+                p["event_rule"] != "delayed_reversal_barrier_v2" or len(gap) == 1,
+                "shadow_original_gap_source_missing",
+            )
+            require(
+                _outcome_source(future, gap, proofs) == outcome["future"],
                 "shadow_original_outcome_source_mismatch",
             )
             past = [DailyBar.from_dict(b) for b in p["inputs"]["bars"]]
             label, first, last, observed, label_status = label_event(
-                past + future,
+                past + gap + future,
                 len(past) - 1,
                 datetime.combine(
-                    date.fromisoformat(p["input_latest_trading_date"]), time(16), SEOUL
+                    gap[0].trading_date
+                    if gap
+                    else date.fromisoformat(p["input_latest_trading_date"]),
+                    time(16),
+                    SEOUL,
                 ),
                 tuple(p["features"]),
                 dict(quality=None, unavailable_dates={}, session_basis="observed_bars_unverified"),
@@ -851,7 +934,7 @@ def verify(d: dict[str, Any], journal: Path, head: str) -> FrozenJSON:
             require(
                 timestamp(outcome["checked_at"]) >= timestamp(p["outcome_not_before"])
                 and outcome["result_available_at"] == outcome["checked_at"]
-                and all(b.collected_at <= timestamp(outcome["checked_at"]) for b in future),
+                and all(b.collected_at <= timestamp(outcome["checked_at"]) for b in gap + future),
                 "shadow_outcome_availability_clock",
             )
     view = status(journal, head).to_dict()
