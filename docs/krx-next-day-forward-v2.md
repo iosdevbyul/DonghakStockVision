@@ -137,3 +137,60 @@ a separately authorized future collection period before outcomes can be obtained
 Repeated real cycles and failure/recovery review are required before separately
 approving automation. Model training is not performance approval; PIT, performance,
 genuine-forward and execution approval remain false. No model is auto-registered.
+
+## Actual research execution: November 15, 2026 KST
+
+The existing sources produced **4,725 observations / 945 dates / 5 tickers** and
+4,483 feature samples. Source database and original PIN files were unchanged.
+The new request explicitly retained a current operational whole-file reference
+because November 13 was ingested after the older training request. Original
+batch references and the original training/tuning roles were verified unchanged.
+
+| Direction | Training | Validation | Development diagnostic |
+| --- | ---: | ---: | ---: |
+| Up | 1,234 | 291 | 642 |
+| Down | 1,091 | 270 | 722 |
+
+Training remained January 3, 2022–December 28, 2023; validation January 2–June 28,
+2024; the reused development diagnostic window July 1, 2025–November 12, 2026.
+The sealed July 1, 2024–June 30, 2025 Final Test was not read. Label horizons were
+purged at partition edges. Both directions passed the unchanged real minimums and
+were fitted with the existing trainer. Model creation was November 15 at
+01:34:03.519989 KST; training code was commit
+`1c4d940cb3ce5cbdb1f6d5d1d05d30bfa268dd8d`. Later consumer/diagnostic additions
+reloaded those exact weights and reproduced their retained evaluations.
+
+| Diagnostic direction | N | Accuracy | Balanced accuracy | Precision | Recall | F1 | ROC-AUC | PR-AUC |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Up | 642 | .6199 | .5307 | .3598 | .2980 | .3260 | .5589 | .3341 |
+| Down | 722 | .6607 | .5276 | .3333 | .2312 | .2730 | .5725 | .3280 |
+
+The existing training-majority baseline accuracy was .6916 / .7244 respectively,
+above the model's accuracy. Its AP was .3084 / .2756; reversal-strength AP was
+.2868 / .2960. Up did not beat the original validation baseline margin; down met
+that local validation rule. Neither result grants performance approval or proves
+future accuracy. Complete validation/diagnostic, ticker/year metrics and baseline
+comparisons are retained privately and reproduced with the existing diagnostics.
+
+Four separate v2 research candidates were recorded for 000660, 005380, 005930 and
+035420. Input is November 13, target November 17, with exact outcome sessions
+November 17, 18, 19, 20 and 23. 051910 retained the unchanged no-directional-context
+block. All four are Pending; zero are evaluated and no Historical Replay was
+counted. Duplicate execution and checkpoint continuation retained the same head;
+source/model/feature/score replay succeeded with the isolated installed wheel.
+A development execution was interrupted after durable Pending recording; retained
+report/head PINs supported exact continuation without replacement or duplicate.
+
+The original v1 four predictions and Pending records remained byte-identical.
+All **427** pre-existing protected files retained SHA-256, including source DBs,
+original receipts/PINs, Phase 2, model, evaluation artifacts and LaunchAgent. There
+were zero provider requests and zero added market observations in this task.
+No model was registered and no automatic research execution was enabled.
+
+Artifacts are separate under `Research/next-day-v2-20261114T140641Z` and matching
+`ResearchPins/next-day-v2-20261114T140641Z`: request lineage, snapshot, Manifest,
+`models/analysis.sqlite3`, diagnostics, forward request, immutable journal, Pending
+report, recovery/verification reports and independently retained PINs. Exact
+future outcome verification remains Pending. The current collection policy does
+not cover November 23; a separately approved collection period is required for
+that source and subsequent outcome attachment. No policy was amended here.
