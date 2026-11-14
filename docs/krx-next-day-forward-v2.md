@@ -57,6 +57,11 @@ no absent bar is interpolated. Known unavailable dates and protected intervals
 block crossing labels. Live candidates instead require exact retained calendar
 history, the skipped session and all five event sessions. Their eventual outcome
 must contain exactly those verified future sessions, irrespective of missing rows.
+The skipped session is additionally required for the original quality/continuity
+check at outcome time; it is retained separately as `future.gap` with source/batch
+references covered by the outcome fingerprint. Its prices affect neither the feature
+vector nor the event barrier calculation. Missing gap evidence keeps Pending. This
+reproduces the training segment check without including the gap as an event session.
 
 The original training and tuning roles are retained. The unread 2024-07-01 through
 2025-06-30 Final Test remains sealed. The post-seal development diagnostic window

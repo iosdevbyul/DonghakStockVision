@@ -581,6 +581,27 @@ def _verify_prediction(
     )
 
 
+def _gap_rows(p: dict[str, Any], days: dict[str, str], rows: list[DailyBar]) -> list[DailyBar]:
+    if p["event_rule"] != "delayed_reversal_barrier_v2":
+        return []
+    expected = sorted(
+        day
+        for day, state in days.items()
+        if state == "session" and p["input_latest_trading_date"] < day < p["target_trading_date"]
+    )
+    require(len(expected) == 1, "shadow_v2_gap_calendar_mismatch")
+    return [bar for bar in rows if bar.trading_date.isoformat() in expected]
+
+
+def _outcome_source(
+    future: list[DailyBar], gap: list[DailyBar], proofs: list[dict[str, Any]]
+) -> dict[str, Any]:
+    result = _source(future, proofs)
+    if gap:
+        result["gap"] = _source(gap, proofs)
+    return result
+
+
 def resolve(
     d: dict[str, Any], journal: Path, head: str, intents: Path, pins: Path, *, clock: Clock = now
 ) -> FrozenJSON:
@@ -630,9 +651,12 @@ def resolve(
                 for b in histories[p["ticker"]]
                 if b.trading_date.isoformat() in p["outcome_sessions"]
             ]
-            if [b.trading_date.isoformat() for b in future] != p["outcome_sessions"]:
+            gap = _gap_rows(p, days, histories[p["ticker"]])
+            if p["event_rule"] == "delayed_reversal_barrier_v2" and len(gap) != 1:
+                reason = "missing_required_gap_session"
+            elif [b.trading_date.isoformat() for b in future] != p["outcome_sessions"]:
                 reason = "missing_required_outcome_session"
-            elif any(b.collected_at > at for b in future):
+            elif any(b.collected_at > at for b in gap + future):
                 reason = "outcome_not_locally_available"
             else:
                 require(
@@ -642,10 +666,14 @@ def resolve(
                 )
                 past = [DailyBar.from_dict(row) for row in p["inputs"]["bars"]]
                 anchor = datetime.combine(
-                    date.fromisoformat(p["input_latest_trading_date"]), time(16), SEOUL
+                    gap[0].trading_date
+                    if gap
+                    else date.fromisoformat(p["input_latest_trading_date"]),
+                    time(16),
+                    SEOUL,
                 )
                 label, first, last, observed, label_status = label_event(
-                    past + future,
+                    past + gap + future,
                     len(past) - 1,
                     anchor,
                     tuple(p["features"]),
@@ -653,7 +681,7 @@ def resolve(
                         quality=None, unavailable_dates={}, session_basis="observed_bars_unverified"
                     ),
                 )
-                source = _source(future, proofs)
+                source = _outcome_source(future, gap, proofs)
                 label_start = first.isoformat() if first else None
                 label_end = last.isoformat() if last else None
                 available = observed.isoformat() if observed else None
@@ -869,16 +897,25 @@ def verify(d: dict[str, Any], journal: Path, head: str) -> FrozenJSON:
             future = [
                 b for b in rows[p["ticker"]] if b.trading_date.isoformat() in p["outcome_sessions"]
             ]
+            gap = _gap_rows(p, days, rows[p["ticker"]])
             require(
-                _source(future, proofs) == outcome["future"],
+                p["event_rule"] != "delayed_reversal_barrier_v2" or len(gap) == 1,
+                "shadow_original_gap_source_missing",
+            )
+            require(
+                _outcome_source(future, gap, proofs) == outcome["future"],
                 "shadow_original_outcome_source_mismatch",
             )
             past = [DailyBar.from_dict(b) for b in p["inputs"]["bars"]]
             label, first, last, observed, label_status = label_event(
-                past + future,
+                past + gap + future,
                 len(past) - 1,
                 datetime.combine(
-                    date.fromisoformat(p["input_latest_trading_date"]), time(16), SEOUL
+                    gap[0].trading_date
+                    if gap
+                    else date.fromisoformat(p["input_latest_trading_date"]),
+                    time(16),
+                    SEOUL,
                 ),
                 tuple(p["features"]),
                 dict(quality=None, unavailable_dates={}, session_basis="observed_bars_unverified"),
@@ -897,7 +934,7 @@ def verify(d: dict[str, Any], journal: Path, head: str) -> FrozenJSON:
             require(
                 timestamp(outcome["checked_at"]) >= timestamp(p["outcome_not_before"])
                 and outcome["result_available_at"] == outcome["checked_at"]
-                and all(b.collected_at <= timestamp(outcome["checked_at"]) for b in future),
+                and all(b.collected_at <= timestamp(outcome["checked_at"]) for b in gap + future),
                 "shadow_outcome_availability_clock",
             )
     view = status(journal, head).to_dict()

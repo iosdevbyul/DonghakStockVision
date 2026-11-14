@@ -30,6 +30,7 @@ from donghak_stock_vision.storage.next_day_research import (
     CONTRACT,
     REQUEST,
     build,
+    describe,
     evaluate,
     load,
     prepare,
@@ -196,6 +197,19 @@ def test_train_reload_evaluation_and_v1_isolation(
         version = result["training"]["model_version"]
         model = load(store, version)
         assert evaluate(store, version) == result["evaluation"]
+        assert describe(store, version) == result["diagnostics"]
+        assert all(
+            key in result["diagnostics"]["directions"]["up"]["test"]["overall"]["metrics"]
+            for key in (
+                "accuracy",
+                "balanced_accuracy",
+                "precision",
+                "recall",
+                "f1",
+                "roc_auc",
+                "pr_auc_ap",
+            )
+        )
         assert not model["performance_approved"] and not model["pit_qualified"]
         with pytest.raises(ValueError, match="missing_model"):
             load_model(store, version)
@@ -322,10 +336,27 @@ def test_shadow_lifecycle_and_cross_contract_rejection(
     assert verify(d, journal, head).to_dict()["predictions_verified"] == 5
     pending = resolve(d, journal, head, intents, output_pins, clock=lambda: at).to_dict()
     assert pending["groups"]["offline_fixture_rehearsal"]["pending"] == 5
+    missing_gap = copy.deepcopy(d)
+    missing_gap["operational"]["evidence"] = [
+        e for e in d["operational"]["evidence"] if e.get("batch_id") != "fixture-11"
+    ]
+    blocked = resolve(
+        missing_gap, journal, pending["head_pin"], intents, output_pins, clock=lambda: mature
+    ).to_dict()
+    assert blocked["groups"]["offline_fixture_rehearsal"]["pending"] == 5
+    assert any(
+        e["payload"].get("reason") == "missing_required_gap_session"
+        for e in events(journal, blocked["head_pin"])
+    )
     final = resolve(
-        d, journal, pending["head_pin"], intents, output_pins, clock=lambda: mature
+        d, journal, blocked["head_pin"], intents, output_pins, clock=lambda: mature
     ).to_dict()
     assert final["groups"]["offline_fixture_rehearsal"]["evaluated"] == 5
+    assert all(
+        "gap" in e["payload"]["future"]
+        for e in events(journal, final["head_pin"])
+        if e["kind"] == "outcome" and e["payload"]["state"] == "evaluated"
+    )
     assert verify(d, journal, final["head_pin"]).to_dict()["terminal_outcomes_verified"] == 5
     assert (
         resolve(

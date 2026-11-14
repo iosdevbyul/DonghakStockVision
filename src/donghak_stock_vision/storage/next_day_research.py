@@ -197,6 +197,7 @@ def train(d: dict[str, Any], output: Path) -> FrozenJSON:
             ),
             directions=entries,
             evaluation=evaluation,
+            diagnostics=describe(store, version) if version else None,
             model_validation_completed=fitted,
             diagnostic_test_only=True,
             performance_approved=False,
@@ -325,5 +326,57 @@ def evaluate(store: AnalysisStore, version: str) -> dict[str, Any]:
         official_final_test=False,
         pit_qualified=False,
         performance_approved=False,
+        execution_authorized=False,
+    )
+
+
+def describe(store: AnalysisStore, version: str) -> dict[str, Any]:
+    """Reuse PR #232's descriptive metrics without modifying frozen fit reports."""
+    from donghak_stock_vision.models.diagnostics import _bucket
+
+    model = load(store, version)
+    dataset = store.get("next_day_dataset", model["dataset_id"])
+    result: dict[str, Any] = {}
+    directions: tuple[Direction, ...] = ("up", "down")
+    for side in directions:
+        entry = model["directions"][side]
+        if entry["parameters"] is None:
+            result[side] = dict(status="insufficient_data")
+            continue
+        training = population(dataset["split"], side, "train")
+        parts = {}
+        for part in ("validation", "test"):
+            rows = population(dataset["split"], side, part)
+            parts[part] = dict(
+                overall=_bucket(rows, training, side, entry["parameters"], entry["prior"]),
+                by_ticker={
+                    ticker: _bucket(
+                        [r for r in rows if r.ticker == ticker],
+                        training,
+                        side,
+                        entry["parameters"],
+                        entry["prior"],
+                    )
+                    for ticker in sorted({r.ticker for r in rows})
+                },
+                by_year={
+                    str(year): _bucket(
+                        [r for r in rows if r.trading_date.year == year],
+                        training,
+                        side,
+                        entry["parameters"],
+                        entry["prior"],
+                    )
+                    for year in sorted({r.trading_date.year for r in rows})
+                },
+            )
+        result[side] = parts
+    return dict(
+        version="next_day_diagnostics_v2",
+        model_version=version,
+        directions=result,
+        historical_diagnostic_only=True,
+        performance_approved=False,
+        pit_qualified=False,
         execution_authorized=False,
     )
