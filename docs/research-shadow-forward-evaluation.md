@@ -1,5 +1,9 @@
 # Research shadow recording and deferred evaluation
 
+For the later November 14 actual capture and four research-forward candidates,
+see [KRX availability observations](krx-data-availability.md). Earlier zero-candidate
+reports below retain their original observation-time meaning.
+
 `shadow-prediction` connects original operational captures and the existing safe
 JSON research model to a separate research event stream. It grants no PIT,
 performance, investment signal, paper, execution or independent chronology approval.
