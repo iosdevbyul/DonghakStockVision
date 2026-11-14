@@ -8,6 +8,7 @@ from typing import Any
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import fields, require, sha
 from donghak_stock_vision.data.learning import FEATURES, digest, timestamp
+from donghak_stock_vision.data.next_day_research import CONTRACT
 from donghak_stock_vision.data.schema import SEOUL, validate_ticker
 
 VERSION = "research_shadow_event_v1"
@@ -26,7 +27,11 @@ def validate_event(owner: FrozenJSON) -> dict[str, Any]:
         "genuine_forward_evidence execution_authorized",
     )
     require(
-        d["version"] == VERSION and d["kind"] in ("prediction", "outcome", "failure", "correction"),
+        (
+            d["version"] == VERSION
+            or (d["version"] == "research_shadow_event_v2" and d["kind"] == "prediction")
+        )
+        and d["kind"] in ("prediction", "outcome", "failure", "correction"),
         "shadow_event_version_or_kind",
     )
     sha(d["event_id"])
@@ -56,6 +61,10 @@ def validate_event(owner: FrozenJSON) -> dict[str, Any]:
             "feature_generated_at input_ingestion_time input_ingestion_time_reason actual_outcome "
             "initial_evaluation_state pit",
         )
+        if d["version"] == "research_shadow_event_v2":
+            require(
+                digest(p["model"].get("contract")) == digest(CONTRACT), "shadow_v2_contract_binding"
+            )
         sha(p["slot_id"])
         require(
             len(p["inputs"]["bars"]) == 12 and len(p["inputs"]["batches"]) <= 100,
@@ -75,7 +84,12 @@ def validate_event(owner: FrozenJSON) -> dict[str, Any]:
         )
         validate_ticker(p["ticker"])
         require(
-            p["event_rule"] == "reversal_barrier_v1"
+            p["event_rule"]
+            == (
+                "delayed_reversal_barrier_v2"
+                if d["version"] == "research_shadow_event_v2"
+                else "reversal_barrier_v1"
+            )
             and p["horizon_observations"] == 5
             and p["feature_version"] == "ohlcv_value_v1"
             and p["feature_names"] == list(FEATURES),
