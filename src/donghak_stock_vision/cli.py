@@ -59,6 +59,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.shadow_prediction_cli import add_commands as add_shadow
 
     add_shadow(sub)
+    from donghak_stock_vision.autonomous_cli import add_commands as add_autonomous
+
+    add_autonomous(sub)
     from donghak_stock_vision.decision_cli import add_commands as add_decisions
 
     add_decisions(sub)
@@ -107,6 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         args.command
         not in (
             "daily-research",
+            "autonomous-research",
             "krx-backfill",
             "real-market-dataset",
             "real-model-evaluation",
@@ -166,6 +170,10 @@ def main(argv: list[str] | None = None) -> int:
             from donghak_stock_vision.backtest_cli import run as run_backtest
 
             return run_backtest(args)
+        if args.command == "autonomous-research":
+            from donghak_stock_vision.autonomous_cli import run_command
+
+            return run_command(args)
         if args.command == "shadow-prediction":
             from donghak_stock_vision.shadow_prediction_cli import run as run_shadow
 
