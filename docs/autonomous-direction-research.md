@@ -111,6 +111,11 @@ PR: no Gemma installation/runtime, MLX dependency, GPU assumption, model downloa
 or LLM/learner concurrency is introduced here. Intel CPU support is the baseline.
 The host's immutable plan, validation gates and resource reservation retain control.
 
+The optional installed-Ollama adapter is documented in
+[Gemma autonomous research](gemma-autonomous-research.md). It uses separate v2
+studies and explicit activation; the original rule-based default and retained
+PR #240 study remain unchanged.
+
 ## Operator commands
 
 Install the package with its existing `[learning]` extra in a dedicated environment.
