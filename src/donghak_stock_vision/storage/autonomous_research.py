@@ -1,0 +1,604 @@
+"""Immutable experiment memory over AnalysisStore; no market DB or registry writes."""
+
+import hashlib
+import os
+from contextlib import closing
+from datetime import UTC, date, datetime
+from pathlib import Path
+from typing import Any
+
+from donghak_stock_vision.backtest.data import FrozenJSON
+from donghak_stock_vision.backtest.validation import fields, require
+from donghak_stock_vision.data.learning import digest, timestamp
+from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy
+from donghak_stock_vision.data.research_split import ExplicitResearchSplit
+from donghak_stock_vision.models.autonomous import champion_check, execute
+from donghak_stock_vision.models.directional import (
+    build,
+    catalog,
+    contract,
+    folds,
+    readiness,
+)
+from donghak_stock_vision.models.experiment import select_candidate
+from donghak_stock_vision.models.service import provenance
+from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
+from donghak_stock_vision.storage.krx_backfill import write_new
+from donghak_stock_vision.storage.real_market_dataset import _protocol
+from donghak_stock_vision.storage.real_market_training import (
+    RealMarketTrainingRequest,
+    prepare_real_market_training,
+)
+
+DB = "experiments.sqlite3"
+REQUEST = "autonomous_direction_source_v1"
+LIMITS = dict(
+    cpu_threads=1,
+    memory_mb=1024,
+    timeout_seconds=300,
+    minimum_free_mb=1024,
+    maximum_study_mb=512,
+    minimum_memory_free_percent=20,
+    backoff_seconds=60,
+    maximum_attempts=2,
+    interval_seconds=300,
+    model_maximum_mb=16,
+)
+
+
+def clock() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
+    fields(d, "version dataset_version research protocol tickers cutoff horizons")
+    require(
+        d["version"] == REQUEST
+        and type(d["dataset_version"]) is str
+        and 0 < len(d["dataset_version"]) <= 100,
+        "autonomous_request_version",
+    )
+    require(
+        d["horizons"] in ([1], [5], [20], [1, 5], [1, 20], [5, 20], [1, 5, 20]),
+        "autonomous_horizons",
+    )
+    protocol, access = _protocol(d)
+    research = fields(d["research"], "database pin source_contract")
+    source = RealMarketTrainingRequest(
+        Path(research["database"]),
+        research["pin"],
+        access,
+        access.identifier,
+        None,
+        None,
+        tuple(d["tickers"]),
+        timestamp(d["cutoff"]),
+        ResearchCalendarPolicy.from_dict(protocol["research_calendar"]),
+        research["source_contract"],
+    )
+    source.validate()
+    require(
+        all(p.is_absolute() and p.resolve() == p and not p.exists() for p in (root, pins))
+        and not root.is_relative_to(pins)
+        and not pins.is_relative_to(root)
+        and not root.is_relative_to(source.database.parent),
+        "autonomous_new_separate_output",
+    )
+    snapshot, original = prepare_real_market_training(source)
+    value = snapshot.to_dict()
+    windows = folds(value, access)
+    goals = {}
+    for horizon in d["horizons"]:
+        samples, changes, excluded = build(value, horizon)
+        # Label generation is retrospective; neither the generator nor search workers
+        # may use the separate confirmation population to select another candidate.
+        train = [
+            s for s in samples if s.label_end is not None and s.label_end <= access.training.end
+        ]
+        held = [
+            s
+            for s in samples
+            if s.trading_date >= access.validation.start
+            and s.label_end is not None
+            and s.label_end <= access.validation.end
+        ]
+        goals[str(horizon)] = dict(
+            contract=contract(horizon),
+            samples=[s.to_dict() for s in train + held],
+            returns=changes,
+            sample_pin=digest([s.to_dict() for s in train]),
+            confirmation_pin=digest([s.to_dict() for s in held]),
+            readiness=readiness(samples, windows),
+            excluded=excluded,
+            training_rows=len(train),
+            confirmation_rows=len(held),
+        )
+    data = dict(
+        version="direction_dataset_v1",
+        dataset_version=d["dataset_version"],
+        source_pin=digest(value["real_market_source"]),
+        snapshot_pin=snapshot.identifier,
+        split=access.to_dict(),
+        folds=[f.to_dict() for f in windows],
+        goals=goals,
+        observation_count=sum(len(r) for r in value["rows"].values()),
+        tickers=sorted(value["rows"]),
+        trading_dates=len({r["trading_date"] for rows in value["rows"].values() for r in rows}),
+        first_date=value["start"],
+        last_date=value["end"],
+        protected_final_test_read=False,
+        historical_publication_available_at_anchor=False,
+        prior_cross_study_exposure=True,
+        timeframes=dict(
+            daily="originals_verified",
+            weekly="incomplete_session_coverage_not_qualified",
+            monthly="incomplete_session_coverage_not_qualified",
+            intraday="no_retained_intraday_originals",
+            index_and_sector="not_present_in_selected_source",
+        ),
+        pit_qualified=False,
+        performance_approved=False,
+        execution_authorized=False,
+    )
+    code = provenance()
+    configurations = []
+    for config in catalog(d["horizons"]):
+        identity = config | dict(
+            training_sample_pin=goals[str(config["goal"]["horizon"])]["sample_pin"],
+            fold_pin=digest(data["folds"]),
+            implementation_hash=code["implementation_hash"],
+            versions=code["versions"],
+        )
+        configurations.append(dict(experiment_id=digest(identity), config=config))
+    plan = dict(
+        version="autonomous_plan_v1",
+        dataset_id=digest(data),
+        snapshot_id=snapshot.identifier,
+        request_pin=digest(d),
+        source_pin=data["source_pin"],
+        code=code,
+        limits=LIMITS,
+        configurations=configurations,
+        source_classification="local_archived_provider_claim_not_independent_authentication",
+        promotion_policy="locked_once_confirmation_after_finite_nested_search_v1",
+        new_market_data_required=False,
+        operational_registration_available=False,
+        pit_qualified=False,
+        performance_approved=False,
+        execution_authorized=False,
+    )
+    root.mkdir(mode=0o700, parents=True)
+    pins.mkdir(mode=0o700, parents=True)
+    fd = os.open(root / DB, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    os.close(fd)
+    with closing(AnalysisStore(root / DB)) as store:
+        store.put_many(
+            [
+                ("autonomous_snapshot", value),
+                ("autonomous_source_verification", original.to_dict()),
+                ("autonomous_dataset", data),
+                ("autonomous_plan", plan),
+            ]
+        )
+    for name, pin in (
+        ("plan", digest(plan)),
+        ("dataset", digest(data)),
+        ("source", data["source_pin"]),
+        ("snapshot", snapshot.identifier),
+    ):
+        write_new(pins / (name + ".pin"), pin + "\n")
+    write_new(root / "request.json", FrozenJSON.freeze(d).payload_json)
+    return FrozenJSON.freeze(
+        dict(
+            dataset=data, plan_id=digest(plan), experiments=len(configurations), network_requests=0
+        )
+    )
+
+
+def context(
+    root: Path, pin: str, *, code_check: bool = True
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    require(
+        root.is_absolute()
+        and root.resolve() == root
+        and not root.is_symlink()
+        and (root / DB).is_file()
+        and (root / DB).resolve() == root / DB
+        and (root / DB).stat().st_nlink == 1
+        and (root / DB).stat().st_mode & 0o077 == 0
+        and root.stat().st_mode & 0o077 == 0,
+        "autonomous_private_root",
+    )
+    with closing(ReadOnlyAnalysisStore(root / DB)) as store:
+        plan = store.get("autonomous_plan", pin)
+        data = store.get("autonomous_dataset", plan["dataset_id"])
+    require(
+        plan["version"] == "autonomous_plan_v1"
+        and plan["limits"] == LIMITS
+        and not data["protected_final_test_read"]
+        and data["source_pin"] == plan["source_pin"]
+        and all(
+            plan[k] is False
+            for k in ("pit_qualified", "performance_approved", "execution_authorized")
+        ),
+        "autonomous_plan_binding",
+    )
+    protected = ExplicitResearchSplit.from_dict(data["split"]).final_test
+    require(date.fromisoformat(data["last_date"]) < protected.start, "autonomous_sealed_window")
+    require(data["version"] == "direction_dataset_v1", "autonomous_dataset_version")
+    split = ExplicitResearchSplit.from_dict(data["split"])
+    for goal in data["goals"].values():
+        training, held = [], []
+        for sample in goal["samples"]:
+            start, end = (
+                date.fromisoformat(sample["trading_date"]),
+                date.fromisoformat(sample["label_end"]),
+            )
+            require(start <= end < protected.start, "autonomous_sample_sealed_window")
+            if split.training.start <= start <= end <= split.training.end:
+                training.append(sample)
+            else:
+                require(
+                    split.validation.start <= start <= end <= split.validation.end,
+                    "autonomous_sample_split",
+                )
+                held.append(sample)
+            require(digest(sample) in goal["returns"], "autonomous_sample_return")
+        require(
+            digest(training) == goal["sample_pin"] and digest(held) == goal["confirmation_pin"],
+            "autonomous_population_pin",
+        )
+    expected = catalog(sorted(int(h) for h in data["goals"]))
+    require([c["config"] for c in plan["configurations"]] == expected, "autonomous_search_space")
+    for item in plan["configurations"]:
+        identity = item["config"] | dict(
+            training_sample_pin=data["goals"][str(item["config"]["goal"]["horizon"])]["sample_pin"],
+            fold_pin=digest(data["folds"]),
+            implementation_hash=plan["code"]["implementation_hash"],
+            versions=plan["code"]["versions"],
+        )
+        require(digest(identity) == item["experiment_id"], "autonomous_experiment_identity")
+    if code_check:
+        current = provenance()
+        require(
+            current["implementation_hash"] == plan["code"]["implementation_hash"]
+            and current["versions"] == plan["code"]["versions"],
+            "autonomous_code_or_runtime_changed",
+        )
+    return plan, data
+
+
+def terminals(store: AnalysisStore) -> dict[str, dict[str, Any]]:
+    require(
+        store.connection.execute("SELECT COUNT(*) FROM analysis_artifacts").fetchone()[0] <= 5000,
+        "autonomous_memory_bound",
+    )
+    result = {}
+    for _, value in store.all("autonomous_terminal"):
+        key = value["experiment_id"]
+        require(key not in result, "autonomous_conflicting_terminal")
+        require(value["state"] in ("completed", "failed"), "autonomous_terminal_state")
+        if value["state"] == "completed":
+            original = store.get("autonomous_result", value["result_id"])
+            base = Path(store.connection.execute("PRAGMA database_list").fetchone()[2]).parent
+            path = Path(value["checkpoint"])
+            require(
+                path == base / "models" / (key + ".checkpoint")
+                and path.resolve() == path
+                and path.is_file()
+                and path.stat().st_size <= LIMITS["model_maximum_mb"] * 1024**2,
+                "autonomous_checkpoint_reference",
+            )
+            require(
+                hashlib.sha256(path.read_bytes()).hexdigest()
+                == value["model_sha256"]
+                == original["model_sha256"]
+                and original["experiment_id"] == key
+                and original["config"] == value["config"],
+                "autonomous_checkpoint_integrity",
+            )
+            require(
+                all(
+                    original[k] == value[k]
+                    for k in ("stability_ap", "mean_ap", "largest_train_gap")
+                ),
+                "autonomous_result_summary",
+            )
+        result[key] = value
+    return result
+
+
+def next_experiment(
+    plan: dict[str, Any], data: dict[str, Any], done: dict[str, dict[str, Any]]
+) -> dict[str, Any] | None:
+    remaining: list[dict[str, Any]] = [
+        c for c in plan["configurations"] if c["experiment_id"] not in done
+    ]
+    if not remaining:
+        return None
+    target = min(
+        sorted({c["config"]["goal"]["horizon"] for c in remaining}),
+        key=lambda h: sum(r["config"]["goal"]["horizon"] == h for r in done.values()),
+    )
+    remaining = [c for c in remaining if c["config"]["goal"]["horizon"] == target]
+    completed = [
+        r
+        for r in done.values()
+        if r["state"] == "completed"
+        and r["config"]["goal"]["horizon"] == target
+        and r["experiment_id"] in {c["experiment_id"] for c in plan["configurations"]}
+    ]
+    seen = {r["config"]["candidate"]["family"] for r in completed}
+    unseen = [c for c in remaining if c["config"]["candidate"]["family"] not in seen]
+    if unseen:
+        return unseen[0] | dict(
+            selection_reason="predeclared_family_diversity", parent_experiment=None
+        )
+    eligible = [
+        r
+        for r in completed
+        if not data["goals"][str(r["config"]["goal"]["horizon"])]["readiness"]["failures"]
+    ]
+    if not eligible:
+        return remaining[0] | dict(
+            selection_reason="next_predeclared_configuration", parent_experiment=None
+        )
+    # Only training-internal fold metrics enter selection. Confirmation is never read here.
+    lead = select_candidate(
+        [
+            dict(candidate=r["experiment_id"], stability_ap=r["stability_ap"], mean_ap=r["mean_ap"])
+            for r in eligible
+        ]
+    )
+    leader = done[lead]
+    family = leader["config"]["candidate"]["family"]
+    ranked = sorted(
+        enumerate(remaining),
+        key=lambda pair: (
+            pair[1]["config"]["goal"]["horizon"] != leader["config"]["goal"]["horizon"],
+            pair[1]["config"]["candidate"]["family"] != family,
+            pair[1]["config"]["mask"] == leader["config"]["mask"],
+            pair[1]["config"]["candidate"]["value"]
+            if leader["largest_train_gap"] > 0.15
+            else pair[0],
+        ),
+    )
+    return ranked[0][1] | dict(
+        selection_reason="lower_complexity_after_overfit"
+        if leader["largest_train_gap"] > 0.15
+        else "training_internal_leader_neighbour",
+        parent_experiment=lead,
+    )
+
+
+def status(root: Path, pin: str) -> FrozenJSON:
+    plan, data = context(root, pin, code_check=False)
+    with closing(ReadOnlyAnalysisStore(root / DB)) as store:
+        done = terminals(store)
+        attempts = [v for _, v in store.all("autonomous_attempt")]
+        confirmations = [v for _, v in store.all("autonomous_confirmation")]
+        leaders = [v for _, v in store.all("autonomous_champion")]
+        interruptions = store.all("autonomous_interruption")
+        consumed = store.all("autonomous_gate_consumed")
+        confirmation_failures = store.all("autonomous_confirmation_failure")
+    selected = {c["experiment_id"] for c in plan["configurations"]}
+    finished = [v for k, v in done.items() if k in selected]
+    return FrozenJSON.freeze(
+        dict(
+            version="autonomous_status_v1",
+            dataset_version=data["dataset_version"],
+            experiment_count=len(selected),
+            completed=sum(v["state"] == "completed" for v in finished),
+            failed=sum(v["state"] == "failed" for v in finished),
+            remaining=len(selected) - len(finished),
+            attempts=len(attempts),
+            interrupted_attempts=len(interruptions),
+            unresolved_attempts=sum(a["experiment_id"] not in done for a in attempts),
+            gates_consumed=len(consumed),
+            confirmation_failures=len(confirmation_failures),
+            state="SEARCH_EXHAUSTED" if selected <= done.keys() else "QUEUED",
+            confirmations=len(confirmations),
+            research_champions=leaders,
+            source_pin_verified=True,
+            validation_search_reuses=sum(v["state"] == "completed" for v in finished),
+            prior_cross_study_exposure=True,
+            independent_future_performance_established=False,
+            new_market_data_required=False,
+            network_requests=0,
+            operating_model_registered=False,
+            pit_qualified=False,
+            performance_approved=False,
+            execution_authorized=False,
+        )
+    )
+
+
+def worker(root: Path, pin: str, attempt_id: str) -> None:
+    plan, data = context(root, pin)
+    with closing(AnalysisStore(root / DB)) as store:
+        attempt = store.get("autonomous_attempt", attempt_id)
+        key = attempt["experiment_id"]
+        require(attempt["plan_id"] == pin, "autonomous_attempt_owner")
+        if key in terminals(store):
+            return
+        choice = next(c for c in plan["configurations"] if c["experiment_id"] == key)
+        phase = dict(attempt_id=attempt_id, experiment_id=key, at=clock())
+        store.put("autonomous_phase", phase | dict(state="Training"))
+        try:
+            require(
+                not data["goals"][str(choice["config"]["goal"]["horizon"])]["readiness"][
+                    "failures"
+                ],
+                "autonomous_insufficient_population",
+            )
+            result, body = execute(data, choice["config"])
+            require(len(body) <= LIMITS["model_maximum_mb"] * 1024**2, "autonomous_model_size")
+            directory = root / "models"
+            directory.mkdir(mode=0o700, exist_ok=True)
+            require(
+                directory.resolve() == directory and directory.stat().st_mode & 0o077 == 0,
+                "autonomous_model_directory",
+            )
+            path = directory / (key + ".checkpoint")
+            if path.exists():
+                require(
+                    hashlib.sha256(path.read_bytes()).hexdigest() == result["model_sha256"],
+                    "autonomous_checkpoint_conflict",
+                )
+            else:
+                temp = directory / (attempt_id + ".tmp")
+                fd = os.open(temp, os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_WRONLY, 0o600)
+                with os.fdopen(fd, "wb") as stream:
+                    stream.write(body)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.link(temp, path)
+                temp.unlink()
+            store.put("autonomous_phase", phase | dict(state="Evaluating", at=clock()))
+            result.update(experiment_id=key, dataset_id=plan["dataset_id"], config=choice["config"])
+            result_id = digest(result)
+            terminal = dict(
+                experiment_id=key,
+                config=choice["config"],
+                state="completed",
+                result_id=result_id,
+                model_sha256=result["model_sha256"],
+                checkpoint=str(path),
+                started_at=attempt["started_at"],
+                finished_at=clock(),
+                stability_ap=result["stability_ap"],
+                mean_ap=result["mean_ap"],
+                largest_train_gap=result["largest_train_gap"],
+                selection_reason=attempt["selection_reason"],
+                parent_experiment=attempt["parent_experiment"],
+                attempt_id=attempt_id,
+            )
+            store.put_many([("autonomous_result", result), ("autonomous_terminal", terminal)])
+        except Exception as error:
+            reason = str(error)
+            import re
+
+            reason = (
+                reason
+                if re.fullmatch(r"[a-z][a-z0-9_]{0,100}", reason)
+                else "autonomous_training_failed"
+            )
+            store.put(
+                "autonomous_terminal",
+                dict(
+                    experiment_id=key,
+                    config=choice["config"],
+                    state="failed",
+                    reason=reason,
+                    started_at=attempt["started_at"],
+                    finished_at=clock(),
+                    attempt_id=attempt_id,
+                ),
+            )
+
+
+def confirm(root: Path, pin: str) -> None:
+    plan, data = context(root, pin)
+    with closing(AnalysisStore(root / DB)) as store:
+        done = terminals(store)
+        require(
+            all(c["experiment_id"] in done for c in plan["configurations"]),
+            "autonomous_search_not_finished",
+        )
+        for horizon in sorted(data["goals"]):
+            group = [
+                r
+                for r in done.values()
+                if r["state"] == "completed" and str(r["config"]["goal"]["horizon"]) == horizon
+            ]
+            gate_id = digest(
+                dict(
+                    dataset=plan["dataset_id"],
+                    horizon=horizon,
+                    gate=data["goals"][horizon]["confirmation_pin"],
+                )
+            )
+            if any(v["gate_id"] == gate_id for _, v in store.all("autonomous_gate_consumed")):
+                continue
+            if not group:
+                store.put(
+                    "autonomous_gate_consumed",
+                    dict(
+                        gate_id=gate_id,
+                        winner=None,
+                        at=clock(),
+                        selection_locked=True,
+                        reason="no_successful_candidate",
+                    ),
+                )
+                continue
+            best = select_candidate(
+                [
+                    dict(
+                        candidate=r["experiment_id"],
+                        stability_ap=r["stability_ap"],
+                        mean_ap=r["mean_ap"],
+                    )
+                    for r in group
+                ]
+            )
+            chosen = done[best]
+            # Consume before loading/evaluating confirmation; a crash cannot reopen it.
+            store.put(
+                "autonomous_gate_consumed",
+                dict(gate_id=gate_id, winner=best, at=clock(), selection_locked=True),
+            )
+            try:
+                search = store.get("autonomous_result", chosen["result_id"])
+                gate, _ = execute(data, chosen["config"], gate=True)
+                require(
+                    gate["model_sha256"] == chosen["model_sha256"],
+                    "autonomous_frozen_model_reproduction",
+                )
+                decision = champion_check(search, gate)
+            except Exception:
+                store.put(
+                    "autonomous_confirmation_failure",
+                    dict(
+                        gate_id=gate_id,
+                        experiment_id=best,
+                        at=clock(),
+                        reason="confirmation_failed_consumed_not_reopened",
+                    ),
+                )
+                continue
+            value = dict(
+                gate_id=gate_id,
+                experiment_id=best,
+                goal=chosen["config"]["goal"],
+                confirmation=gate,
+                decision=decision,
+                prior_cross_study_exposure=True,
+                validation_looks=1,
+                selection_trials=len(group),
+                final_test_read=False,
+                pit_qualified=False,
+                performance_approved=False,
+                execution_authorized=False,
+            )
+            records = [("autonomous_confirmation", value)]
+            if decision["promote"]:
+                records.append(
+                    (
+                        "autonomous_champion",
+                        dict(
+                            experiment_id=best,
+                            model_sha256=chosen["model_sha256"],
+                            checkpoint=chosen["checkpoint"],
+                            evaluation_contract=gate_id,
+                            state="Research Champion",
+                            confirmation_id=digest(value),
+                            usage_restriction="research_only",
+                            operational_status="unregistered",
+                            performance_approved=False,
+                            pit_qualified=False,
+                            execution_authorized=False,
+                        ),
+                    )
+                )
+            store.put_many(records)

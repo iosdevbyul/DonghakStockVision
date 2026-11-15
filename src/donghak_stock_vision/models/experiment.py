@@ -33,7 +33,8 @@ class Candidate:
             not self.name
             or (self.family == "linear" and self.value not in (0.1, 1.0, 10.0))
             or (self.family == "hist_gradient_boosting" and self.value not in (7, 15))
-            or self.family not in ("linear", "hist_gradient_boosting")
+            or (self.family == "random_forest" and self.value not in (3, 6))
+            or self.family not in ("linear", "hist_gradient_boosting", "random_forest")
         ):
             raise AnalysisError("invalid_research_candidate")
 
@@ -116,6 +117,25 @@ def fit_candidate(candidate: Candidate, samples: list[Sample]) -> Any:
     import numpy as np
     from sklearn.ensemble import HistGradientBoostingClassifier
     from threadpoolctl import threadpool_limits
+
+    if candidate.family == "random_forest":
+        from sklearn.ensemble import RandomForestClassifier
+
+        forest = RandomForestClassifier(
+            n_estimators=64,
+            max_depth=int(candidate.value),
+            min_samples_leaf=20,
+            class_weight="balanced",
+            n_jobs=1,
+            random_state=42,
+        )
+        with threadpool_limits(limits=1):
+            forest.fit(
+                np.asarray([s.values for s in samples]),
+                np.asarray([s.label for s in samples]),
+                sample_weight=np.asarray(sample_weights(samples)),
+            )
+        return forest
 
     # No randomized early-stopping validation split; every supplied row is training.
     estimator = HistGradientBoostingClassifier(
