@@ -1,9 +1,13 @@
 """Shared read-only macOS resource probes for sequential research owners."""
 
+import fcntl
+import os
 import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -33,11 +37,13 @@ def probe() -> dict[str, Any]:
         ]
     )
     memory = _command(["/usr/bin/memory_pressure", "-Q"])
+    physical = _command(["/usr/sbin/sysctl", "-n", "hw.memsize"])
     percent = re.search(r"System-wide memory free percentage:\s*(\d+)%", memory)
     return dict(
         verified=thermal in ("0", "1", "2", "3")
         and percent is not None
         and ("AC Power" in power or "Battery Power" in power),
+        physical_memory_mb=int(physical) // 1024**2 if physical.isdigit() else None,
         ac_power="AC Power" in power,
         thermal_state=int(thermal) if thermal.isdigit() else None,
         memory_free_percent=int(percent.group(1)) if percent else None,
@@ -61,3 +67,16 @@ def resource_reason(root: Path, state: dict[str, Any]) -> str | None:
     ):
         return "study_disk_limit"
     return None
+
+
+@contextmanager
+def lock(root: Path, name: str) -> Iterator[int]:
+    fd = os.open(root / name, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise ValueError("autonomous_runner_already_active") from None
+        yield fd
+    finally:
+        os.close(fd)

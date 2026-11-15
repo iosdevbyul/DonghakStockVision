@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Mapping, Sequence
 from datetime import date
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,12 +54,18 @@ from donghak_stock_vision.storage.daily_research_public_models import (
 from donghak_stock_vision.storage.daily_research_reader import DailyResearchReader
 from donghak_stock_vision.storage.krx_operations_diagnostics import summarize
 
+if TYPE_CHECKING:
+    from donghak_stock_vision.ai_model_routes import Principal
+    from donghak_stock_vision.storage.ai_model_management import ModelManagement
+
 
 def create_app(
     reader: ResearchAPIReader | None = None,
     ohlcv_reader: OhlcvMarketReader | None = None,
     operational_reader: PinnedOperationalReader | None = None,
     *,
+    ai_management: "ModelManagement | None" = None,
+    ai_authorize: "Callable[[str],Principal|None] | None" = None,
     analysis_reader: AnalysisPublicationReader | None = None,
     daily_research_reader: DailyResearchReader | None = None,
     operations_reader: OperationsReader | None = None,
@@ -85,9 +91,18 @@ def create_app(
         CORSMiddleware,
         allow_origins=list(allowed_origins),
         allow_credentials=False,
-        allow_methods=["GET"],
-        allow_headers=["Accept", "Content-Type"],
+        allow_methods=["GET", "POST", "PUT"] if ai_management is not None else ["GET"],
+        allow_headers=["Accept", "Content-Type", "Authorization"]
+        if ai_management is not None
+        else ["Accept", "Content-Type"],
     )
+
+    if (ai_management is None) != (ai_authorize is None):
+        raise ValueError("ai_authenticated_management_pair_required")
+    if ai_management is not None and ai_authorize is not None:
+        from donghak_stock_vision.ai_model_routes import model_router
+
+        app.include_router(model_router(ai_management, ai_authorize))
 
     def require_reader() -> ResearchAPIReader:
         if reader is None:

@@ -23,6 +23,10 @@ MASKS = {
     "price_range": (0, 1, 2, 3, 4, 5),
     "volume_value": (0, 4, 6, 7),
     "short_trend": (0, 1, 3, 4, 5),
+    "trend_volume": (0, 2, 3, 4, 6),
+    "trend_value": (0, 1, 3, 4, 7),
+    "range_flow": (0, 4, 5, 6, 7),
+    "medium_trend": (1, 2, 3, 4, 5),
 }
 RF = (
     Candidate("forest_depth3", "random_forest", 3),
@@ -149,7 +153,10 @@ def readiness(samples: list[Sample], windows: tuple[Fold, ...]) -> dict[str, Any
 
 def catalog(horizons: list[int], space: str = "initial_v1") -> list[dict[str, Any]]:
     # Finite, predeclared first search space; ordering is selected from memory later.
-    require(space in ("initial_v1", "agent_masks_v1"), "autonomous_search_space_version")
+    require(
+        space in ("initial_v1", "agent_masks_v1", "management_masks_v1"),
+        "autonomous_search_space_version",
+    )
     choices = [(c, "all") for c in (*CANDIDATES, *RF)]
     choices += [
         (CANDIDATES[1], "momentum"),
@@ -162,6 +169,12 @@ def catalog(horizons: list[int], space: str = "initial_v1") -> list[dict[str, An
         choices = [
             (c, mask)
             for mask in ("returns_only", "price_range", "volume_value", "short_trend")
+            for c in (CANDIDATES[1], RF[0], CANDIDATES[3])
+        ]
+    if space == "management_masks_v1":
+        choices = [
+            (c, mask)
+            for mask in ("trend_volume", "trend_value", "range_flow", "medium_trend")
             for c in (CANDIDATES[1], RF[0], CANDIDATES[3])
         ]
     return [

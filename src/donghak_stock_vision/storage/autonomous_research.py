@@ -213,7 +213,7 @@ def context(
         plan = store.get("autonomous_plan", pin)
         data = store.get("autonomous_dataset", plan["dataset_id"])
     require(
-        plan["version"] in ("autonomous_plan_v1", "autonomous_plan_v2")
+        plan["version"] in ("autonomous_plan_v1", "autonomous_plan_v2", "autonomous_plan_v3")
         and plan["limits"] == LIMITS
         and not data["protected_final_test_read"]
         and data["source_pin"] == plan["source_pin"]
@@ -254,6 +254,13 @@ def context(
 
         sha(plan["agent_model_digest"])
         require(space == "agent_masks_v1", "gemma_search_version")
+    if plan["version"] == "autonomous_plan_v3":
+        require(
+            space == "management_masks_v1"
+            and plan["agent_policy"] == "server_validated_managed_v1"
+            and "agent_model_digest" not in plan,
+            "llm_managed_plan_policy",
+        )
     expected = catalog(sorted(int(h) for h in data["goals"]), space)
     require([c["config"] for c in plan["configurations"]] == expected, "autonomous_search_space")
     for item in plan["configurations"]:
@@ -387,6 +394,7 @@ def status(root: Path, pin: str) -> FrozenJSON:
         interruptions = store.all("autonomous_interruption")
         consumed = store.all("autonomous_gate_consumed")
         proposals = [v for _, v in store.all("gemma_proposal")]
+        llm_proposals = [v for _, v in store.all("llm_proposal")]
         selections = [v for _, v in store.all("autonomous_selection")]
         confirmation_failures = store.all("autonomous_confirmation_failure")
     selected = {c["experiment_id"] for c in plan["configurations"]}
@@ -412,13 +420,22 @@ def status(root: Path, pin: str) -> FrozenJSON:
             prior_cross_study_exposure=True,
             independent_future_performance_established=False,
             new_market_data_required=False,
-            network_requests=sum(v.get("local_http_requests", 0) for v in proposals),
+            network_requests=sum(v.get("local_http_requests", 0) for v in proposals)
+            + sum(
+                v.get("metadata", {}).get("local_http_requests", 0)
+                + v.get("metadata", {}).get("remote_http_requests", 0)
+                for v in llm_proposals
+            ),
             local_ollama_inference_requests=sum(v.get("inference_calls", 0) for v in proposals),
             gemma_accepted=sum(v["state"] == "accepted" for v in proposals),
             gemma_rejected=sum(v["state"] != "accepted" for v in proposals),
             rule_fallbacks=sum(v["state"] == "fallback" for v in selections),
             krx_requests=0,
-            external_network_requests=0,
+            external_network_requests=sum(
+                v.get("metadata", {}).get("remote_http_requests", 0) for v in llm_proposals
+            ),
+            llm_accepted=sum(v["state"] == "accepted" for v in llm_proposals),
+            llm_rejected=sum(v["state"] != "accepted" for v in llm_proposals),
             operating_model_registered=False,
             pit_qualified=False,
             performance_approved=False,

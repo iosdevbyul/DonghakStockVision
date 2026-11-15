@@ -26,10 +26,14 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     p.add_argument("--root", type=Path, required=True)
     p.add_argument("--source-root", type=Path)
     p.add_argument("--source-plan-pin-file", type=Path)
+    p.add_argument("--managed-agents", action="store_true")
+    p.add_argument("--management-root", type=Path)
+    p.add_argument("--model-config", type=Path)
+    p.add_argument("--model-config-sha256")
     p.add_argument("--model-digest-file", type=Path)
     p.add_argument("--reuse-root", type=Path)
     p.add_argument("--reuse-plan-pin-file", type=Path)
-    p.add_argument("--agent", choices=("rule", "gemma4"), default="rule")
+    p.add_argument("--agent", choices=("rule", "gemma4", "managed"), default="rule")
     p.add_argument("--request", type=Path)
     p.add_argument("--request-pin-file", type=Path)
     p.add_argument("--pins-root", type=Path)
@@ -68,6 +72,7 @@ def run_command(args: argparse.Namespace) -> int:
             args.root,
             args.pins_root,
             read_pin(args.model_digest_file),
+            managed=args.managed_agents,
         )
         result = dict(dataset_prepared=True, network_requests=0)
     elif args.action == "prepare":
@@ -98,7 +103,31 @@ def run_command(args: argparse.Namespace) -> int:
                 if args.reuse_root is None
                 else (args.reuse_root, read_pin(args.reuse_plan_pin_file))
             )
-            result = run(args.root, pin, args.steps, agent=args.agent, reuse=reuse).to_dict()
+            if args.agent == "managed":
+                from donghak_stock_vision.storage.ai_management_config import load_management
+
+                require(
+                    args.management_root is not None
+                    and args.model_config is not None
+                    and args.model_config_sha256 is not None
+                    and args.management_root.parent == args.root.parent,
+                    "ai_managed_run_configuration",
+                )
+                service, _ = load_management(
+                    args.management_root, args.model_config, args.model_config_sha256
+                )
+                with service.lease() as config:
+                    result = run(
+                        args.root,
+                        pin,
+                        args.steps,
+                        agent="managed",
+                        reuse=reuse,
+                        agent_factory=lambda root, plan: service.agent_for(root, config),
+                    ).to_dict()
+                    service.record_run(args.root, pin, config, result, args.steps)
+            else:
+                result = run(args.root, pin, args.steps, agent=args.agent, reuse=reuse).to_dict()
         elif args.action == "status":
             result = status(args.root, pin).to_dict()
         elif args.action == "render-agent":
@@ -149,7 +178,7 @@ def run_command(args: argparse.Namespace) -> int:
                 execution_authorized=False,
                 network_requests=result.get("network_requests", 0),
                 krx_requests=0,
-                external_network_requests=0,
+                external_network_requests=result.get("external_network_requests", 0),
             )
         )
     )

@@ -83,7 +83,10 @@ def proposal_schema(view: dict[str, Any]) -> dict[str, Any]:
             additionalProperties=False,
         ),
         "researchGoal": dict(type="string", enum=[view["goal"]["label_version"]]),
-        "parentExperimentId": dict(type=["string", "null"]),
+        "parentExperimentId": dict(
+            type=["string", "null"],
+            enum=[None] + sorted({h["experiment_id"] for h in view["history"]}),
+        ),
     }
     for key in ("hypothesis", "expectedImprovement", "rationale"):
         props[key] = dict(type="string", maxLength=160)
@@ -140,7 +143,8 @@ def prompt_view(view: dict[str, Any]) -> dict[str, Any]:
 
 
 class Ollama:
-    def __init__(self, transport: httpx.BaseTransport | None = None) -> None:
+    def __init__(self, transport: httpx.BaseTransport | None = None, *, model: str = MODEL) -> None:
+        self.model = model
         self.calls = 0
         self.client = httpx.Client(
             base_url=ENDPOINT,
@@ -157,11 +161,12 @@ class Ollama:
         self, path: str, body: dict[str, Any] | None = None, timeout: float = 5
     ) -> dict[str, Any]:
         require(
-            path in ("/api/version", "/api/tags", "/api/ps", "/api/generate"),
+            path in ("/api/version", "/api/tags", "/api/ps", "/api/show", "/api/generate"),
             "gemma_endpoint_allowlist",
         )
         self.calls += 1
         began = time.monotonic()
+        response_limit = 131072 if path == "/api/show" else LIMITS["response_bytes"]
         with self.client.stream(
             "GET" if body is None else "POST",
             path,
@@ -173,7 +178,7 @@ class Ollama:
             for chunk in response.iter_bytes():
                 value.extend(chunk)
                 require(
-                    len(value) <= LIMITS["response_bytes"] and time.monotonic() - began <= timeout,
+                    len(value) <= response_limit and time.monotonic() - began <= timeout,
                     "gemma_response_bound",
                 )
         parsed = json.loads(value)
@@ -183,11 +188,11 @@ class Ollama:
     def identity(self, digest: str) -> dict[str, Any]:
         version = self.request("/api/version")
         models = self.request("/api/tags")["models"]
-        matching = [m for m in models if m["name"] == MODEL and m["digest"] == digest]
+        matching = [m for m in models if m["name"] == self.model and m["digest"] == digest]
         require(len(matching) == 1, "gemma_installed_model_binding")
         return dict(
             server_version=version["version"],
-            model=MODEL,
+            model=self.model,
             digest=digest,
             installed_bytes=matching[0]["size"],
         )
@@ -203,12 +208,14 @@ class Ollama:
                 return bool(released["verified"] and released["rss_kb"] < 256 * 1024)
             require(
                 all(
-                    m.get("digest") == digest and m.get("name", m.get("model")) == MODEL
+                    m.get("digest") == digest and m.get("name", m.get("model")) == self.model
                     for m in loaded
                 ),
                 "gemma_other_model_active",
             )
-            self.request("/api/generate", dict(model=MODEL, keep_alive=0, stream=False), timeout=10)
+            self.request(
+                "/api/generate", dict(model=self.model, keep_alive=0, stream=False), timeout=10
+            )
             began = time.monotonic()
             while time.monotonic() - began < LIMITS["unload_seconds"]:
                 if self.idle():
