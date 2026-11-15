@@ -3,9 +3,7 @@
 import fcntl
 import os
 import plistlib
-import re
 import resource
-import shutil
 import signal
 import subprocess
 import sys
@@ -31,59 +29,15 @@ from donghak_stock_vision.storage.autonomous_research import (
     terminals,
     worker,
 )
-
-
-def _command(args: list[str]) -> str:
-    try:
-        return subprocess.run(
-            args, capture_output=True, text=True, check=True, timeout=5
-        ).stdout.strip()
-    except (OSError, subprocess.SubprocessError):
-        return "UNKNOWN"
-
-
-def probe() -> dict[str, Any]:
-    if sys.platform != "darwin":
-        return dict(verified=False, reason="macos_native_resource_probe_required")
-    power = _command(["/usr/bin/pmset", "-g", "batt"])
-    thermal = _command(
-        [
-            "/usr/bin/osascript",
-            "-l",
-            "JavaScript",
-            "-e",
-            'ObjC.import("Foundation"); Number($.NSProcessInfo.processInfo.thermalState)',
-        ]
-    )
-    memory = _command(["/usr/bin/memory_pressure", "-Q"])
-    percent = re.search(r"System-wide memory free percentage:\s*(\d+)%", memory)
-    return dict(
-        verified=thermal in ("0", "1", "2", "3")
-        and percent is not None
-        and ("AC Power" in power or "Battery Power" in power),
-        ac_power="AC Power" in power,
-        thermal_state=int(thermal) if thermal.isdigit() else None,
-        memory_free_percent=int(percent.group(1)) if percent else None,
-    )
-
-
-def resource_reason(root: Path, state: dict[str, Any]) -> str | None:
-    if not state.get("verified"):
-        return "resource_probe_unknown"
-    if not state["ac_power"]:
-        return "on_battery"
-    if state["thermal_state"] not in (0, 1):
-        return "thermal_pressure"
-    if state["memory_free_percent"] < LIMITS["minimum_memory_free_percent"]:
-        return "memory_pressure"
-    if shutil.disk_usage(root).free < LIMITS["minimum_free_mb"] * 1024**2:
-        return "disk_free_reserve"
-    if (
-        sum(p.stat().st_size for p in root.rglob("*") if p.is_file())
-        > LIMITS["maximum_study_mb"] * 1024**2
-    ):
-        return "study_disk_limit"
-    return None
+from donghak_stock_vision.storage.research_resources import (
+    _command as _command,
+)
+from donghak_stock_vision.storage.research_resources import (
+    probe as probe,
+)
+from donghak_stock_vision.storage.research_resources import (
+    resource_reason as resource_reason,
+)
 
 
 @contextmanager
@@ -215,11 +169,25 @@ def launch(
 
 
 def run(
-    root: Path, pin: str, steps: int, *, resource_probe: Callable[[], dict[str, Any]] = probe
+    root: Path,
+    pin: str,
+    steps: int,
+    *,
+    resource_probe: Callable[[], dict[str, Any]] = probe,
+    agent: str = "rule",
+    reuse: tuple[Path, str] | None = None,
 ) -> FrozenJSON:
     require(type(steps) is int and 1 <= steps <= 36, "autonomous_step_bound")
     plan, data = context(root, pin)
+    require(
+        agent in ("rule", "gemma4")
+        and (agent == "rule" or plan["version"] == "autonomous_plan_v2"),
+        "gemma_explicit_versioned_activation",
+    )
     completed = 0
+    trained = 0
+    cache_hits = 0
+    selections: list[dict[str, Any]] = []
     paused = None
     resources = []
     with (
@@ -238,17 +206,6 @@ def run(
                 failures = [v for _, v in store.all("autonomous_backoff")]
             if choice is None:
                 break
-            # Future local agents receive only the bounded, frozen proposal view.
-            # The shared reservation covers proposal and training sequentially.
-            view = dict(
-                version="research_agent_view_v1",
-                candidates=[choice],
-                history=[dict(experiment_id=k, state=v["state"]) for k, v in done.items()],
-            )
-            require(
-                select_proposal(RuleBasedAgent(), view) == choice["experiment_id"],
-                "research_agent_choice",
-            )
             if failures:
                 from datetime import datetime
 
@@ -260,6 +217,73 @@ def run(
             paused = resource_reason(root, state)
             if paused:
                 break
+            from donghak_stock_vision.storage.gemma_memory import adopt, memory_view
+
+            view: dict[str, Any] = (
+                memory_view(root, plan, data, done, choice)
+                if plan["version"] == "autonomous_plan_v2"
+                else dict(
+                    version="research_agent_view_v1",
+                    candidates=[choice],
+                    history=[dict(experiment_id=k, state=v["state"]) for k, v in done.items()],
+                )
+            )
+            selected = select_proposal(RuleBasedAgent(), view)
+            decision: dict[str, Any] = dict(
+                agent=agent, at=clock(), state="rule", history_count=len(view["history"])
+            )
+            parent_experiment = choice["parent_experiment"]
+            if agent == "gemma4":
+                from donghak_stock_vision.storage.gemma_research import Gemma4ResearchAgent, recover
+
+                if not recover(root, plan["agent_model_digest"]):
+                    paused = "gemma_release_unverified"
+                    break
+                gemma = Gemma4ResearchAgent(root, plan["agent_model_digest"])
+                try:
+                    selected = select_proposal(gemma, view)
+                    parent_experiment = gemma.audit["proposal"]["parentExperimentId"]
+                    decision.update(state="accepted", request_id=gemma.audit["request_id"])
+                except ValueError as error:
+                    decision.update(
+                        state="fallback",
+                        reason=str(error),
+                        request_id=gemma.audit.get("request_id"),
+                    )
+                if not gemma.unloaded:
+                    paused = "gemma_release_unverified"
+                    with closing(AnalysisStore(root / DB)) as store:
+                        store.put("autonomous_selection", decision | dict(state="blocked_unload"))
+                    break
+                # Inference has ended and model release was verified before this
+                # fresh training-resource check. No worker exists during inference.
+                paused = resource_reason(root, resource_probe())
+                if paused:
+                    break
+            if plan["version"] == "autonomous_plan_v2":
+                # Covers rule mode after an orphaned Gemma process, including a
+                # different study. Never start a learner alongside a resident LLM.
+                from donghak_stock_vision.storage.gemma_research import process_resources
+
+                resident = process_resources()
+                if not resident["verified"] or resident["rss_kb"] >= 256 * 1024:
+                    paused = "ollama_release_resources_unverified"
+                    break
+            chosen = next(c for c in view["candidates"] if c["experiment_id"] == selected)
+            choice = chosen | dict(
+                selection_reason="gemma_validated_proposal"
+                if decision["state"] == "accepted"
+                else choice["selection_reason"],
+                parent_experiment=parent_experiment,
+            )
+            decision.update(experiment_id=selected, training_started_after_unload=True)
+            with closing(AnalysisStore(root / DB)) as store:
+                store.put("autonomous_selection", decision)
+            selections.append(decision)
+            if reuse is not None and adopt(root, plan, *reuse, choice):
+                completed += 1
+                cache_hits += 1
+                continue
             prior = [a for a in attempts if a["experiment_id"] == choice["experiment_id"]]
             if len(prior) >= LIMITS["maximum_attempts"]:
                 with closing(AnalysisStore(root / DB)) as store:
@@ -320,6 +344,7 @@ def run(
                     paused = "error_backoff"
                     break
             completed += 1
+            trained += 1
         current = status(root, pin).to_dict()
         if current["remaining"] == 0:
             paused = resource_reason(root, resource_probe())
@@ -340,7 +365,15 @@ def run(
                     with closing(AnalysisStore(root / DB)) as store:
                         store.put("autonomous_confirmation_process", dict(at=clock(), **result))
         output = status(root, pin).to_dict()
-        output.update(executed_this_run=completed, pause_reason=paused, resource_audits=resources)
+        output.update(
+            executed_this_run=completed,
+            trained_this_run=trained,
+            cache_hits_this_run=cache_hits,
+            agent=agent,
+            selections_this_run=selections,
+            pause_reason=paused,
+            resource_audits=resources,
+        )
         with closing(AnalysisStore(root / DB)) as store:
             store.put("autonomous_run", output | dict(recorded_at=clock()))
         return FrozenJSON.freeze(output)

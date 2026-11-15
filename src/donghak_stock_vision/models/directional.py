@@ -19,6 +19,10 @@ MASKS = {
     "momentum": (0, 1, 2, 3, 4),
     "flow": (0, 2, 4, 6, 7),
     "range": (0, 2, 4, 5),
+    "returns_only": (0, 1, 2, 4),
+    "price_range": (0, 1, 2, 3, 4, 5),
+    "volume_value": (0, 4, 6, 7),
+    "short_trend": (0, 1, 3, 4, 5),
 }
 RF = (
     Candidate("forest_depth3", "random_forest", 3),
@@ -143,8 +147,9 @@ def readiness(samples: list[Sample], windows: tuple[Fold, ...]) -> dict[str, Any
     return dict(folds=checked, failures=failures)
 
 
-def catalog(horizons: list[int]) -> list[dict[str, Any]]:
+def catalog(horizons: list[int], space: str = "initial_v1") -> list[dict[str, Any]]:
     # Finite, predeclared first search space; ordering is selected from memory later.
+    require(space in ("initial_v1", "agent_masks_v1"), "autonomous_search_space_version")
     choices = [(c, "all") for c in (*CANDIDATES, *RF)]
     choices += [
         (CANDIDATES[1], "momentum"),
@@ -153,6 +158,12 @@ def catalog(horizons: list[int]) -> list[dict[str, Any]]:
         (CANDIDATES[3], "momentum"),
         (CANDIDATES[4], "flow"),
     ]
+    if space == "agent_masks_v1":
+        choices = [
+            (c, mask)
+            for mask in ("returns_only", "price_range", "volume_value", "short_trend")
+            for c in (CANDIDATES[1], RF[0], CANDIDATES[3])
+        ]
     return [
         dict(goal=contract(h), candidate=c.to_dict(), mask=mask, seed=42)
         for h in horizons
