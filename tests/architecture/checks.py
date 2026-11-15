@@ -129,7 +129,9 @@ def domain(module: str) -> Domain:
         or parts[-1].endswith("_contract")
     ):
         return Domain.CORE
-    if len(parts) == 1 and (short in {"cli", "__main__"} or short.endswith("_cli")):
+    if len(parts) == 1 and (
+        short in {"cli", "__main__", "ai_model_routes"} or short.endswith("_cli")
+    ):
         return Domain.APPLICATION
     if parts[0] in {"api", "config"}:
         return Domain.APPLICATION

@@ -53,6 +53,10 @@ def parser() -> argparse.ArgumentParser:
     )
     result.add_argument("--portfolio-publications", type=Path, help="private publication root")
     result.add_argument("--portfolio-index-sha256", help="operator-approved publication index SHA")
+    result.add_argument("--ai-management-root", type=Path)
+    result.add_argument("--ai-model-config", type=Path)
+    result.add_argument("--ai-model-config-sha256")
+    result.add_argument("--ai-management-only", action="store_true")
     result.add_argument("--host", default="127.0.0.1")
     result.add_argument("--port", type=int, default=8000)
     return result
@@ -65,6 +69,17 @@ def main(argv: list[str] | None = None) -> None:
     if snapshot_path is None:
         configured = os.getenv("DSV_API_SNAPSHOT_PATH", "").strip()
         snapshot_path = Path(configured) if configured else None
+    if args.operational_only and any(
+        (
+            args.ai_management_root,
+            args.ai_model_config,
+            args.ai_model_config_sha256,
+            args.ai_management_only,
+        )
+    ):
+        parser().error("operational-only forbids model management")
+    if args.ai_management_only and snapshot_path is not None:
+        parser().error("AI-management-only forbids a research snapshot")
     if args.operational_only:
         if snapshot_path is not None:
             parser().error("--operational-only cannot use a research snapshot")
@@ -86,7 +101,7 @@ def main(argv: list[str] | None = None) -> None:
             )
         ):
             parser().error("--operational-only forbids research and publication inputs")
-    elif snapshot_path is None:
+    elif snapshot_path is None and not args.ai_management_only:
         parser().error("--snapshot or DSV_API_SNAPSHOT_PATH is required")
 
     try:
@@ -196,8 +211,31 @@ def main(argv: list[str] | None = None) -> None:
         )
     from donghak_stock_vision.api.operations import OperationsReader
 
+    ai_management = None
+    ai_authorize = None
+    if any(
+        (
+            args.ai_management_root,
+            args.ai_model_config,
+            args.ai_model_config_sha256,
+            args.ai_management_only,
+        )
+    ):
+        if not all((args.ai_management_root, args.ai_model_config, args.ai_model_config_sha256)):
+            parser().error("AI management requires root and pinned private server configuration")
+        from donghak_stock_vision.ai_model_routes import Principal, ScopedBearerAuthority
+        from donghak_stock_vision.storage.ai_management_config import load_management
+
+        ai_management, entries = load_management(
+            args.ai_management_root, args.ai_model_config, args.ai_model_config_sha256
+        )
+        ai_authorize = ScopedBearerAuthority(
+            [(e["secret"], Principal(e["subject"], frozenset(e["scopes"]))) for e in entries]
+        )
     app = create_app(
         reader,
+        ai_management=ai_management,
+        ai_authorize=ai_authorize,
         portfolio_reader=portfolio_reader,
         ohlcv_reader=ohlcv_reader,
         operational_reader=operational_reader,
@@ -211,7 +249,11 @@ def main(argv: list[str] | None = None) -> None:
             market=ohlcv_reader,
         ),
     )
-    if portfolio_reader is not None or daily_research_reader is not None:
+    if (
+        portfolio_reader is not None
+        or daily_research_reader is not None
+        or ai_management is not None
+    ):
         uvicorn.run(app, host=args.host, port=args.port, proxy_headers=False)
     else:
         uvicorn.run(app, host=args.host, port=args.port)

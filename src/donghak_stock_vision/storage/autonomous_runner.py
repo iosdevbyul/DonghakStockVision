@@ -1,6 +1,5 @@
 """One bounded background worker at a time; render-only macOS scheduling."""
 
-import fcntl
 import os
 import plistlib
 import resource
@@ -8,8 +7,8 @@ import signal
 import subprocess
 import sys
 import time
-from collections.abc import Callable, Iterator
-from contextlib import closing, contextmanager
+from collections.abc import Callable
+from contextlib import closing
 from datetime import UTC
 from pathlib import Path
 from typing import Any
@@ -29,8 +28,12 @@ from donghak_stock_vision.storage.autonomous_research import (
     terminals,
     worker,
 )
+from donghak_stock_vision.storage.research_agent_factory import AuditedAgent, legacy_gemma
 from donghak_stock_vision.storage.research_resources import (
     _command as _command,
+)
+from donghak_stock_vision.storage.research_resources import (
+    lock as lock,
 )
 from donghak_stock_vision.storage.research_resources import (
     probe as probe,
@@ -38,19 +41,6 @@ from donghak_stock_vision.storage.research_resources import (
 from donghak_stock_vision.storage.research_resources import (
     resource_reason as resource_reason,
 )
-
-
-@contextmanager
-def lock(root: Path, name: str) -> Iterator[int]:
-    fd = os.open(root / name, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-    try:
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            raise ValueError("autonomous_runner_already_active") from None
-        yield fd
-    finally:
-        os.close(fd)
 
 
 def worker_entry(root: Path, pin: str, attempt: str, gate: bool = False) -> None:
@@ -176,12 +166,21 @@ def run(
     resource_probe: Callable[[], dict[str, Any]] = probe,
     agent: str = "rule",
     reuse: tuple[Path, str] | None = None,
+    agent_factory: Callable[[Path, dict[str, Any]], AuditedAgent] | None = None,
 ) -> FrozenJSON:
     require(type(steps) is int and 1 <= steps <= 36, "autonomous_step_bound")
     plan, data = context(root, pin)
     require(
-        agent in ("rule", "gemma4")
-        and (agent == "rule" or plan["version"] == "autonomous_plan_v2"),
+        agent in ("rule", "gemma4", "managed")
+        and (
+            agent == "rule"
+            or (agent == "gemma4" and plan["version"] == "autonomous_plan_v2")
+            or (
+                agent == "managed"
+                and plan["version"] == "autonomous_plan_v3"
+                and agent_factory is not None
+            )
+        ),
         "gemma_explicit_versioned_activation",
     )
     completed = 0
@@ -221,7 +220,7 @@ def run(
 
             view: dict[str, Any] = (
                 memory_view(root, plan, data, done, choice)
-                if plan["version"] == "autonomous_plan_v2"
+                if plan["version"] in ("autonomous_plan_v2", "autonomous_plan_v3")
                 else dict(
                     version="research_agent_view_v1",
                     candidates=[choice],
@@ -233,13 +232,15 @@ def run(
                 agent=agent, at=clock(), state="rule", history_count=len(view["history"])
             )
             parent_experiment = choice["parent_experiment"]
-            if agent == "gemma4":
-                from donghak_stock_vision.storage.gemma_research import Gemma4ResearchAgent, recover
+            if agent != "rule":
+                if agent == "gemma4":
+                    from donghak_stock_vision.storage.gemma_research import recover
 
-                if not recover(root, plan["agent_model_digest"]):
-                    paused = "gemma_release_unverified"
-                    break
-                gemma = Gemma4ResearchAgent(root, plan["agent_model_digest"])
+                    if not recover(root, plan["agent_model_digest"]):
+                        paused = "gemma_release_unverified"
+                        break
+                selected_factory = legacy_gemma if agent_factory is None else agent_factory
+                gemma = selected_factory(root, plan)
                 try:
                     selected = select_proposal(gemma, view)
                     parent_experiment = gemma.audit["proposal"]["parentExperimentId"]
@@ -251,7 +252,11 @@ def run(
                         request_id=gemma.audit.get("request_id"),
                     )
                 if not gemma.unloaded:
-                    paused = "gemma_release_unverified"
+                    paused = (
+                        "llm_release_unverified"
+                        if agent == "managed"
+                        else "gemma_release_unverified"
+                    )
                     with closing(AnalysisStore(root / DB)) as store:
                         store.put("autonomous_selection", decision | dict(state="blocked_unload"))
                     break
@@ -260,7 +265,7 @@ def run(
                 paused = resource_reason(root, resource_probe())
                 if paused:
                     break
-            if plan["version"] == "autonomous_plan_v2":
+            if plan["version"] in ("autonomous_plan_v2", "autonomous_plan_v3"):
                 # Covers rule mode after an orphaned Gemma process, including a
                 # different study. Never start a learner alongside a resident LLM.
                 from donghak_stock_vision.storage.gemma_research import process_resources
@@ -271,7 +276,9 @@ def run(
                     break
             chosen = next(c for c in view["candidates"] if c["experiment_id"] == selected)
             choice = chosen | dict(
-                selection_reason="gemma_validated_proposal"
+                selection_reason="llm_validated_proposal"
+                if agent == "managed" and decision["state"] == "accepted"
+                else "gemma_validated_proposal"
                 if decision["state"] == "accepted"
                 else choice["selection_reason"],
                 parent_experiment=parent_experiment,

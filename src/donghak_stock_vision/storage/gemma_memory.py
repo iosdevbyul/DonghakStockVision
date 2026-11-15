@@ -17,7 +17,15 @@ from donghak_stock_vision.storage.autonomous_research import DB, clock, context,
 from donghak_stock_vision.storage.krx_backfill import write_new
 
 
-def derive(parent: Path, parent_pin: str, root: Path, pins: Path, model_digest: str) -> str:
+def derive(
+    parent: Path,
+    parent_pin: str,
+    root: Path,
+    pins: Path,
+    model_digest: str,
+    *,
+    managed: bool = False,
+) -> str:
     sha(model_digest)
     old, data = context(parent, parent_pin, code_check=False)
     require(old["version"] == "autonomous_plan_v1", "gemma_original_parent_required")
@@ -42,7 +50,10 @@ def derive(parent: Path, parent_pin: str, root: Path, pins: Path, model_digest: 
     )
     code = provenance()
     configurations = []
-    for c in catalog(sorted(int(h) for h in data["goals"]), "agent_masks_v1"):
+    for c in catalog(
+        sorted(int(h) for h in data["goals"]),
+        "management_masks_v1" if managed else "agent_masks_v1",
+    ):
         identity = c | dict(
             training_sample_pin=data["goals"][str(c["goal"]["horizon"])]["sample_pin"],
             fold_pin=digest(data["folds"]),
@@ -65,6 +76,13 @@ def derive(parent: Path, parent_pin: str, root: Path, pins: Path, model_digest: 
         memory_parent=dict(root=str(parent), pin=parent_pin),
         agent_model_digest=model_digest,
     )
+    if managed:
+        plan.update(
+            version="autonomous_plan_v3",
+            search_space="management_masks_v1",
+            agent_policy="server_validated_managed_v1",
+        )
+        plan.pop("agent_model_digest")
     with closing(ReadOnlyAnalysisStore(parent / DB)) as store:
         snapshot = store.get("autonomous_snapshot", old["snapshot_id"])
         proof = store.all("autonomous_source_verification")
@@ -107,7 +125,7 @@ def memory_view(
     horizon = choice["config"]["goal"]["horizon"]
     histories = []
     sources = [root]
-    if plan["version"] == "autonomous_plan_v2":
+    if plan["version"] in ("autonomous_plan_v2", "autonomous_plan_v3"):
         p = plan["memory_parent"]
         parent = Path(p["root"])
         _, parent_data = context(parent, p["pin"], code_check=False)
