@@ -5,6 +5,7 @@ The offline operator approves an independent index digest binding six report/sna
 """
 import hashlib
 import json
+import math
 import re
 from collections import defaultdict
 from contextlib import closing
@@ -59,7 +60,14 @@ def approved_json(raw: bytes) -> dict[str, Any]:
 def metric_view(metrics: Any) -> dict[str, Any] | None:
     if not isinstance(metrics, dict):
         return None
-    return {key: metrics.get(key) for key in METRICS if key in metrics}
+    safe = {}
+    for key in METRICS:
+        value = metrics.get(key)
+        if key in metrics and (value is None or (
+            type(value) in (int, float) and math.isfinite(value)
+        )):
+            safe[key] = value
+    return safe
 
 
 def safe_diagnostic(value: Any) -> dict[str, Any] | None:
@@ -170,6 +178,9 @@ class ResearchLabPublication:
             and report.get("dataset_version") == dataset["dataset_version"]
             and report.get("selection_policy") == plan["selection_policy"]
             and report.get("cohort") == dataset["generalization"]["cohort"]
+            and isinstance(report.get("cohort"), str)
+            and bool(NAME.fullmatch(report["cohort"]))
+            and report.get("selection_policy") in ("adaptive", "predeclared", "robust")
             and report.get("completed") == len(original_ids)
             and report.get("failed") == failed_count
             and report.get("completed") + report.get("failed") == plan["experiment_budget"]
@@ -289,6 +300,8 @@ class ResearchLabPublication:
                    and len(set(discovered_ids)) == len(discovered_ids)
                    and set(discovered_ids) == original_ids,
                    "invalid_discovery_identity")
+        # Fail closed if any DB bytes changed during evidence projection.
+        reader._read()
         report_id = hashlib.sha256(report_raw).hexdigest()
         summary = {
             "studyId": study_id,
