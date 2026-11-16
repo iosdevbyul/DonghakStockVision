@@ -101,6 +101,11 @@ def prompt_view(view: dict[str, Any]) -> dict[str, Any]:
             family=v["candidate"]["family"],
             value=v["candidate"]["value"],
             featureSet=v["mask"],
+            **(
+                {"parameters": v["candidate"]["parameters"]}
+                if "parameters" in v["candidate"]
+                else {}
+            ),
         )
 
     history = []

@@ -27,6 +27,7 @@ class Candidate:
     name: str
     family: str
     value: float
+    parameters: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -38,8 +39,31 @@ class Candidate:
         ):
             raise AnalysisError("invalid_research_candidate")
 
+        if self.parameters is not None:
+            spaces: dict[str, dict[str, tuple[Any, ...]]] = {
+                "linear": {"solver": ("lbfgs", "liblinear"), "class_weight": (None, "balanced")},
+                "random_forest": {
+                    "n_estimators": (32, 96),
+                    "min_samples_leaf": (10, 30),
+                    "max_features": ("sqrt", 0.75),
+                },
+                "hist_gradient_boosting": {
+                    "learning_rate": (0.03, 0.1),
+                    "max_iter": (80, 160),
+                    "l2_regularization": (0.5, 2.0),
+                },
+            }
+            allowed = spaces[self.family]
+            if set(self.parameters) != set(allowed) or any(
+                v not in allowed[k] or type(v) is bool for k, v in self.parameters.items()
+            ):
+                raise AnalysisError("invalid_research_parameters")
+
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        value = asdict(self)
+        if self.parameters is None:
+            value.pop("parameters")
+        return value
 
 
 CANDIDATES = (
@@ -109,11 +133,14 @@ def purged_fold(
     return train, evaluation, purged
 
 
-def fit_candidate(candidate: Candidate, samples: list[Sample]) -> Any:
+def fit_candidate(
+    candidate: Candidate, samples: list[Sample], *, feature_names: list[str] | None = None
+) -> Any:
     if {s.label for s in samples} != {0, 1}:
         raise AnalysisError("two_classes_required")
+    options = candidate.parameters or {}
     if candidate.family == "linear":
-        return fit_linear(samples, candidate.value)
+        return fit_linear(samples, candidate.value, feature_names=feature_names, **options)
     import numpy as np
     from sklearn.ensemble import HistGradientBoostingClassifier
     from threadpoolctl import threadpool_limits
@@ -122,9 +149,10 @@ def fit_candidate(candidate: Candidate, samples: list[Sample]) -> Any:
         from sklearn.ensemble import RandomForestClassifier
 
         forest = RandomForestClassifier(
-            n_estimators=64,
+            n_estimators=options.get("n_estimators", 64),
             max_depth=int(candidate.value),
-            min_samples_leaf=20,
+            min_samples_leaf=options.get("min_samples_leaf", 20),
+            max_features=options.get("max_features", "sqrt"),
             class_weight="balanced",
             n_jobs=1,
             random_state=42,
@@ -140,11 +168,11 @@ def fit_candidate(candidate: Candidate, samples: list[Sample]) -> Any:
     # No randomized early-stopping validation split; every supplied row is training.
     estimator = HistGradientBoostingClassifier(
         loss="log_loss",
-        learning_rate=0.05,
-        max_iter=150,
+        learning_rate=options.get("learning_rate", 0.05),
+        max_iter=options.get("max_iter", 150),
         max_leaf_nodes=int(candidate.value),
         min_samples_leaf=100,
-        l2_regularization=1.0,
+        l2_regularization=options.get("l2_regularization", 1.0),
         max_bins=255,
         early_stopping=False,
         class_weight="balanced",
@@ -161,7 +189,26 @@ def fit_candidate(candidate: Candidate, samples: list[Sample]) -> Any:
 
 def predict_candidate(candidate: Candidate, fitted: Any, samples: list[Sample]) -> list[float]:
     if candidate.family == "linear":
-        return [score(fitted, s.values)[0] for s in samples]
+        if fitted["features"] == list(FEATURES):
+            return [score(fitted, s.values)[0] for s in samples]
+        from donghak_stock_vision.models.linear import sigmoid
+
+        return [
+            sigmoid(
+                sum(
+                    (v - m) / z * c
+                    for v, m, z, c in zip(
+                        s.values,
+                        fitted["mean"],
+                        fitted["scale"],
+                        fitted["coefficient"],
+                        strict=True,
+                    )
+                )
+                + fitted["intercept"]
+            )
+            for s in samples
+        ]
     from threadpoolctl import threadpool_limits
 
     with threadpool_limits(limits=1):

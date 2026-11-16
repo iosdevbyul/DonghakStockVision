@@ -53,7 +53,7 @@ def clock() -> str:
 def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
     fields(d, "version dataset_version research protocol tickers cutoff horizons")
     require(
-        d["version"] == REQUEST
+        d["version"] in (REQUEST, "autonomous_direction_source_v2")
         and type(d["dataset_version"]) is str
         and 0 < len(d["dataset_version"]) <= 100,
         "autonomous_request_version",
@@ -86,10 +86,16 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
     )
     snapshot, original = prepare_real_market_training(source)
     value = snapshot.to_dict()
+    expanded = d["version"] == "autonomous_direction_source_v2"
+    if expanded:
+        from donghak_stock_vision.models import research_v2
     windows = folds(value, access)
     goals = {}
     for horizon in d["horizons"]:
-        samples, changes, excluded = build(value, horizon)
+        samples, changes, excluded = (
+            research_v2.build(value, horizon) if expanded else build(value, horizon)
+        )
+        goal_windows = research_v2.folds(value, access, horizon) if expanded else windows
         # Label generation is retrospective; neither the generator nor search workers
         # may use the separate confirmation population to select another candidate.
         train = [
@@ -103,18 +109,28 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
             and s.label_end <= access.validation.end
         ]
         goals[str(horizon)] = dict(
-            contract=contract(horizon),
+            contract=research_v2.contract(horizon) if expanded else contract(horizon),
             samples=[s.to_dict() for s in train + held],
             returns=changes,
             sample_pin=digest([s.to_dict() for s in train]),
             confirmation_pin=digest([s.to_dict() for s in held]),
-            readiness=readiness(samples, windows),
+            readiness=readiness(samples, goal_windows),
             excluded=excluded,
             training_rows=len(train),
             confirmation_rows=len(held),
         )
+        if expanded:
+            goals[str(horizon)]["folds"] = [f.to_dict() for f in goal_windows]
+            goals[str(horizon)]["input_availability"] = {
+                digest(s.to_dict()): max(
+                    timestamp(r["collected_at"])
+                    for r in value["rows"][s.ticker]
+                    if r["trading_date"] <= s.trading_date.isoformat()
+                ).isoformat()
+                for s in train + held
+            }
     data = dict(
-        version="direction_dataset_v1",
+        version="direction_dataset_v2" if expanded else "direction_dataset_v1",
         dataset_version=d["dataset_version"],
         source_pin=digest(value["real_market_source"]),
         snapshot_pin=snapshot.identifier,
@@ -140,18 +156,27 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
         performance_approved=False,
         execution_authorized=False,
     )
+    if expanded:
+        data["timeframes"] = dict(
+            policy="closed_observed_periods_no_partial_first_period",
+            session_authentication=False,
+            intraday="unavailable",
+            availability="actual_receipt_time_not_nominal_historical_anchor",
+        )
     code = provenance()
     configurations = []
-    for config in catalog(d["horizons"]):
+    for config in research_v2.catalog(d["horizons"]) if expanded else catalog(d["horizons"]):
         identity = config | dict(
             training_sample_pin=goals[str(config["goal"]["horizon"])]["sample_pin"],
-            fold_pin=digest(data["folds"]),
+            fold_pin=digest(
+                goals[str(config["goal"]["horizon"])]["folds"] if expanded else data["folds"]
+            ),
             implementation_hash=code["implementation_hash"],
             versions=code["versions"],
         )
         configurations.append(dict(experiment_id=digest(identity), config=config))
     plan = dict(
-        version="autonomous_plan_v1",
+        version="autonomous_plan_v4" if expanded else "autonomous_plan_v1",
         dataset_id=digest(data),
         snapshot_id=snapshot.identifier,
         request_pin=digest(d),
@@ -167,6 +192,12 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
         performance_approved=False,
         execution_authorized=False,
     )
+    if expanded:
+        plan.update(
+            search_space="adaptive_direction_v2",
+            agent_policy="server_validated_managed_v1",
+            experiment_budget=24,
+        )
     root.mkdir(mode=0o700, parents=True)
     pins.mkdir(mode=0o700, parents=True)
     fd = os.open(root / DB, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -213,7 +244,8 @@ def context(
         plan = store.get("autonomous_plan", pin)
         data = store.get("autonomous_dataset", plan["dataset_id"])
     require(
-        plan["version"] in ("autonomous_plan_v1", "autonomous_plan_v2", "autonomous_plan_v3")
+        plan["version"]
+        in ("autonomous_plan_v1", "autonomous_plan_v2", "autonomous_plan_v3", "autonomous_plan_v4")
         and plan["limits"] == LIMITS
         and not data["protected_final_test_read"]
         and data["source_pin"] == plan["source_pin"]
@@ -225,7 +257,15 @@ def context(
     )
     protected = ExplicitResearchSplit.from_dict(data["split"]).final_test
     require(date.fromisoformat(data["last_date"]) < protected.start, "autonomous_sealed_window")
-    require(data["version"] == "direction_dataset_v1", "autonomous_dataset_version")
+    require(
+        data["version"]
+        == (
+            "direction_dataset_v2"
+            if plan["version"] == "autonomous_plan_v4"
+            else "direction_dataset_v1"
+        ),
+        "autonomous_dataset_version",
+    )
     split = ExplicitResearchSplit.from_dict(data["split"])
     for goal in data["goals"].values():
         training, held = [], []
@@ -261,12 +301,28 @@ def context(
             and "agent_model_digest" not in plan,
             "llm_managed_plan_policy",
         )
-    expected = catalog(sorted(int(h) for h in data["goals"]), space)
+    if plan["version"] == "autonomous_plan_v4":
+        from donghak_stock_vision.models import research_v2
+
+        require(
+            space == research_v2.SPACE
+            and data["version"] == "direction_dataset_v2"
+            and plan["agent_policy"] == "server_validated_managed_v1"
+            and plan["experiment_budget"] == 24,
+            "research_v2_plan_contract",
+        )
+        expected = research_v2.catalog(sorted(int(h) for h in data["goals"]))
+    else:
+        expected = catalog(sorted(int(h) for h in data["goals"]), space)
     require([c["config"] for c in plan["configurations"]] == expected, "autonomous_search_space")
     for item in plan["configurations"]:
         identity = item["config"] | dict(
             training_sample_pin=data["goals"][str(item["config"]["goal"]["horizon"])]["sample_pin"],
-            fold_pin=digest(data["folds"]),
+            fold_pin=digest(
+                data["goals"][str(item["config"]["goal"]["horizon"])]["folds"]
+                if plan["version"] == "autonomous_plan_v4"
+                else data["folds"]
+            ),
             implementation_hash=plan["code"]["implementation_hash"],
             versions=plan["code"]["versions"],
         )
@@ -324,6 +380,10 @@ def terminals(store: AnalysisStore) -> dict[str, dict[str, Any]]:
 def next_experiment(
     plan: dict[str, Any], data: dict[str, Any], done: dict[str, dict[str, Any]]
 ) -> dict[str, Any] | None:
+    if plan["version"] == "autonomous_plan_v4":
+        from donghak_stock_vision.models.research_v2 import selection
+
+        return selection(plan, done)
     remaining: list[dict[str, Any]] = [
         c for c in plan["configurations"] if c["experiment_id"] not in done
     ]
@@ -412,7 +472,11 @@ def status(root: Path, pin: str) -> FrozenJSON:
             unresolved_attempts=sum(a["experiment_id"] not in done for a in attempts),
             gates_consumed=len(consumed),
             confirmation_failures=len(confirmation_failures),
-            state="SEARCH_EXHAUSTED" if selected <= done.keys() else "QUEUED",
+            state="BUDGET_EXHAUSTED"
+            if plan["version"] == "autonomous_plan_v4" and len(finished) >= 24
+            else "SEARCH_EXHAUSTED"
+            if selected <= done.keys()
+            else "QUEUED",
             confirmations=len(confirmations),
             research_champions=leaders,
             source_pin_verified=True,
@@ -530,6 +594,7 @@ def worker(root: Path, pin: str, attempt_id: str) -> None:
 
 def confirm(root: Path, pin: str) -> None:
     plan, data = context(root, pin)
+    require(plan["version"] != "autonomous_plan_v4", "research_v2_confirmation_sealed")
     with closing(AnalysisStore(root / DB)) as store:
         done = terminals(store)
         require(

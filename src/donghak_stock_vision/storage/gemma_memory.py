@@ -168,6 +168,17 @@ def memory_view(
         and digest(c["config"]) not in seen
     ]
     candidates.sort(key=lambda c: c["experiment_id"] != choice["experiment_id"])
+    if plan["version"] == "autonomous_plan_v4":
+        from donghak_stock_vision.models.research_v2 import rank
+
+        candidates = rank(
+            candidates,
+            [
+                v | dict(experiment_id=k)
+                for k, v in done.items()
+                if v["config"]["goal"]["horizon"] == horizon
+            ],
+        )[:12]
     require(bool(candidates), "gemma_semantic_search_exhausted")
     return dict(
         version="research_agent_view_v1",
