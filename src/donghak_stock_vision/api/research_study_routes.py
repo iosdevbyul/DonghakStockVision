@@ -1,6 +1,8 @@
 """Local-only HTTP surface for operator-pinned autonomous research evidence."""
 
 import re
+from collections.abc import Callable
+from typing import Any
 from typing import Annotated
 from urllib.parse import urlsplit
 
@@ -33,12 +35,12 @@ def research_study_router(reader: PinnedStudyReader | None) -> APIRouter:
 
     Source = Annotated[PinnedStudyReader, Depends(local_reader)]
 
-    def lookup(callback: object, *args: object) -> dict[str, object]:
+    def lookup(callback: Callable[..., dict[str, Any] | None], *args: Any) -> dict[str, Any]:
         try:
-            result = callback(*args)  # type: ignore[operator]
+            result = callback(*args)
             if result is None:
                 raise HTTPException(404, detail={"code": "experiment_not_found"})
-            return result  # type: ignore[no-any-return]
+            return result
         except StudyReadError as exc:
             code = str(exc)
             if code in {"study_not_found", "invalid_study_id"}:
@@ -48,7 +50,7 @@ def research_study_router(reader: PinnedStudyReader | None) -> APIRouter:
             raise HTTPException(503, detail={"code": "study_evidence_unavailable"}) from None
 
     @router.get("")
-    def studies(source: Source) -> dict[str, object]:
+    def studies(source: Source) -> dict[str, Any]:
         return lookup(source.collection)
 
     @router.get("/{study_id}/experiments")
