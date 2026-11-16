@@ -39,7 +39,7 @@ def create_publication(tmp_path: Path) -> tuple[Path, str, list[dict[str, Any]]]
                         "candidate": {"family": "ridge", "value": i + 1},
                         "mask": "baseline",
                     }
-                    identity = digest([cohort, policy, h, i, config])
+                    identity = digest([cohort, h, i, config])
                     identities.append((h, identity, config))
                     configurations.append({"experiment_id": identity, "config": config})
             dataset = {
