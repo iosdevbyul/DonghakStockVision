@@ -152,7 +152,7 @@ class PinnedStudyReader:
                     "pitQualified": False,
                     "performanceApproved": False,
                     "executionAuthorized": False,
-                    }
+                }
             ],
         }
 
@@ -193,7 +193,7 @@ class PinnedStudyReader:
                     "selectionPolicy": plan.get("selection_policy"),
                     "reportId": None,
                     "independentValidationStatus": "NOT_ESTABLISHED",
-                    }
+                }
             )
         return {
             "schemaVersion": "research_experiments_read_v1",
