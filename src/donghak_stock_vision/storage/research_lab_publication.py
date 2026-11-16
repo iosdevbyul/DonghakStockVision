@@ -182,6 +182,14 @@ class ResearchLabPublication:
             and bool(NAME.fullmatch(report["cohort"]))
             and report.get("selection_policy") in ("adaptive", "predeclared", "robust")
             and report.get("completed") == len(original_ids)
+            and isinstance(report.get("first_date"), str)
+            and bool(re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", report["first_date"]))
+            and isinstance(report.get("last_date"), str)
+            and bool(re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", report["last_date"]))
+            and type(report.get("dates")) is int
+            and 0 <= report["dates"] <= 100000
+            and type(report.get("observations")) is int
+            and 0 <= report["observations"] <= 10000000
             and report.get("failed") == failed_count
             and report.get("completed") + report.get("failed") == plan["experiment_budget"]
             and report.get("protected_final_test_read") is False
@@ -260,9 +268,11 @@ class ResearchLabPublication:
                     ],
                     "deferredDiagnostic": safe_diagnostic(result.get("deferred_diagnostic")),
                     "robustSummary": {
-                        name: result["robust_summary"].get(name)
-                        for name in ("passes", "sufficient_folds", "worst_balanced_accuracy",
-                                     "worst_baseline_ap_gain", "negative_dispersion")
+                        key: value
+                        for key, value in result["robust_summary"].items()
+                        if key in ("passes", "sufficient_folds", "worst_balanced_accuracy",
+                                   "worst_baseline_ap_gain", "negative_dispersion")
+                        and type(value) in (int, float) and math.isfinite(value)
                     } if isinstance(result.get("robust_summary"), dict) else None,
                     "comparisonQualification": "DESCRIPTIVE_RESEARCH_ONLY",
                 }
