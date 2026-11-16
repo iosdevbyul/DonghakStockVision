@@ -70,12 +70,39 @@ def create_publication(tmp_path: Path) -> tuple[Path, str, list[dict[str, Any]]]
                 rows = [row for row in identities if row[0] == h]
                 for index, (_, key, config) in enumerate(rows):
                     ap = 0.50 + index * 0.02
+                    fold_metrics = {
+                        "pr_auc_ap": ap,
+                        "balanced_accuracy": 0.50,
+                        "brier_score": 0.24,
+                        "n": 20,
+                    }
+                    fold_baselines = {
+                        "training_prior": {"pr_auc_ap": 0.50, "n": 20}
+                    }
+                    robust_summary = {"passes": 1, "sufficient_folds": 1}
+                    deferred_diagnostic = {
+                        "assessment": {
+                            "periods": {
+                                "2026-Q3": {"metrics": {
+                                    "balanced_accuracy": 0.48, "n": 20,
+                                    "private_details": "/private/never-public",
+                                }}
+                            }
+                        }
+                    }
                     result = {
                         "experiment_id": key,
                         "config": config,
                         "mean_ap": ap,
                         "stability_ap": ap - 0.01,
                         "largest_train_gap": 0.02,
+                        "robust_summary": robust_summary,
+                        "deferred_diagnostic": deferred_diagnostic,
+                        "folds": [{
+                            "evaluation": {
+                                "metrics": fold_metrics, "baselines": fold_baselines
+                            }
+                        }],
                     }
                     result_id = store.put("autonomous_result", result)
                     parent = rows[index - 1][1] if index > 0 else None
@@ -95,21 +122,10 @@ def create_publication(tmp_path: Path) -> tuple[Path, str, list[dict[str, Any]]]
                         "mean_seen_cv_ap": ap,
                         "stability_seen_cv_ap": ap - 0.01,
                         "overfit_gap": 0.02,
-                        "fold_seen_metrics": [{
-                            "pr_auc_ap": ap,
-                            "balanced_accuracy": 0.50,
-                            "brier_score": 0.24,
-                            "n": 20,
-                        }],
-                        "robust_summary": {"passes": 1, "sufficient_folds": 1},
-                        "deferred_diagnostic": {
-                            "periods": {
-                                "2026-Q3": {"metrics": {
-                                    "balanced_accuracy": 0.48, "n": 20,
-                                    "private_details": "/private/never-public",
-                                }}
-                            }
-                        },
+                        "fold_seen_metrics": [fold_metrics],
+                        "fold_baselines": [fold_baselines],
+                        "robust_summary": robust_summary,
+                        "deferred_diagnostic": deferred_diagnostic,
                     })
                 horizons[str(h)] = {
                     "selected_without_heldout_scores": rows[0][1],
