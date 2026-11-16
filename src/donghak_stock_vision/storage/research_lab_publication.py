@@ -216,6 +216,11 @@ class ResearchLabPublication:
                     and result.get("overfit_gap") == original["largest_train_gap"],
                     "report_metrics_owner_mismatch",
                 )
+                ensure(
+                    result.get("robust_summary") == original.get("robust_summary")
+                    and result.get("deferred_diagnostic") == original.get("deferred_diagnostic"),
+                    "report_diagnostic_owner_mismatch",
+                )
                 if "folds" in original:
                     ensure(
                         result.get("fold_seen_metrics") == [
@@ -266,6 +271,14 @@ class ResearchLabPublication:
                 "selectionUsesDeferredDiagnostic": False,
             })
         ensure(report_ids == original_ids, "incomplete_report_identity")
+        discovery = report.get("discovery_curve", [])
+        ensure(isinstance(discovery, list), "invalid_discovery_curve")
+        if discovery:
+            discovered_ids = [v.get("experiment_id") for v in discovery if isinstance(v, dict)]
+            ensure(len(discovery) == len(discovered_ids)
+                   and len(set(discovered_ids)) == len(discovered_ids)
+                   and set(discovered_ids) == original_ids,
+                   "invalid_discovery_identity")
         report_id = hashlib.sha256(report_raw).hexdigest()
         summary = {
             "studyId": study_id,
