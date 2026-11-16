@@ -56,7 +56,9 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--study-snapshot", type=Path, help="approved private study SQLite copy")
     result.add_argument("--study-snapshot-sha256", help="approved study copy digest")
     result.add_argument("--study-id", help="content-addressed immutable study plan ID")
-    result.add_argument("--research-lab-root", type=Path, help="approved six-study publication directory")
+    result.add_argument(
+        "--research-lab-root", type=Path, help="approved six-study publication directory"
+    )
     result.add_argument("--research-lab-index-sha256", help="independently approved index SHA-256")
     result.add_argument("--ai-management-root", type=Path)
     result.add_argument("--ai-model-config", type=Path)
@@ -88,8 +90,8 @@ def main(argv: list[str] | None = None) -> None:
         )
     ):
         parser().error("operational-only forbids model management")
-    if args.ai_management_only and snapshot_path is not None:
-        parser().error("AI-management-only forbids a research snapshot")
+    if args.ai_management_only and (snapshot_path is not None or args.research_lab_root):
+        parser().error("AI-management-only forbids research snapshots and publications")
     if args.operational_only:
         if snapshot_path is not None:
             parser().error("--operational-only cannot use a research snapshot")
@@ -181,12 +183,13 @@ def main(argv: list[str] | None = None) -> None:
             ResearchLabError,
             ResearchLabPublication,
         )
+        from donghak_stock_vision.storage.research_studies import StudyReadError
 
         try:
             lab_reader = ResearchLabPublication(
                 args.research_lab_root, args.research_lab_index_sha256
             )
-        except (ResearchLabError, OSError, KeyError, ValueError, TypeError):
+        except (ResearchLabError, StudyReadError, OSError, KeyError, ValueError, TypeError):
             raise SystemExit("research lab publication unavailable or invalid") from None
     portfolio_reader = None
     if bool(args.portfolio_publications) != bool(args.portfolio_index_sha256):
