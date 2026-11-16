@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 from collections import defaultdict
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -77,13 +78,6 @@ def safe_diagnostic(value: Any) -> dict[str, Any] | None:
     return output or None
 
 
-def fold_view(row: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "metrics": metric_view(row.get("fold_seen_metrics")),
-        "baselines": None,
-    }
-
-
 class ResearchLabPublication:
     """Preload safe projections of immutable independently pinned source artifacts.
 
@@ -135,7 +129,8 @@ class ResearchLabPublication:
         reader = PinnedStudyReader(path, entry["snapshotSha256"], study_id)
         rows = reader.experiments(study_id, 0, 1000)["items"]
         original_ids = {row["experimentId"] for row in rows if row["status"] == "COMPLETED"}
-        with ReadOnlyAnalysisStore(path) as store:
+        failed_count = sum(row["status"] == "FAILED" for row in rows)
+        with closing(ReadOnlyAnalysisStore(path)) as store:
             plan = store.get("autonomous_plan", study_id)
             dataset = store.get("autonomous_dataset", plan["dataset_id"])
         report_raw = approved_file(root, entry["report"], MAX_REPORT)
@@ -150,7 +145,7 @@ class ResearchLabPublication:
             and report.get("selection_policy") == plan["selection_policy"]
             and report.get("cohort") == dataset["generalization"]["cohort"]
             and report.get("completed") == len(original_ids)
-            and report.get("failed") == len(rows) - len(original_ids)
+            and report.get("failed") == failed_count
             and report.get("completed") + report.get("failed") == plan["experiment_budget"]
             and report.get("protected_final_test_read") is False
             and report.get("independent_future_performance_established") is False
