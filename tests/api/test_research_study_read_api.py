@@ -34,26 +34,33 @@ def study(tmp_path: Path) -> tuple[Path, str, str, str]:
     plan_id = digest(plan)
     store = AnalysisStore(path)
     store.put("autonomous_plan", plan)
-    store.put("autonomous_attempt", {
-        "plan_id": plan_id, "experiment_id": experiment_id, "parent_experiment": None
-    })
-    result_id = store.put("autonomous_result", {
-        "experiment_id": experiment_id,
-        "config": config,
-        "mean_ap": 0.55,
-        "stability_ap": 0.52,
-        "largest_train_gap": 0.04,
-    })
-    store.put("autonomous_terminal", {
-        "experiment_id": experiment_id,
-        "config": config,
-        "state": "completed",
-        "result_id": result_id,
-        "mean_ap": 0.55,
-        "stability_ap": 0.52,
-        "largest_train_gap": 0.04,
-        "checkpoint": "/private/do-not-expose",
-    })
+    store.put(
+        "autonomous_attempt",
+        {"plan_id": plan_id, "experiment_id": experiment_id, "parent_experiment": None},
+    )
+    result_id = store.put(
+        "autonomous_result",
+        {
+            "experiment_id": experiment_id,
+            "config": config,
+            "mean_ap": 0.55,
+            "stability_ap": 0.52,
+            "largest_train_gap": 0.04,
+            },
+    )
+    store.put(
+        "autonomous_terminal",
+        {
+            "experiment_id": experiment_id,
+            "config": config,
+            "state": "completed",
+            "result_id": result_id,
+            "mean_ap": 0.55,
+            "stability_ap": 0.52,
+            "largest_train_gap": 0.04,
+            "checkpoint": "/private/do-not-expose",
+            },
+    )
     store.close()
     os.chmod(path, 0o600)
     return path, hashlib.sha256(path.read_bytes()).hexdigest(), plan_id, experiment_id
@@ -76,12 +83,14 @@ def test_read_only_study_and_original_experiment_id(tmp_path: Path) -> None:
         assert row["reportId"] is None
         assert "checkpoint" not in str(row)
         assert "source_pin" not in str(row)
-        assert client.get(
-            f"/api/v1/research/studies/{plan_id}/experiments/{experiment_id}"
-        ).json() == row
-        assert client.get(
-            f"/api/v1/research/studies/{plan_id}/experiments/{'f' * 64}"
-        ).status_code == 404
+        assert (
+            client.get(f"/api/v1/research/studies/{plan_id}/experiments/{experiment_id}").json()
+            == row
+        )
+        assert (
+            client.get(f"/api/v1/research/studies/{plan_id}/experiments/{'f' * 64}").status_code
+            == 404
+        )
 
 
 def test_local_only_and_missing_reader(tmp_path: Path) -> None:
@@ -90,15 +99,14 @@ def test_local_only_and_missing_reader(tmp_path: Path) -> None:
     app = create_app(study_reader=reader)
     with TestClient(app) as client:
         assert client.get("/api/v1/research/studies").status_code == 403
-    with TestClient(
-        app, client=("127.0.0.1", 12345), base_url="http://127.0.0.1"
-    ) as client:
-        assert client.get(
-            "/api/v1/research/studies", headers={"Origin": "https://untrusted.example"}
-        ).status_code == 403
-        assert client.get(
-            f"/api/v1/research/studies/{'f' * 64}/experiments"
-        ).status_code == 404
+    with TestClient(app, client=("127.0.0.1", 12345), base_url="http://127.0.0.1") as client:
+        assert (
+            client.get(
+                "/api/v1/research/studies", headers={"Origin": "https://untrusted.example"}
+            ).status_code
+            == 403
+        )
+        assert client.get(f"/api/v1/research/studies/{'f' * 64}/experiments").status_code == 404
     with TestClient(
         create_app(), client=("127.0.0.1", 12345), base_url="http://127.0.0.1"
     ) as client:
