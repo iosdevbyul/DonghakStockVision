@@ -55,6 +55,10 @@ from donghak_stock_vision.storage.daily_research_public_models import (
 )
 from donghak_stock_vision.storage.daily_research_reader import DailyResearchReader
 from donghak_stock_vision.storage.krx_operations_diagnostics import summarize
+from donghak_stock_vision.storage.research_lab_publication import (
+    ResearchLabError,
+    ResearchLabPublication,
+)
 from donghak_stock_vision.storage.research_studies import PinnedStudyReader, StudyReadError
 
 if TYPE_CHECKING:
@@ -79,6 +83,7 @@ def create_app(
     security_metadata_reader: SecurityMetadataReader | None = None,
     portfolio_reader: PortfolioPublicationReader | None = None,
     study_reader: PinnedStudyReader | None = None,
+    lab_reader: ResearchLabPublication | None = None,
     allowed_origins: Sequence[str] = (
         "http://localhost:3000",
         "http://127.0.0.1:3000",
@@ -380,6 +385,93 @@ def create_app(
         if not re.fullmatch(r"[a-f0-9]{64}", experiment_id):
             raise HTTPException(404, detail={"code": "experiment_not_found"})
         return study_lookup(source.experiment, study_id, experiment_id)
+
+    def require_lab_reader(request: Request) -> ResearchLabPublication:
+        if lab_reader is None:
+            raise HTTPException(503, detail={"code": "research_lab_unavailable"})
+        origin = request.headers.get("origin")
+        try:
+            origin_host = urlsplit(origin).hostname if origin is not None else None
+        except ValueError:
+            raise HTTPException(403, detail={"code": "local_research_access_required"}) from None
+        if (
+            request.client is None
+            or request.client.host not in {"127.0.0.1", "::1"}
+            or request.url.hostname not in {"localhost", "127.0.0.1", "::1"}
+            or (origin is not None and origin_host not in {"localhost", "127.0.0.1", "::1"})
+        ):
+            raise HTTPException(403, detail={"code": "local_research_access_required"})
+        if len(request.scope.get("path", "")) + len(request.scope.get("query_string", b"")) > 4096:
+            raise HTTPException(413, detail={"code": "oversized_request"})
+        return lab_reader
+
+    LabSource = Annotated[ResearchLabPublication, Depends(require_lab_reader)]
+
+    def lab_lookup(callback: Callable[..., dict[str, Any] | None], *args: Any) -> dict[str, Any]:
+        try:
+            result = callback(*args)
+            if result is None:
+                raise HTTPException(404, detail={"code": "research_lab_item_not_found"})
+            return result
+        except ResearchLabError:
+            raise HTTPException(503, detail={"code": "research_lab_evidence_unavailable"}) from None
+
+    @app.get("/api/v1/research/lab/studies")
+    def lab_studies(
+        source: LabSource,
+        offset: Annotated[int, Query(ge=0, le=100000)] = 0,
+        limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    ) -> dict[str, Any]:
+        return lab_lookup(source.catalog, offset, limit)
+
+    @app.get("/api/v1/research/lab/studies/{study_id}")
+    def lab_study(study_id: str, source: LabSource) -> dict[str, Any]:
+        if not re.fullmatch(r"[a-f0-9]{64}", study_id):
+            raise HTTPException(404, detail={"code": "research_lab_item_not_found"})
+        return lab_lookup(source.study, study_id)
+
+    @app.get("/api/v1/research/lab/studies/{study_id}/experiments")
+    def lab_experiments(
+        study_id: str,
+        source: LabSource,
+        offset: Annotated[int, Query(ge=0, le=100000)] = 0,
+        limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    ) -> dict[str, Any]:
+        if not re.fullmatch(r"[a-f0-9]{64}", study_id):
+            raise HTTPException(404, detail={"code": "research_lab_item_not_found"})
+        return lab_lookup(source.experiment_catalog, study_id, offset, limit)
+
+    @app.get("/api/v1/research/lab/studies/{study_id}/experiments/{experiment_id}")
+    def lab_experiment(study_id: str, experiment_id: str, source: LabSource) -> dict[str, Any]:
+        if not re.fullmatch(r"[a-f0-9]{64}", study_id) or not re.fullmatch(
+            r"[a-f0-9]{64}", experiment_id
+        ):
+            raise HTTPException(404, detail={"code": "research_lab_item_not_found"})
+        return lab_lookup(source.experiment, study_id, experiment_id)
+
+    @app.get("/api/v1/research/lab/studies/{study_id}/memory")
+    def lab_memory(study_id: str, source: LabSource) -> dict[str, Any]:
+        if not re.fullmatch(r"[a-f0-9]{64}", study_id):
+            raise HTTPException(404, detail={"code": "research_lab_item_not_found"})
+        return lab_lookup(source.memory, study_id)
+
+    @app.get("/api/v1/research/lab/reports")
+    def lab_reports(
+        source: LabSource,
+        offset: Annotated[int, Query(ge=0, le=100000)] = 0,
+        limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    ) -> dict[str, Any]:
+        return lab_lookup(source.report_catalog, offset, limit)
+
+    @app.get("/api/v1/research/lab/reports/{report_id}")
+    def lab_report(report_id: str, source: LabSource) -> dict[str, Any]:
+        if not re.fullmatch(r"[a-f0-9]{64}", report_id):
+            raise HTTPException(404, detail={"code": "research_lab_item_not_found"})
+        return lab_lookup(source.report, report_id)
+
+    @app.get("/api/v1/research/lab/comparisons")
+    def lab_comparisons(source: LabSource) -> dict[str, Any]:
+        return lab_lookup(source.comparisons)
 
     app.include_router(portfolio_router(portfolio_reader))
     return app
