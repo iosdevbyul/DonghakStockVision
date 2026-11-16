@@ -53,6 +53,9 @@ def parser() -> argparse.ArgumentParser:
     )
     result.add_argument("--portfolio-publications", type=Path, help="private publication root")
     result.add_argument("--portfolio-index-sha256", help="operator-approved publication index SHA")
+    result.add_argument("--study-snapshot", type=Path, help="approved private study SQLite copy")
+    result.add_argument("--study-snapshot-sha256", help="approved study copy digest")
+    result.add_argument("--study-id", help="content-addressed immutable study plan ID")
     result.add_argument("--ai-management-root", type=Path)
     result.add_argument("--ai-model-config", type=Path)
     result.add_argument("--ai-model-config-sha256")
@@ -69,6 +72,10 @@ def main(argv: list[str] | None = None) -> None:
     if snapshot_path is None:
         configured = os.getenv("DSV_API_SNAPSHOT_PATH", "").strip()
         snapshot_path = Path(configured) if configured else None
+    if args.operational_only and any(
+        (args.study_snapshot, args.study_snapshot_sha256, args.study_id)
+    ):
+        parser().error("operational-only forbids study snapshots")
     if args.operational_only and any(
         (
             args.ai_management_root,
@@ -144,6 +151,22 @@ def main(argv: list[str] | None = None) -> None:
             )
         except DailyResearchReaderError:
             raise SystemExit("daily research snapshot unavailable or invalid") from None
+    if any((args.study_snapshot, args.study_snapshot_sha256, args.study_id)) and not all(
+        (args.study_snapshot, args.study_snapshot_sha256, args.study_id)
+    ):
+        parser().error("study snapshot, SHA-256 and study ID must be supplied together")
+    study_reader = None
+    if args.study_snapshot is not None:
+        if args.host not in {"127.0.0.1", "::1"}:
+            parser().error("study evidence requires a loopback bind")
+        from donghak_stock_vision.api.research_studies import PinnedStudyReader, StudyReadError
+
+        try:
+            study_reader = PinnedStudyReader(
+                args.study_snapshot, args.study_snapshot_sha256, args.study_id
+            )
+        except (StudyReadError, OSError):
+            raise SystemExit("study snapshot unavailable or not approved") from None
     portfolio_reader = None
     if bool(args.portfolio_publications) != bool(args.portfolio_index_sha256):
         parser().error(
@@ -237,6 +260,7 @@ def main(argv: list[str] | None = None) -> None:
         ai_management=ai_management,
         ai_authorize=ai_authorize,
         portfolio_reader=portfolio_reader,
+        study_reader=study_reader,
         ohlcv_reader=ohlcv_reader,
         operational_reader=operational_reader,
         analysis_reader=analysis_reader,
@@ -251,6 +275,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     if (
         portfolio_reader is not None
+        or study_reader is not None
         or daily_research_reader is not None
         or ai_management is not None
     ):
