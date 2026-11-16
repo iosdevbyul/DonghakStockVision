@@ -46,7 +46,7 @@ def study(tmp_path: Path) -> tuple[Path, str, str, str]:
             "mean_ap": 0.55,
             "stability_ap": 0.52,
             "largest_train_gap": 0.04,
-            },
+        },
     )
     store.put(
         "autonomous_terminal",
@@ -59,7 +59,7 @@ def study(tmp_path: Path) -> tuple[Path, str, str, str]:
             "stability_ap": 0.52,
             "largest_train_gap": 0.04,
             "checkpoint": "/private/do-not-expose",
-            },
+        },
     )
     store.close()
     os.chmod(path, 0o600)
