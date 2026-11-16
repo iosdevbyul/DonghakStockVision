@@ -77,8 +77,37 @@ def catalog(horizons: list[int]) -> list[dict[str, Any]]:
     return result
 
 
+def prepare_features(snapshot: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    require(sum(len(v) for v in snapshot["rows"].values()) <= 20000, "multi_feature_cache_bound")
+    cache: dict[str, list[dict[str, Any]]] = {}
+    for ticker in sorted(snapshot["rows"]):
+        bars = snapshot_bars(snapshot, ticker)
+        originals = [b.to_dict() for b in bars]
+        cache[ticker] = []
+        available = bars[0].collected_at if bars else None
+        for i, b in enumerate(bars):
+            assert available is not None
+            available = max(available, b.collected_at)
+            entry: dict[str, Any] = dict(
+                date=b.trading_date.isoformat(), available_at=available.isoformat()
+            )
+            try:
+                entry.update(
+                    values=vector(bars[: i + 1], snapshot, available),
+                    input_hash=digest(originals[max(0, i - 62) : i + 1]),
+                )
+            except ValueError as error:
+                entry["error"] = str(error)
+            cache[ticker].append(entry)
+    return cache
+
+
 def build(
-    snapshot: dict[str, Any], h: int
+    snapshot: dict[str, Any],
+    h: int,
+    *,
+    feature_cache: dict[str, list[dict[str, Any]]] | None = None,
+    exclusions_by_ticker: dict[str, dict[str, int]] | None = None,
 ) -> tuple[list[Sample], dict[str, float], dict[str, int]]:
     contract(h)
     rows, changes = [], {}
@@ -86,11 +115,19 @@ def build(
     for ticker in sorted(snapshot["rows"]):
         bars = snapshot_bars(snapshot, ticker)
         original_rows = [b.to_dict() for b in bars]
+        ticker_excluded: Counter[str] = Counter()
         for i, b in enumerate(bars):
             try:
                 history = bars[: i + 1]
                 available = max(r.collected_at for r in history)
-                values = vector(history, snapshot, available)
+                if feature_cache is None:
+                    values = vector(history, snapshot, available)
+                    input_hash = digest(original_rows[max(0, i - 62) : i + 1])
+                else:
+                    cached = feature_cache[ticker][i]
+                    require("error" not in cached, cached.get("error", "multi_feature_cache_error"))
+                    values = tuple(cached["values"])
+                    input_hash = cached["input_hash"]
                 require(i + h + 1 < len(bars), "research_immature_label")
                 future = bars[i + 2 : i + h + 2]
                 check_segment(bars[max(0, i - 35) : i + h + 2], snapshot)
@@ -110,7 +147,7 @@ def build(
                     future[-1].trading_date,
                     max(r.collected_at for r in bars[i : i + h + 2]),
                     "labeled",
-                    digest(original_rows[max(0, i - 62) : i + 1]),
+                    input_hash,
                     tuple(r.trading_date for r in future),
                 )
                 s = Sample.from_dict(s.to_dict())
@@ -118,6 +155,9 @@ def build(
                 changes[digest(s.to_dict())] = change
             except ValueError as error:
                 excluded[str(error)] += 1
+                ticker_excluded[str(error)] += 1
+        if exclusions_by_ticker is not None:
+            exclusions_by_ticker[ticker] = dict(ticker_excluded)
     return sorted(rows, key=lambda s: (s.anchor_at, s.ticker)), changes, dict(excluded)
 
 

@@ -140,6 +140,11 @@ def memory_view(
             for key, v in previous:
                 if v["config"]["goal"]["horizon"] != horizon:
                     continue
+                if (
+                    plan["version"] == "autonomous_plan_v5"
+                    and v["config"]["stock_policy"] != choice["config"]["stock_policy"]
+                ):
+                    continue
                 semantic = digest(v["config"])
                 seen.add(semantic)
                 item = dict(experiment_id=key, config=v["config"], state=v["state"])
@@ -179,6 +184,11 @@ def memory_view(
                 if v["config"]["goal"]["horizon"] == horizon
             ],
         )[:12]
+    if plan["version"] == "autonomous_plan_v5":
+        candidates = [
+            c for c in candidates if c["config"]["stock_policy"] == choice["config"]["stock_policy"]
+        ][:12]
+        # Pooled-arm scores cannot tune a held-out-symbol model.
     require(bool(candidates), "gemma_semantic_search_exhausted")
     return dict(
         version="research_agent_view_v1",
@@ -203,7 +213,12 @@ def adopt(
 ) -> bool:
     """Reuse exact matching results for paired-arm comparison, never refit a duplicate."""
     other, data = context(peer, peer_pin)
-    require(peer != root and other == plan, "gemma_cache_owner")
+    compatible = other == plan
+    if plan["version"] == other["version"] == "autonomous_plan_v5":
+        compatible = {
+            k: v for k, v in other.items() if k not in ("selection_policy", "policy_parent")
+        } == {k: v for k, v in plan.items() if k not in ("selection_policy", "policy_parent")}
+    require(peer != root and compatible, "gemma_cache_owner")
     key = choice["experiment_id"]
     with closing(ReadOnlyAnalysisStore(peer / DB)) as source:
         prior = terminals(source).get(key)

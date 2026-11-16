@@ -103,7 +103,26 @@ def execute(
 ) -> tuple[dict[str, Any], bytes]:
     horizon = str(config["goal"]["horizon"])
     value = dataset["goals"][horizon]
-    names = config["goal"].get("features") if dataset["version"] == "direction_dataset_v2" else None
+    multi = dataset["version"] == "direction_dataset_v3"
+    names = (
+        config["goal"].get("features")
+        if dataset["version"] in ("direction_dataset_v2", "direction_dataset_v3")
+        else None
+    )
+    heldout_symbols = set(dataset["generalization"]["heldout_tickers"]) if multi else set()
+    if multi:
+        from donghak_stock_vision.models import stock_generalization
+
+        require(not gate, "multi_stock_confirmation_sealed")
+        require(
+            config["candidate"].get("parameters", {}).get("solver") != "liblinear",
+            "multi_liblinear_quarantined",
+        )
+        require(
+            config in stock_generalization.catalog(sorted(int(h) for h in dataset["goals"])),
+            "multi_stock_configuration",
+        )
+    unseen = multi and config["stock_policy"] == "heldout"
     samples = [Sample.from_dict(s) for s in value["samples"]]
     returns = value["returns"]
     span = ResearchDateRange(
@@ -115,6 +134,8 @@ def execute(
         for s in samples
         if s.label_end is not None and span.start <= s.trading_date <= s.label_end <= span.end
     ]
+    if unseen:
+        training = [s for s in training if s.ticker not in heldout_symbols]
     candidate = Candidate(**config["candidate"])
     folds: list[dict[str, Any]] = []
     if not gate:
@@ -124,6 +145,22 @@ def execute(
                 ResearchDateRange(**{k: date.fromisoformat(v) for k, v in f["evaluation"].items()}),
             )
             train, holdout, purged = purged_fold(samples, fold, "up")
+            full_holdout = holdout
+            if multi:
+                holdout = [s for s in holdout if s.ticker not in heldout_symbols]
+                if unseen:
+                    train = [s for s in train if s.ticker not in heldout_symbols]
+                    require(
+                        not ({s.ticker for s in train} & heldout_symbols),
+                        "multi_stock_training_leak",
+                    )
+                require(
+                    all(
+                        s.label_end is not None and s.label_end < fold.evaluation.start
+                        for s in train
+                    ),
+                    "multi_stock_time_leak",
+                )
             require(
                 counts(train)["dates"] >= 252
                 and counts(train)["rows"] >= 1000
@@ -145,10 +182,21 @@ def execute(
                 train,
                 returns,
             )
-            if dataset["version"] == "direction_dataset_v2":
+            if multi:
+                full_scores = predict_candidate(
+                    candidate, fitted, masked(full_holdout, config["mask"])
+                )
+                evaluated["stock_generalization"] = stock_generalization.assessments(
+                    full_holdout, full_scores, heldout_symbols, unseen
+                )
+                evaluated["selection_population"] = (
+                    "seen_symbols_only_heldout_scores_not_search_inputs"
+                )
+            if dataset["version"] in ("direction_dataset_v2", "direction_dataset_v3"):
                 # One common calendar stride for all tickers avoids overlapping
                 # event windows; cross-sectional dependence remains unqualified.
-                days = sorted({s.trading_date for s in holdout})
+                calendar_rows = full_holdout if multi else holdout
+                days = sorted({s.trading_date for s in calendar_rows})
                 selected_days = set()
                 last_end = None
                 for day in days:
@@ -156,7 +204,7 @@ def execute(
                         selected_days.add(day)
                         last_end = max(
                             s.label_end
-                            for s in holdout
+                            for s in calendar_rows
                             if s.trading_date == day and s.label_end is not None
                         )
                 independent_rows = [s for s in holdout if s.trading_date in selected_days]
@@ -168,6 +216,19 @@ def execute(
                     independent_scores,
                 )
                 evaluated["nonoverlapping_counts"] = counts(independent_rows)
+                if multi:
+                    whole_rows = [s for s in full_holdout if s.trading_date in selected_days]
+                    whole_scores = [
+                        p
+                        for s, p in zip(full_holdout, full_scores, strict=True)
+                        if s.trading_date in selected_days
+                    ]
+                    evaluated["nonoverlapping_generalization"] = stock_generalization.assessments(
+                        whole_rows, whole_scores, heldout_symbols, unseen
+                    )
+                    evaluated["nonoverlapping_calendar_dates"] = [
+                        d.isoformat() for d in sorted(selected_days)
+                    ]
                 evaluated["independent_performance_established"] = False
                 evaluated["cross_sectional_dependence"] = True
                 evaluated["overlapping_full_population_metrics"] = True
@@ -197,6 +258,14 @@ def execute(
         performance_approved=False,
         execution_authorized=False,
     )
+    if multi:
+        result["generalization_training"] = dict(
+            policy=config["stock_policy"],
+            training_tickers=sorted({s.ticker for s in training}),
+            heldout_tickers=sorted(heldout_symbols),
+            heldout_scores_used_for_selection=False,
+            liblinear_quarantined=True,
+        )
     if gate:
         val = dataset["split"]["validation"]
         held = [
