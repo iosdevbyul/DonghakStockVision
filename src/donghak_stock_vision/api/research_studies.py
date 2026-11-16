@@ -59,7 +59,7 @@ class PinnedStudyReader:
         # Validate eagerly; startup must fail closed, not leak an invalid archive.
         self._read()
 
-    def _read(self) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    def _read(self) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, str | None]]:
         try:
             if (
                 _file_sha256(self.path) != self.expected_sha256
@@ -114,7 +114,7 @@ class PinnedStudyReader:
                         ):
                             raise StudyReadError("invalid_result_link")
                     terminals[key] = item
-                attempts = {}
+                attempts: dict[str, str | None] = {}
                 for _, item in store.all("autonomous_attempt"):
                     key = _pin(item["experiment_id"])
                     if key not in identities or item.get("plan_id") != self.study_id:
