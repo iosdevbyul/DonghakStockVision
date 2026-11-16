@@ -269,6 +269,32 @@ class ResearchLabPublication:
             "items": rows[offset : offset + limit],
         }
 
+    def study(self, study_id: str) -> dict[str, Any] | None:
+        return self.studies.get(study_id)
+
+    def memory(self, study_id: str) -> dict[str, Any] | None:
+        study = self.studies.get(study_id)
+        if study is None:
+            return None
+        report = self.reports[study["reportId"]]
+        return {
+            "schemaVersion": "research_lab_memory_v1",
+            "studyId": study_id,
+            "events": [
+                {
+                    "experimentId": item["experimentId"],
+                    "selectionOrder": item["selection"],
+                    "cacheReused": item["cacheReused"],
+                    "parentExperimentId": self.experiments[
+                        (study_id, item["experimentId"])
+                    ]["parentExperimentId"],
+                }
+                for item in report["discoveryCurve"]
+            ],
+            "memoryChangedChoices": report["memoryChangedChoices"],
+            "interpretation": "HISTORICAL_SEARCH_ONLY_NOT_CAUSAL_LLM_EVIDENCE",
+        }
+
     def experiment_catalog(
         self, study_id: str, offset: int = 0, limit: int = 25
     ) -> dict[str, Any] | None:
