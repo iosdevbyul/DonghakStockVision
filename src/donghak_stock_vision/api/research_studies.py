@@ -59,6 +59,10 @@ class PinnedStudyReader:
 
     def _read(self) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
         try:
+            if (_file_sha256(self.path) != self.expected_sha256
+                    or self.path.is_symlink()
+                    or self.path.stat().st_mode & 0o077):
+                raise StudyReadError("study_snapshot_changed")
             with closing(ReadOnlyAnalysisStore(self.path)) as store:
                 store.connection.execute("PRAGMA query_only=ON")
                 plan = store.get("autonomous_plan", self.study_id)
