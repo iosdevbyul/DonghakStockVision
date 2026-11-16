@@ -63,19 +63,38 @@ def metric_view(metrics: Any) -> dict[str, Any] | None:
 
 
 def safe_diagnostic(value: Any) -> dict[str, Any] | None:
-    """Diagnostics are descriptive, never independently qualified selection evidence."""
+    """Allowlisted diagnostic populations, never source paths or selection authority."""
     if not isinstance(value, dict):
         return None
-    output: dict[str, Any] = {}
-    for name in ("periods", "heldout_symbols"):
-        part = value.get(name)
-        if isinstance(part, dict):
-            output[name] = {
-                key: {"metrics": metric_view(item.get("metrics"))}
-                for key, item in part.items()
-                if isinstance(item, dict) and bool(NAME.fullmatch(str(key)))
+    assessment = value.get("assessment", value)
+    if not isinstance(assessment, dict):
+        return None
+    groups: dict[str, Any] = {}
+    for section in ("periods", "input_regimes", "heldout_regimes", "ticker_distribution"):
+        source = assessment.get(section)
+        if isinstance(source, dict):
+            groups[section] = {
+                key: {
+                    "metrics": metric_view(item.get("metrics")),
+                    "status": item.get("status")
+                    if item.get("status") in {"internal_descriptive_sufficient", "insufficient"}
+                    else "UNKNOWN",
+                    "independentlyQualified": False,
+                }
+                for key, item in source.items()
+                if isinstance(key, str) and NAME.fullmatch(key) and isinstance(item, dict)
             }
-    return output or None
+    for section in ("seen_symbols", "heldout_symbols"):
+        item = assessment.get(section)
+        if isinstance(item, dict):
+            groups[section] = {
+                "metrics": metric_view(item.get("metrics")),
+                "status": item.get("status")
+                if item.get("status") in {"internal_descriptive_sufficient", "insufficient"}
+                else "UNKNOWN",
+                "independentlyQualified": False,
+            }
+    return groups or None
 
 
 class ResearchLabPublication:
@@ -126,6 +145,8 @@ class ResearchLabPublication:
                    "invalid_publication_name")
         path = root / entry["snapshot"]
         ensure(entry["snapshot"].endswith(".sqlite3"), "invalid_snapshot_extension")
+        ensure(entry["report"].endswith(".json") and entry["report"] != "index.json",
+               "invalid_report_extension")
         reader = PinnedStudyReader(path, entry["snapshotSha256"], study_id)
         rows = reader.experiments(study_id, 0, 1000)["items"]
         original_ids = {row["experimentId"] for row in rows if row["status"] == "COMPLETED"}
@@ -133,6 +154,11 @@ class ResearchLabPublication:
         with closing(ReadOnlyAnalysisStore(path)) as store:
             plan = store.get("autonomous_plan", study_id)
             dataset = store.get("autonomous_dataset", plan["dataset_id"])
+            validated_terminals = reader._read()[1]
+            actual_results = {
+                key: store.get("autonomous_result", validated_terminals[key]["result_id"])
+                for key in original_ids
+            }
         report_raw = approved_file(root, entry["report"], MAX_REPORT)
         ensure(hashlib.sha256(report_raw).hexdigest() == entry["reportSha256"],
                "report_pin_mismatch")
@@ -170,7 +196,8 @@ class ResearchLabPublication:
                    "invalid_report_experiments")
             candidates = value["experiments"]
             selected = value.get("selected_without_heldout_scores")
-            ensure(selected is None or selected in original_ids, "invalid_selected_experiment")
+            horizon_ids = {r.get("experiment_id") for r in candidates if isinstance(r, dict)}
+            ensure(selected is None or selected in horizon_ids, "invalid_selected_experiment")
             for result in candidates:
                 ensure(isinstance(result, dict), "invalid_report_experiment")
                 key = result.get("experiment_id")
@@ -182,6 +209,22 @@ class ResearchLabPublication:
                     ),
                     "invalid_report_experiment_link",
                 )
+                original = actual_results[key]
+                ensure(
+                    result.get("mean_seen_cv_ap") == original["mean_ap"]
+                    and result.get("stability_seen_cv_ap") == original["stability_ap"]
+                    and result.get("overfit_gap") == original["largest_train_gap"],
+                    "report_metrics_owner_mismatch",
+                )
+                if "folds" in original:
+                    ensure(
+                        result.get("fold_seen_metrics") == [
+                            fold["evaluation"]["metrics"] for fold in original["folds"]
+                        ] and result.get("fold_baselines") == [
+                            fold["evaluation"]["baselines"] for fold in original["folds"]
+                        ],
+                        "report_fold_owner_mismatch",
+                    )
                 report_ids.add(key)
                 ref = next(row for row in rows if row["experimentId"] == key)
                 ref = ref | {
@@ -189,6 +232,15 @@ class ResearchLabPublication:
                     "selectedForHorizon": key == selected,
                     "seenFoldMetrics": [
                         metric_view(v) for v in result.get("fold_seen_metrics", [])
+                    ],
+                    "seenFoldBaselines": [
+                        {
+                            name: metric_view(value)
+                            for name, value in fold.items()
+                            if name in ("training_prior", "training_majority", "momentum")
+                        }
+                        for fold in result.get("fold_baselines", [])
+                        if isinstance(fold, dict)
                     ],
                     "deferredDiagnostic": safe_diagnostic(result.get("deferred_diagnostic")),
                     "robustSummary": {
