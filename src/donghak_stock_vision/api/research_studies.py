@@ -48,6 +48,8 @@ class PinnedStudyReader:
             or not path.is_file()
             or path.stat().st_size > 512 * 1024 * 1024
             or path.stat().st_size == 0
+            or path.with_name(path.name + "-wal").exists()
+            or path.with_name(path.name + "-shm").exists()
             or path.suffix != ".sqlite3"
             or path.stat().st_mode & 0o077
             or _file_sha256(path) != self.expected_sha256
@@ -59,9 +61,13 @@ class PinnedStudyReader:
 
     def _read(self) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
         try:
-            if (_file_sha256(self.path) != self.expected_sha256
-                    or self.path.is_symlink()
-                    or self.path.stat().st_mode & 0o077):
+            if (
+                _file_sha256(self.path) != self.expected_sha256
+                or self.path.is_symlink()
+                or self.path.stat().st_mode & 0o077
+                or self.path.with_name(self.path.name + "-wal").exists()
+                or self.path.with_name(self.path.name + "-shm").exists()
+            ):
                 raise StudyReadError("study_snapshot_changed")
             with closing(ReadOnlyAnalysisStore(self.path)) as store:
                 store.connection.execute("PRAGMA query_only=ON")
@@ -119,6 +125,8 @@ class PinnedStudyReader:
                         attempts[key] = None
                     else:
                         attempts[key] = parent
+                if _file_sha256(self.path) != self.expected_sha256:
+                    raise StudyReadError("study_snapshot_changed_during_read")
                 return plan, terminals, attempts
         except (sqlite3.Error, OSError, KeyError, TypeError, ValueError) as exc:
             raise StudyReadError("research_snapshot_invalid") from exc
