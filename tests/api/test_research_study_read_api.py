@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from donghak_stock_vision.api.app import create_app
-from donghak_stock_vision.api.research_studies import PinnedStudyReader, StudyReadError
+from donghak_stock_vision.storage.research_studies import PinnedStudyReader, StudyReadError
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.storage.analysis import AnalysisStore
 
