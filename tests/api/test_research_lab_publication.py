@@ -194,10 +194,10 @@ def create_publication(tmp_path: Path) -> tuple[Path, str, list[dict[str, Any]]]
                 }
             )
             original.append({"studyId": plan_id, "report": report, "reportPath": report_path})
-    index = root / "index.json"
-    index.write_text(json.dumps({"version": VERSION, "entries": entries}))
-    os.chmod(index, 0o600)
-    return root, hashlib.sha256(index.read_bytes()).hexdigest(), original
+    index_file = root / "index.json"
+    index_file.write_text(json.dumps({"version": VERSION, "entries": entries}))
+    os.chmod(index_file, 0o600)
+    return root, hashlib.sha256(index_file.read_bytes()).hexdigest(), original
 
 
 def test_six_reports_seventy_two_experiments_and_descriptive_comparisons(

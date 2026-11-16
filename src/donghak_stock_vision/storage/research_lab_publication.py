@@ -11,7 +11,7 @@ import re
 from collections import defaultdict
 from contextlib import closing
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
@@ -65,7 +65,7 @@ def approved_json(raw: bytes) -> dict[str, Any]:
     except (UnicodeError, ValueError, RecursionError) as error:
         raise ResearchLabError("invalid_publication_json") from error
     ensure(type(value) is dict, "invalid_publication_document")
-    return value
+    return cast(dict[str, Any], value)
 
 
 def metric_view(metrics: Any) -> dict[str, Any] | None:
@@ -132,7 +132,8 @@ class ResearchLabPublication:
         index = approved_json(raw)
         ensure(index.get("version") == VERSION, "unsupported_publication_version")
         entries = index.get("entries")
-        ensure(isinstance(entries, list) and 1 <= len(entries) <= 24, "invalid_study_count")
+        if not isinstance(entries, list) or not 1 <= len(entries) <= 24:
+            raise ResearchLabError("invalid_study_count")
         self.studies: dict[str, dict[str, Any]] = {}
         self.experiments: dict[tuple[str, str], dict[str, Any]] = {}
         self.reports: dict[str, dict[str, Any]] = {}
@@ -205,7 +206,7 @@ class ResearchLabPublication:
             and type(report.get("observations")) is int
             and 0 <= report["observations"] <= 10000000
             and report.get("failed") == failed_count
-            and report.get("completed") + report.get("failed") == plan["experiment_budget"]
+            and report["completed"] + report["failed"] == plan["experiment_budget"]
             and report.get("protected_final_test_read") is False
             and report.get("independent_future_performance_established") is False
             and report.get("pit_qualified") is False
@@ -222,10 +223,8 @@ class ResearchLabPublication:
         )
         ensure(report.get("comparison_conditions_pin") == comparison, "comparison_scope_mismatch")
         horizons = report.get("horizons")
-        ensure(
-            isinstance(horizons, dict) and set(horizons) == set(dataset["goals"]),
-            "invalid_report_horizons",
-        )
+        if not isinstance(horizons, dict) or set(horizons) != set(dataset["goals"]):
+            raise ResearchLabError("invalid_report_horizons")
         report_ids: set[str] = set()
         summaries = []
         for horizon, value in sorted(horizons.items(), key=lambda kv: int(kv[0])):
