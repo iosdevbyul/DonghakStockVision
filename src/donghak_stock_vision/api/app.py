@@ -1,10 +1,12 @@
 """FastAPI transport for immutable research snapshots."""
 
+import re
 from collections.abc import Callable, Mapping, Sequence
 from datetime import date
 from typing import TYPE_CHECKING, Annotated, Any
+from urllib.parse import urlsplit
 
-from fastapi import Depends, FastAPI, HTTPException, Path, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from donghak_stock_vision.api.historical_portfolio_routes import portfolio_router
@@ -53,6 +55,7 @@ from donghak_stock_vision.storage.daily_research_public_models import (
 )
 from donghak_stock_vision.storage.daily_research_reader import DailyResearchReader
 from donghak_stock_vision.storage.krx_operations_diagnostics import summarize
+from donghak_stock_vision.storage.research_studies import PinnedStudyReader, StudyReadError
 
 if TYPE_CHECKING:
     from donghak_stock_vision.ai_model_routes import Principal
@@ -75,6 +78,7 @@ def create_app(
     daily_research_report: Callable[[], Mapping[str, Any]] | None = None,
     security_metadata_reader: SecurityMetadataReader | None = None,
     portfolio_reader: PortfolioPublicationReader | None = None,
+    study_reader: PinnedStudyReader | None = None,
     allowed_origins: Sequence[str] = (
         "http://localhost:3000",
         "http://127.0.0.1:3000",
@@ -319,6 +323,63 @@ def create_app(
         limit: Annotated[int, Query(ge=1, le=100)] = 25,
     ) -> AlertsPayload:
         return operations.alerts(offset, limit)
+
+    def require_study_reader(request: Request) -> PinnedStudyReader:
+        if study_reader is None:
+            raise HTTPException(503, detail={"code": "study_snapshot_not_configured"})
+        origin = request.headers.get("origin")
+        try:
+            origin_host = urlsplit(origin).hostname if origin is not None else None
+        except ValueError:
+            raise HTTPException(403, detail={"code": "local_research_access_required"}) from None
+        if (
+            request.client is None
+            or request.client.host not in {"127.0.0.1", "::1"}
+            or request.url.hostname not in {"localhost", "127.0.0.1", "::1"}
+            or (origin is not None and origin_host not in {"localhost", "127.0.0.1", "::1"})
+        ):
+            raise HTTPException(403, detail={"code": "local_research_access_required"})
+        if len(request.scope.get("path", "")) + len(request.scope.get("query_string", b"")) > 4096:
+            raise HTTPException(413, detail={"code": "oversized_request"})
+        return study_reader
+
+    StudySource = Annotated[PinnedStudyReader, Depends(require_study_reader)]
+
+    def study_lookup(callback: Callable[..., dict[str, Any] | None], *args: Any) -> dict[str, Any]:
+        try:
+            result = callback(*args)
+            if result is None:
+                raise HTTPException(404, detail={"code": "experiment_not_found"})
+            return result
+        except StudyReadError as error:
+            if str(error) in {"study_not_found", "invalid_study_id"}:
+                raise HTTPException(404, detail={"code": "study_not_found"}) from None
+            raise HTTPException(503, detail={"code": "study_evidence_unavailable"}) from None
+
+    @app.get("/api/v1/research/studies")
+    def research_studies(source: StudySource) -> dict[str, Any]:
+        return study_lookup(source.collection)
+
+    @app.get("/api/v1/research/studies/{study_id}/experiments")
+    def research_experiments(
+        study_id: str,
+        source: StudySource,
+        offset: Annotated[int, Query(ge=0, le=100000)] = 0,
+        limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    ) -> dict[str, Any]:
+        if not re.fullmatch(r"[a-f0-9]{64}", study_id):
+            raise HTTPException(404, detail={"code": "study_not_found"})
+        return study_lookup(source.experiments, study_id, offset, limit)
+
+    @app.get("/api/v1/research/studies/{study_id}/experiments/{experiment_id}")
+    def research_experiment(
+        study_id: str, experiment_id: str, source: StudySource
+    ) -> dict[str, Any]:
+        if not re.fullmatch(r"[a-f0-9]{64}", study_id):
+            raise HTTPException(404, detail={"code": "study_not_found"})
+        if not re.fullmatch(r"[a-f0-9]{64}", experiment_id):
+            raise HTTPException(404, detail={"code": "experiment_not_found"})
+        return study_lookup(source.experiment, study_id, experiment_id)
 
     app.include_router(portfolio_router(portfolio_reader))
     return app
