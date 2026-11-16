@@ -15,8 +15,8 @@ from typing import Any
 
 from donghak_stock_vision.storage.autonomous_research import DB, context
 from donghak_stock_vision.storage.research_lab_publication import (
-    ResearchLabPublication,
     VERSION,
+    ResearchLabPublication,
 )
 
 
