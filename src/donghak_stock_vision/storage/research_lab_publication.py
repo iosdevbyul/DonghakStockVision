@@ -268,6 +268,16 @@ class ResearchLabPublication:
                     (float(result["mean_seen_cv_ap"]) for result in candidates),
                     default=None,
                 ),
+                "selectedSeenFoldMetrics": next(
+                    ([metric_view(m) for m in result.get("fold_seen_metrics", [])]
+                     for result in candidates if result["experiment_id"] == selected),
+                    [],
+                ),
+                "selectedDeferredDiagnostic": next(
+                    (safe_diagnostic(result.get("deferred_diagnostic"))
+                     for result in candidates if result["experiment_id"] == selected),
+                    None,
+                ),
                 "selectionUsesDeferredDiagnostic": False,
             })
         ensure(report_ids == original_ids, "incomplete_report_identity")
