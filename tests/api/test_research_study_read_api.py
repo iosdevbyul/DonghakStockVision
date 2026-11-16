@@ -4,8 +4,8 @@ import hashlib
 import os
 from pathlib import Path
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from donghak_stock_vision.api.app import create_app
 from donghak_stock_vision.api.research_studies import PinnedStudyReader, StudyReadError
