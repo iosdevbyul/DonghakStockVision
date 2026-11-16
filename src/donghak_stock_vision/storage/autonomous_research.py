@@ -9,7 +9,7 @@ from typing import Any
 
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import fields, require, sha
-from donghak_stock_vision.data.learning import digest, timestamp
+from donghak_stock_vision.data.learning import Sample, digest, timestamp
 from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy
 from donghak_stock_vision.data.research_split import ExplicitResearchSplit
 from donghak_stock_vision.models.autonomous import champion_check, execute
@@ -51,15 +51,22 @@ def clock() -> str:
 
 
 def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
-    multi = d.get("version") == "autonomous_multi_stock_source_v1"
+    historical = d.get("version") == "autonomous_historical_source_v1"
+    multi = historical or d.get("version") == "autonomous_multi_stock_source_v1"
     fields(
         d,
         "version dataset_version research protocol tickers cutoff horizons"
-        + (" multi_stock" if multi else ""),
+        + (" multi_stock" if multi else "")
+        + (" historical" if historical else ""),
     )
     require(
         d["version"]
-        in (REQUEST, "autonomous_direction_source_v2", "autonomous_multi_stock_source_v1")
+        in (
+            REQUEST,
+            "autonomous_direction_source_v2",
+            "autonomous_multi_stock_source_v1",
+            "autonomous_historical_source_v1",
+        )
         and type(d["dataset_version"]) is str
         and 0 < len(d["dataset_version"]) <= 100,
         "autonomous_request_version",
@@ -88,7 +95,14 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
         from donghak_stock_vision.storage.real_market_dataset import document
 
         spec = fields(d["multi_stock"], "heldout_tickers budget policy inventory cohort")
-        stock_generalization.validate_scope(spec, d["tickers"])
+        stock_generalization.validate_scope(
+            spec | dict(policy="adaptive" if historical else spec["policy"]), d["tickers"]
+        )
+        if historical:
+            require(
+                spec["policy"] in ("adaptive", "predeclared", "robust"),
+                "historical_selection_policy",
+            )
         inv = fields(spec["inventory"], "path pin")
         inventory = document(inv["path"], maximum=4 * 1024**2)
         require(
@@ -105,13 +119,33 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
         and not root.is_relative_to(source.database.parent),
         "autonomous_new_separate_output",
     )
-    snapshot, original = prepare_real_market_training(source)
+    cached_goals: dict[str, Any] | None = None
+    if historical:
+        from donghak_stock_vision.storage import historical_research_source as historical_source
+
+        if "source_parent" in d["historical"]:
+            snapshot, original, cached_goals = _historical_reused_source(source, d["historical"])
+            require(
+                set(cached_goals) == {str(h) for h in d["horizons"]}, "historical_cached_horizons"
+            )
+        else:
+            snapshot, original = historical_source.snapshot(source, d["historical"])
+    else:
+        snapshot, original = prepare_real_market_training(source)
     value = snapshot.to_dict()
     expanded = d["version"] == "autonomous_direction_source_v2" or multi
     if expanded:
         from donghak_stock_vision.models import research_v2
     windows = folds(value, access)
-    feature_cache = research_v2.prepare_features(value) if multi else None
+    feature_cache = (
+        None
+        if cached_goals is not None
+        else historical_source.features(value)
+        if historical
+        else research_v2.prepare_features(value)
+        if multi
+        else None
+    )
     cached_availability = (
         {(t, e["date"]): e["available_at"] for t, entries in feature_cache.items() for e in entries}
         if feature_cache is not None
@@ -120,25 +154,58 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
     goals = {}
     for horizon in d["horizons"]:
         by_ticker: dict[str, dict[str, int]] = {}
-        samples, changes, excluded = (
-            research_v2.build(
-                value, horizon, feature_cache=feature_cache, exclusions_by_ticker=by_ticker
+        if cached_goals is not None:
+            cached = cached_goals[str(horizon)]
+            require(
+                cached["contract"] == research_v2.contract(horizon),
+                "historical_cached_feature_contract",
             )
-            if expanded
-            else build(value, horizon)
-        )
-        goal_windows = research_v2.folds(value, access, horizon) if expanded else windows
+            samples = [Sample.from_dict(s) for s in cached["samples"]]
+            changes, excluded = cached["returns"], cached["excluded"]
+            by_ticker = cached["exclusions_by_ticker"]
+        else:
+            samples, changes, excluded = (
+                research_v2.build(
+                    value, horizon, feature_cache=feature_cache, exclusions_by_ticker=by_ticker
+                )
+                if expanded
+                else build(value, horizon)
+            )
+        if historical:
+            from donghak_stock_vision.models import historical_research as historical_model
+
+            goal_windows = historical_model.folds(value, d["historical"], horizon)
+        else:
+            goal_windows = research_v2.folds(value, access, horizon) if expanded else windows
         # Label generation is retrospective; neither the generator nor search workers
         # may use the separate confirmation population to select another candidate.
         train = [
-            s for s in samples if s.label_end is not None and s.label_end <= access.training.end
+            s
+            for s in samples
+            if s.label_end is not None
+            and s.label_end
+            <= (
+                date.fromisoformat(d["historical"]["search_end"])
+                if historical
+                else access.training.end
+            )
         ]
         held = [
             s
             for s in samples
-            if s.trading_date >= access.validation.start
+            if s.trading_date
+            >= (
+                date.fromisoformat(d["historical"]["diagnostic"]["start"])
+                if historical
+                else access.validation.start
+            )
             and s.label_end is not None
-            and s.label_end <= access.validation.end
+            and s.label_end
+            <= (
+                date.fromisoformat(d["historical"]["diagnostic"]["end"])
+                if historical
+                else access.validation.end
+            )
         ]
         goals[str(horizon)] = dict(
             contract=research_v2.contract(horizon) if expanded else contract(horizon),
@@ -159,7 +226,11 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
         if expanded:
             goals[str(horizon)]["folds"] = [f.to_dict() for f in goal_windows]
             goals[str(horizon)]["input_availability"] = {
-                digest(s.to_dict()): cached_availability[(s.ticker, s.trading_date.isoformat())]
+                digest(s.to_dict()): cached_goals[str(horizon)]["input_availability"][
+                    digest(s.to_dict())
+                ]
+                if cached_goals is not None
+                else cached_availability[(s.ticker, s.trading_date.isoformat())]
                 if multi
                 else max(
                     timestamp(r["collected_at"])
@@ -169,7 +240,9 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
                 for s in train + held
             }
     data = dict(
-        version="direction_dataset_v3"
+        version="direction_dataset_v4"
+        if historical
+        else "direction_dataset_v3"
         if multi
         else "direction_dataset_v2"
         if expanded
@@ -213,6 +286,8 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
             liblinear_quarantined=True,
             original_source_universe_cap=25,
         )
+    if historical:
+        data["historical"] = d["historical"]
     code = provenance()
     configurations = []
     for config in (
@@ -232,7 +307,9 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
         )
         configurations.append(dict(experiment_id=digest(identity), config=config))
     plan = dict(
-        version="autonomous_plan_v5"
+        version="autonomous_plan_v6"
+        if historical
+        else "autonomous_plan_v5"
         if multi
         else "autonomous_plan_v4"
         if expanded
@@ -264,6 +341,13 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
             experiment_budget=spec["budget"],
             selection_policy=spec["policy"],
             generalization_pin=digest(data["generalization"]),
+        )
+    if historical:
+        plan.update(
+            search_space=historical_model.SPACE,
+            historical_pin=digest(data["historical"]),
+            robust_priorities=historical_model.PRIORITIES,
+            transfer_hypotheses=_historical_hypotheses(d["historical"]),
         )
     root.mkdir(mode=0o700, parents=True)
     pins.mkdir(mode=0o700, parents=True)
@@ -318,6 +402,7 @@ def context(
             "autonomous_plan_v3",
             "autonomous_plan_v4",
             "autonomous_plan_v5",
+            "autonomous_plan_v6",
         )
         and plan["limits"] == LIMITS
         and not data["protected_final_test_read"]
@@ -329,11 +414,27 @@ def context(
         "autonomous_plan_binding",
     )
     protected = ExplicitResearchSplit.from_dict(data["split"]).final_test
-    require(date.fromisoformat(data["last_date"]) < protected.start, "autonomous_sealed_window")
+    historical = plan["version"] == "autonomous_plan_v6"
+    if historical:
+        from donghak_stock_vision.storage.historical_research_source import validate
+
+        require(digest(data["historical"]) == plan["historical_pin"], "historical_scope_pin")
+        allowed = validate(data["historical"], ExplicitResearchSplit.from_dict(data["split"]))
+        from donghak_stock_vision.models import historical_research as historical_model
+
+        require(
+            plan["selection_policy"] in historical_model.POLICIES
+            and plan["robust_priorities"] == historical_model.PRIORITIES,
+            "historical_policy_binding",
+        )
+    else:
+        require(date.fromisoformat(data["last_date"]) < protected.start, "autonomous_sealed_window")
     require(
         data["version"]
         == (
-            "direction_dataset_v3"
+            "direction_dataset_v4"
+            if historical
+            else "direction_dataset_v3"
             if plan["version"] == "autonomous_plan_v5"
             else "direction_dataset_v2"
             if plan["version"] == "autonomous_plan_v4"
@@ -349,12 +450,29 @@ def context(
                 date.fromisoformat(sample["trading_date"]),
                 date.fromisoformat(sample["label_end"]),
             )
-            require(start <= end < protected.start, "autonomous_sample_sealed_window")
-            if split.training.start <= start <= end <= split.training.end:
+            if historical:
+                require(
+                    any(w.start <= start <= end <= w.end for w in allowed),
+                    "historical_sample_source_window",
+                )
+            else:
+                require(start <= end < protected.start, "autonomous_sample_sealed_window")
+            if (
+                start <= end <= date.fromisoformat(data["historical"]["search_end"])
+                if historical
+                else split.training.start <= start <= end <= split.training.end
+            ):
                 training.append(sample)
             else:
                 require(
-                    split.validation.start <= start <= end <= split.validation.end,
+                    (
+                        data["historical"]["diagnostic"]["start"]
+                        <= start.isoformat()
+                        <= end.isoformat()
+                        <= data["historical"]["diagnostic"]["end"]
+                    )
+                    if historical
+                    else split.validation.start <= start <= end <= split.validation.end,
                     "autonomous_sample_split",
                 )
                 held.append(sample)
@@ -376,14 +494,16 @@ def context(
             and "agent_model_digest" not in plan,
             "llm_managed_plan_policy",
         )
-    if plan["version"] == "autonomous_plan_v5":
+    if plan["version"] in ("autonomous_plan_v5", "autonomous_plan_v6"):
         from donghak_stock_vision.models import stock_generalization
 
         stock_generalization.validate_scope(
-            data["generalization"] | dict(policy=plan["selection_policy"]), data["tickers"]
+            data["generalization"]
+            | dict(policy="adaptive" if historical else plan["selection_policy"]),
+            data["tickers"],
         )
         require(
-            space == stock_generalization.SPACE
+            space == ("historical_cross_period_v1" if historical else stock_generalization.SPACE)
             and plan["experiment_budget"] == 12
             and digest(data["generalization"]) == plan["generalization_pin"]
             and data["generalization"]["liblinear_quarantined"]
@@ -396,9 +516,10 @@ def context(
                 parent = parent_store.get("autonomous_plan", owner["pin"])
             require(
                 "policy_parent" not in parent
-                and parent["version"] == "autonomous_plan_v5"
+                and parent["version"] == plan["version"]
                 and parent["selection_policy"] == "adaptive"
-                and plan["selection_policy"] == "predeclared"
+                and plan["selection_policy"]
+                in (("predeclared", "robust") if historical else ("predeclared",))
                 and {k: v for k, v in parent.items() if k != "selection_policy"}
                 == {
                     k: v for k, v in plan.items() if k not in ("selection_policy", "policy_parent")
@@ -425,7 +546,8 @@ def context(
             training_sample_pin=data["goals"][str(item["config"]["goal"]["horizon"])]["sample_pin"],
             fold_pin=digest(
                 data["goals"][str(item["config"]["goal"]["horizon"])]["folds"]
-                if plan["version"] in ("autonomous_plan_v4", "autonomous_plan_v5")
+                if plan["version"]
+                in ("autonomous_plan_v4", "autonomous_plan_v5", "autonomous_plan_v6")
                 else data["folds"]
             ),
             implementation_hash=plan["code"]["implementation_hash"],
@@ -478,6 +600,8 @@ def terminals(store: AnalysisStore) -> dict[str, dict[str, Any]]:
                 ),
                 "autonomous_result_summary",
             )
+        if value["state"] == "completed" and "robust_summary" in original:
+            value = value | dict(robust_summary=original["robust_summary"])
         result[key] = value
     return result
 
@@ -485,6 +609,10 @@ def terminals(store: AnalysisStore) -> dict[str, dict[str, Any]]:
 def next_experiment(
     plan: dict[str, Any], data: dict[str, Any], done: dict[str, dict[str, Any]]
 ) -> dict[str, Any] | None:
+    if plan["version"] == "autonomous_plan_v6":
+        from donghak_stock_vision.models.historical_research import selection
+
+        return selection(plan, done)
     if plan["version"] == "autonomous_plan_v5":
         from donghak_stock_vision.models.stock_generalization import selection
 
@@ -582,7 +710,7 @@ def status(root: Path, pin: str) -> FrozenJSON:
             gates_consumed=len(consumed),
             confirmation_failures=len(confirmation_failures),
             state="BUDGET_EXHAUSTED"
-            if plan["version"] in ("autonomous_plan_v4", "autonomous_plan_v5")
+            if plan["version"] in ("autonomous_plan_v4", "autonomous_plan_v5", "autonomous_plan_v6")
             and len(finished) >= plan["experiment_budget"]
             else "SEARCH_EXHAUSTED"
             if selected <= done.keys()
@@ -705,7 +833,7 @@ def worker(root: Path, pin: str, attempt_id: str) -> None:
 def confirm(root: Path, pin: str) -> None:
     plan, data = context(root, pin)
     require(
-        plan["version"] not in ("autonomous_plan_v4", "autonomous_plan_v5"),
+        plan["version"] not in ("autonomous_plan_v4", "autonomous_plan_v5", "autonomous_plan_v6"),
         "research_v2_confirmation_sealed",
     )
     with closing(AnalysisStore(root / DB)) as store:
@@ -811,3 +939,87 @@ def confirm(root: Path, pin: str) -> None:
                     )
                 )
             store.put_many(records)
+
+
+def _historical_hypotheses(spec: dict[str, Any]) -> list[dict[str, Any]]:
+    from pathlib import Path
+
+    from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
+
+    result = []
+    for reference in spec["references"]:
+        fields(reference, "root pin")
+        root = Path(reference["root"])
+        plan, _ = context(root, reference["pin"], code_check=False)
+        require(plan["version"] == "autonomous_plan_v5", "historical_reference_owner")
+        with closing(ReadOnlyAnalysisStore(root / DB)) as store:
+            done = terminals(store)
+        require(len(done) == plan["experiment_budget"], "historical_reference_locked")
+        for h in (1, 5, 20):
+            candidates = [
+                v
+                for v in done.values()
+                if v["state"] == "completed" and v["config"]["goal"]["horizon"] == h
+            ]
+            if candidates:
+                best = max(candidates, key=lambda v: v["stability_ap"] - v["largest_train_gap"])
+                result.append(
+                    dict(
+                        config=best["config"],
+                        reference=reference,
+                        reason="revalidate_prior_stability_in_new_population_and_period",
+                        source_scores_are_current_evidence=False,
+                    )
+                )
+    return result
+
+
+def _historical_reused_source(
+    request: RealMarketTrainingRequest, spec: dict[str, Any]
+) -> tuple[FrozenJSON, FrozenJSON, dict[str, Any]]:
+    """Only a separately retained v6 original snapshot owner; no fabricated source proof."""
+    from pathlib import Path
+
+    from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
+    from donghak_stock_vision.storage.real_market_training import MAX_ROWS, _quiescent
+
+    parent = fields(spec["source_parent"], "root pin")
+    root = Path(parent["root"])
+    plan, data = context(root, parent["pin"], code_check=False)
+    require(
+        plan["version"] == "autonomous_plan_v6" and "source_parent" not in data["historical"],
+        "historical_original_snapshot_parent",
+    )
+    with closing(ReadOnlyAnalysisStore(root / DB)) as store:
+        value = store.get("autonomous_snapshot", plan["snapshot_id"])
+        proofs = store.all("autonomous_source_verification")
+        require(
+            not store.all("autonomous_attempt") and not store.all("autonomous_terminal"),
+            "historical_pretraining_source_revision_only",
+        )
+    source = value["real_market_source"]
+    require(
+        len(proofs) == 1
+        and proofs[0][1] == source
+        and source["version"] == "historical_disjoint_source_v1"
+        and digest(source) == plan["source_pin"]
+        and source["local_originals_verified"] is True
+        and source["request"] == request.document.to_dict()
+        and value["historical_windows"] == spec["windows"]
+        and data["historical"]["search_end"] == spec["search_end"]
+        and data["historical"]["diagnostic"] == spec["diagnostic"]
+        and source["selected_rows_pin"] == digest(value["rows"])
+        and sum(len(r) for r in value["rows"].values()) <= MAX_ROWS,
+        "historical_original_snapshot_binding",
+    )
+    _quiescent(request.database, request.database_pin)
+    original_pin = digest(source)
+    source = source | dict(
+        version="historical_disjoint_reused_source_v1",
+        original_source_pin=original_pin,
+        source_parent=parent,
+        original_snapshot_pin=plan["snapshot_id"],
+        prepared_dataset_pin=plan["dataset_id"],
+    )
+    value = value | dict(real_market_source=source)
+    return FrozenJSON.freeze(value), FrozenJSON.freeze(source), data["goals"]

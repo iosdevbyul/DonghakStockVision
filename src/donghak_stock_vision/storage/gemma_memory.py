@@ -141,7 +141,7 @@ def memory_view(
                 if v["config"]["goal"]["horizon"] != horizon:
                     continue
                 if (
-                    plan["version"] == "autonomous_plan_v5"
+                    plan["version"] in ("autonomous_plan_v5", "autonomous_plan_v6")
                     and v["config"]["stock_policy"] != choice["config"]["stock_policy"]
                 ):
                     continue
@@ -184,7 +184,7 @@ def memory_view(
                 if v["config"]["goal"]["horizon"] == horizon
             ],
         )[:12]
-    if plan["version"] == "autonomous_plan_v5":
+    if plan["version"] in ("autonomous_plan_v5", "autonomous_plan_v6"):
         candidates = [
             c for c in candidates if c["config"]["stock_policy"] == choice["config"]["stock_policy"]
         ][:12]
@@ -214,7 +214,10 @@ def adopt(
     """Reuse exact matching results for paired-arm comparison, never refit a duplicate."""
     other, data = context(peer, peer_pin)
     compatible = other == plan
-    if plan["version"] == other["version"] == "autonomous_plan_v5":
+    if plan["version"] == other["version"] and plan["version"] in (
+        "autonomous_plan_v5",
+        "autonomous_plan_v6",
+    ):
         compatible = {
             k: v for k, v in other.items() if k not in ("selection_policy", "policy_parent")
         } == {k: v for k, v in plan.items() if k not in ("selection_policy", "policy_parent")}

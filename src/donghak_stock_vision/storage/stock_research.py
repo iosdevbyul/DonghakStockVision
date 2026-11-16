@@ -14,12 +14,20 @@ from donghak_stock_vision.storage.krx_backfill import write_new
 from donghak_stock_vision.storage.real_market_training import _quiescent
 
 
-def fork_policy(parent: Path, pin: str, root: Path, pins: Path) -> str:
+def fork_policy(
+    parent: Path, pin: str, root: Path, pins: Path, *, policy: str = "predeclared"
+) -> str:
     plan, data = context(parent, pin)
     require(
-        plan["version"] == "autonomous_plan_v5"
+        plan["version"] in ("autonomous_plan_v5", "autonomous_plan_v6")
         and plan["selection_policy"] == "adaptive"
-        and "policy_parent" not in plan,
+        and "policy_parent" not in plan
+        and policy
+        in (
+            ("predeclared", "robust")
+            if plan["version"] == "autonomous_plan_v6"
+            else ("predeclared",)
+        ),
         "multi_stock_policy_parent",
     )
     require(
@@ -32,7 +40,7 @@ def fork_policy(parent: Path, pin: str, root: Path, pins: Path) -> str:
     request = json.loads((parent / "request.json").read_text())
     require(digest(request) == plan["request_pin"], "multi_stock_original_request")
     _quiescent(Path(request["research"]["database"]), request["research"]["pin"])
-    new = plan | dict(selection_policy="predeclared", policy_parent=dict(root=str(parent), pin=pin))
+    new = plan | dict(selection_policy=policy, policy_parent=dict(root=str(parent), pin=pin))
     root.mkdir(mode=0o700, parents=True)
     pins.mkdir(mode=0o700, parents=True)
     with (
@@ -59,7 +67,7 @@ def fork_policy(parent: Path, pin: str, root: Path, pins: Path) -> str:
                 version="multi_stock_policy_fork_v1",
                 source_request_pin=plan["request_pin"],
                 parent_plan=pin,
-                policy="predeclared",
+                policy=policy,
                 plan=digest(new),
             )
         ),
@@ -76,7 +84,9 @@ def fork_policy(parent: Path, pin: str, root: Path, pins: Path) -> str:
 
 def report(root: Path, pin: str) -> dict[str, Any]:
     plan, data = context(root, pin, code_check=False)
-    require(plan["version"] == "autonomous_plan_v5", "multi_stock_report_owner")
+    require(
+        plan["version"] in ("autonomous_plan_v5", "autonomous_plan_v6"), "multi_stock_report_owner"
+    )
     with closing(ReadOnlyAnalysisStore(root / DB)) as store:
         done = terminals(store)
         results = [
@@ -90,7 +100,12 @@ def report(root: Path, pin: str) -> dict[str, Any]:
     horizons = {}
     for h, g in data["goals"].items():
         rows = [r for r in results if str(r["config"]["goal"]["horizon"]) == h]
-        best = max(rows, key=lambda r: r["stability_ap"], default=None)
+        if plan["version"] == "autonomous_plan_v6":
+            from donghak_stock_vision.models.historical_research import priority
+
+            best = max(rows, key=lambda r: priority(r["robust_summary"]), default=None)
+        else:
+            best = max(rows, key=lambda r: r["stability_ap"], default=None)
         horizons[h] = dict(
             training_samples=g["training_rows"],
             samples_by_ticker=g["samples_by_ticker"],
@@ -104,6 +119,8 @@ def report(root: Path, pin: str) -> dict[str, Any]:
                     mean_seen_cv_ap=r["mean_ap"],
                     stability_seen_cv_ap=r["stability_ap"],
                     overfit_gap=r["largest_train_gap"],
+                    robust_summary=r.get("robust_summary"),
+                    deferred_diagnostic=r.get("deferred_diagnostic") if locked else None,
                     training=r["generalization_training"],
                     fold_seen_metrics=[f["evaluation"]["metrics"] for f in r["folds"]],
                     fold_baselines=[f["evaluation"]["baselines"] for f in r["folds"]],
@@ -125,6 +142,11 @@ def report(root: Path, pin: str) -> dict[str, Any]:
                 for r in rows
             ],
         )
+    discovery = []
+    if plan["version"] == "autonomous_plan_v6":
+        from donghak_stock_vision.models.historical_research import curve
+
+        discovery = curve(done)
     return dict(
         version="multi_stock_research_report_v1",
         dataset_version=data["dataset_version"],
@@ -155,6 +177,12 @@ def report(root: Path, pin: str) -> dict[str, Any]:
         learner_seconds=sum(v["wall_seconds"] for v in costs),
         maximum_rss_kb=max((v["maximum_rss_kb"] for v in costs), default=0),
         horizons=horizons,
+        historical=data.get("historical"),
+        final_retrieval_basis="precommitted_robust_tuple_seen_only"
+        if plan["version"] == "autonomous_plan_v6"
+        else "stability_seen_cv_ap",
+        transfer_hypotheses=plan.get("transfer_hypotheses", []),
+        discovery_curve=discovery,
         population_comparison="different_cohorts_are_reference_only",
         survivorship_bias="UNKNOWN",
         independent_future_performance_established=False,
