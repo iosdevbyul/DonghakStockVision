@@ -56,6 +56,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--study-snapshot", type=Path, help="approved private study SQLite copy")
     result.add_argument("--study-snapshot-sha256", help="approved study copy digest")
     result.add_argument("--study-id", help="content-addressed immutable study plan ID")
+    result.add_argument("--research-lab-root", type=Path, help="approved six-study publication directory")
+    result.add_argument("--research-lab-index-sha256", help="independently approved index SHA-256")
     result.add_argument("--ai-management-root", type=Path)
     result.add_argument("--ai-model-config", type=Path)
     result.add_argument("--ai-model-config-sha256")
@@ -73,7 +75,8 @@ def main(argv: list[str] | None = None) -> None:
         configured = os.getenv("DSV_API_SNAPSHOT_PATH", "").strip()
         snapshot_path = Path(configured) if configured else None
     if args.operational_only and any(
-        (args.study_snapshot, args.study_snapshot_sha256, args.study_id)
+        (args.study_snapshot, args.study_snapshot_sha256, args.study_id,
+         args.research_lab_root, args.research_lab_index_sha256)
     ):
         parser().error("operational-only forbids study snapshots")
     if args.operational_only and any(
@@ -108,8 +111,9 @@ def main(argv: list[str] | None = None) -> None:
             )
         ):
             parser().error("--operational-only forbids research and publication inputs")
-    elif snapshot_path is None and not args.ai_management_only and not args.study_snapshot:
-        parser().error("--snapshot, --study-snapshot or DSV_API_SNAPSHOT_PATH is required")
+    elif (snapshot_path is None and not args.ai_management_only
+          and not args.study_snapshot and not args.research_lab_root):
+        parser().error("a research snapshot or approved research lab index is required")
 
     try:
         import uvicorn
@@ -167,6 +171,23 @@ def main(argv: list[str] | None = None) -> None:
             )
         except (StudyReadError, OSError):
             raise SystemExit("study snapshot unavailable or not approved") from None
+    if bool(args.research_lab_root) != bool(args.research_lab_index_sha256):
+        parser().error("research lab root and independently approved SHA are required together")
+    lab_reader = None
+    if args.research_lab_root is not None:
+        if args.host not in {"127.0.0.1", "::1"}:
+            parser().error("research lab requires a loopback bind")
+        from donghak_stock_vision.storage.research_lab_publication import (
+            ResearchLabError,
+            ResearchLabPublication,
+        )
+
+        try:
+            lab_reader = ResearchLabPublication(
+                args.research_lab_root, args.research_lab_index_sha256
+            )
+        except (ResearchLabError, OSError, KeyError, ValueError, TypeError):
+            raise SystemExit("research lab publication unavailable or invalid") from None
     portfolio_reader = None
     if bool(args.portfolio_publications) != bool(args.portfolio_index_sha256):
         parser().error(
@@ -261,6 +282,7 @@ def main(argv: list[str] | None = None) -> None:
         ai_authorize=ai_authorize,
         portfolio_reader=portfolio_reader,
         study_reader=study_reader,
+        lab_reader=lab_reader,
         ohlcv_reader=ohlcv_reader,
         operational_reader=operational_reader,
         analysis_reader=analysis_reader,
@@ -276,6 +298,7 @@ def main(argv: list[str] | None = None) -> None:
     if (
         portfolio_reader is not None
         or study_reader is not None
+        or lab_reader is not None
         or daily_research_reader is not None
         or ai_management is not None
     ):
