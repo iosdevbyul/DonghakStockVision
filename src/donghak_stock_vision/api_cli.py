@@ -77,8 +77,13 @@ def main(argv: list[str] | None = None) -> None:
         configured = os.getenv("DSV_API_SNAPSHOT_PATH", "").strip()
         snapshot_path = Path(configured) if configured else None
     if args.operational_only and any(
-        (args.study_snapshot, args.study_snapshot_sha256, args.study_id,
-         args.research_lab_root, args.research_lab_index_sha256)
+        (
+            args.study_snapshot,
+            args.study_snapshot_sha256,
+            args.study_id,
+            args.research_lab_root,
+            args.research_lab_index_sha256,
+        )
     ):
         parser().error("operational-only forbids study snapshots")
     if args.operational_only and any(
@@ -113,8 +118,12 @@ def main(argv: list[str] | None = None) -> None:
             )
         ):
             parser().error("--operational-only forbids research and publication inputs")
-    elif (snapshot_path is None and not args.ai_management_only
-          and not args.study_snapshot and not args.research_lab_root):
+    elif (
+        snapshot_path is None
+        and not args.ai_management_only
+        and not args.study_snapshot
+        and not args.research_lab_root
+    ):
         parser().error("a research snapshot or approved research lab index is required")
 
     try:

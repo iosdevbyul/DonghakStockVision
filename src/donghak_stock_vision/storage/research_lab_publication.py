@@ -3,6 +3,7 @@
 Never serves raw experiment databases, report documents, paths or private source PINs.
 The offline operator approves an independent index digest binding six report/snapshot pairs.
 """
+
 import hashlib
 import json
 import math
@@ -19,8 +20,17 @@ from donghak_stock_vision.storage.research_studies import PinnedStudyReader
 VERSION = "research_lab_publication_index_v1"
 HEX = re.compile(r"^[a-f0-9]{64}$")
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,100}$")
-METRICS = ("pr_auc_ap", "balanced_accuracy", "brier_score", "n", "positive", "negative",
-           "accuracy", "roc_auc", "f1")
+METRICS = (
+    "pr_auc_ap",
+    "balanced_accuracy",
+    "brier_score",
+    "n",
+    "positive",
+    "negative",
+    "accuracy",
+    "roc_auc",
+    "f1",
+)
 MAX_REPORT = 8 * 1024 * 1024
 MAX_INDEX = 64 * 1024
 
@@ -38,7 +48,8 @@ def approved_file(root: Path, name: str, maximum: int) -> bytes:
     ensure(bool(NAME.fullmatch(name)) and name not in {".", ".."}, "invalid_publication_name")
     path = root / name
     ensure(
-        not path.is_symlink() and path.is_file()
+        not path.is_symlink()
+        and path.is_file()
         and 0 < path.stat().st_size <= maximum
         and path.stat().st_mode & 0o077 == 0,
         "invalid_publication_file",
@@ -63,9 +74,9 @@ def metric_view(metrics: Any) -> dict[str, Any] | None:
     safe = {}
     for key in METRICS:
         value = metrics.get(key)
-        if key in metrics and (value is None or (
-            type(value) in (int, float) and math.isfinite(value)
-        )):
+        if key in metrics and (
+            value is None or (type(value) in (int, float) and math.isfinite(value))
+        ):
             safe[key] = value
     return safe
 
@@ -130,31 +141,33 @@ class ResearchLabPublication:
             self._ingest(root, entry)
         ensure(len(self.studies) == len(entries), "duplicate_study")
         for group in self.groups.values():
-            ensure(len({v["selectionPolicy"] for v in group}) == len(group),
-                   "duplicate_policy_arm")
+            ensure(len({v["selectionPolicy"] for v in group}) == len(group), "duplicate_policy_arm")
 
     def _ingest(self, root: Path, entry: Any) -> None:
         ensure(
             type(entry) is dict
-            and set(entry) == {
-                "studyId", "snapshot", "snapshotSha256", "report", "reportSha256"
-            },
+            and set(entry) == {"studyId", "snapshot", "snapshotSha256", "report", "reportSha256"},
             "invalid_publication_entry",
         )
         study_id = entry["studyId"]
-        ensure(isinstance(study_id, str) and bool(HEX.fullmatch(study_id)),
-               "invalid_study_id")
+        ensure(isinstance(study_id, str) and bool(HEX.fullmatch(study_id)), "invalid_study_id")
         ensure(study_id not in self.studies, "duplicate_study")
         for field in ("snapshotSha256", "reportSha256"):
-            ensure(isinstance(entry[field], str) and bool(HEX.fullmatch(entry[field])),
-                   "invalid_publication_pin")
+            ensure(
+                isinstance(entry[field], str) and bool(HEX.fullmatch(entry[field])),
+                "invalid_publication_pin",
+            )
         for field in ("snapshot", "report"):
-            ensure(isinstance(entry[field], str) and bool(NAME.fullmatch(entry[field])),
-                   "invalid_publication_name")
+            ensure(
+                isinstance(entry[field], str) and bool(NAME.fullmatch(entry[field])),
+                "invalid_publication_name",
+            )
         path = root / entry["snapshot"]
         ensure(entry["snapshot"].endswith(".sqlite3"), "invalid_snapshot_extension")
-        ensure(entry["report"].endswith(".json") and entry["report"] != "index.json",
-               "invalid_report_extension")
+        ensure(
+            entry["report"].endswith(".json") and entry["report"] != "index.json",
+            "invalid_report_extension",
+        )
         reader = PinnedStudyReader(path, entry["snapshotSha256"], study_id)
         rows = reader.experiments(study_id, 0, 1000)["items"]
         original_ids = {row["experimentId"] for row in rows if row["status"] == "COMPLETED"}
@@ -168,8 +181,9 @@ class ResearchLabPublication:
                 for key in original_ids
             }
         report_raw = approved_file(root, entry["report"], MAX_REPORT)
-        ensure(hashlib.sha256(report_raw).hexdigest() == entry["reportSha256"],
-               "report_pin_mismatch")
+        ensure(
+            hashlib.sha256(report_raw).hexdigest() == entry["reportSha256"], "report_pin_mismatch"
+        )
         report = approved_json(report_raw)
         ensure(
             report.get("version") == "multi_stock_research_report_v1"
@@ -199,20 +213,26 @@ class ResearchLabPublication:
             and report.get("execution_authorized") is False,
             "report_owner_mismatch",
         )
-        comparison = digest({
-            key: value for key, value in plan.items()
-            if key not in ("selection_policy", "policy_parent")
-        })
-        ensure(report.get("comparison_conditions_pin") == comparison,
-               "comparison_scope_mismatch")
+        comparison = digest(
+            {
+                key: value
+                for key, value in plan.items()
+                if key not in ("selection_policy", "policy_parent")
+            }
+        )
+        ensure(report.get("comparison_conditions_pin") == comparison, "comparison_scope_mismatch")
         horizons = report.get("horizons")
-        ensure(isinstance(horizons, dict) and set(horizons) == set(dataset["goals"]),
-               "invalid_report_horizons")
+        ensure(
+            isinstance(horizons, dict) and set(horizons) == set(dataset["goals"]),
+            "invalid_report_horizons",
+        )
         report_ids: set[str] = set()
         summaries = []
         for horizon, value in sorted(horizons.items(), key=lambda kv: int(kv[0])):
-            ensure(isinstance(value, dict) and isinstance(value.get("experiments"), list),
-                   "invalid_report_experiments")
+            ensure(
+                isinstance(value, dict) and isinstance(value.get("experiments"), list),
+                "invalid_report_experiments",
+            )
             candidates = value["experiments"]
             selected = value.get("selected_without_heldout_scores")
             horizon_ids = {r.get("experiment_id") for r in candidates if isinstance(r, dict)}
@@ -221,9 +241,12 @@ class ResearchLabPublication:
                 ensure(isinstance(result, dict), "invalid_report_experiment")
                 key = result.get("experiment_id")
                 ensure(
-                    key in original_ids and key not in report_ids
-                    and result.get("config") == next(
-                        row["config"] for row in plan["configurations"]
+                    key in original_ids
+                    and key not in report_ids
+                    and result.get("config")
+                    == next(
+                        row["config"]
+                        for row in plan["configurations"]
                         if row["experiment_id"] == key
                     ),
                     "invalid_report_experiment_link",
@@ -242,11 +265,10 @@ class ResearchLabPublication:
                 )
                 if "folds" in original:
                     ensure(
-                        result.get("fold_seen_metrics") == [
-                            fold["evaluation"]["metrics"] for fold in original["folds"]
-                        ] and result.get("fold_baselines") == [
-                            fold["evaluation"]["baselines"] for fold in original["folds"]
-                        ],
+                        result.get("fold_seen_metrics")
+                        == [fold["evaluation"]["metrics"] for fold in original["folds"]]
+                        and result.get("fold_baselines")
+                        == [fold["evaluation"]["baselines"] for fold in original["folds"]],
                         "report_fold_owner_mismatch",
                     )
                 report_ids.add(key)
@@ -270,46 +292,69 @@ class ResearchLabPublication:
                     "robustSummary": {
                         key: value
                         for key, value in result["robust_summary"].items()
-                        if key in ("passes", "sufficient_folds", "worst_balanced_accuracy",
-                                   "worst_baseline_ap_gain", "negative_dispersion")
-                        and type(value) in (int, float) and math.isfinite(value)
-                    } if isinstance(result.get("robust_summary"), dict) else None,
+                        if key
+                        in (
+                            "passes",
+                            "sufficient_folds",
+                            "worst_balanced_accuracy",
+                            "worst_baseline_ap_gain",
+                            "negative_dispersion",
+                        )
+                        and type(value) in (int, float)
+                        and math.isfinite(value)
+                    }
+                    if isinstance(result.get("robust_summary"), dict)
+                    else None,
                     "comparisonQualification": "DESCRIPTIVE_RESEARCH_ONLY",
                 }
                 self.experiments[(study_id, key)] = ref
-            summaries.append({
-                "horizon": int(horizon),
-                "experimentCount": len(candidates),
-                "selectedExperimentId": selected,
-                "selectedMeanAP": next(
-                    (result.get("mean_seen_cv_ap") for result in candidates
-                     if result["experiment_id"] == selected), None
-                ),
-                "bestSeenAP": max(
-                    (float(result["mean_seen_cv_ap"]) for result in candidates),
-                    default=None,
-                ),
-                "selectedSeenFoldMetrics": next(
-                    ([metric_view(m) for m in result.get("fold_seen_metrics", [])]
-                     for result in candidates if result["experiment_id"] == selected),
-                    [],
-                ),
-                "selectedDeferredDiagnostic": next(
-                    (safe_diagnostic(result.get("deferred_diagnostic"))
-                     for result in candidates if result["experiment_id"] == selected),
-                    None,
-                ),
-                "selectionUsesDeferredDiagnostic": False,
-            })
+            summaries.append(
+                {
+                    "horizon": int(horizon),
+                    "experimentCount": len(candidates),
+                    "selectedExperimentId": selected,
+                    "selectedMeanAP": next(
+                        (
+                            result.get("mean_seen_cv_ap")
+                            for result in candidates
+                            if result["experiment_id"] == selected
+                        ),
+                        None,
+                    ),
+                    "bestSeenAP": max(
+                        (float(result["mean_seen_cv_ap"]) for result in candidates),
+                        default=None,
+                    ),
+                    "selectedSeenFoldMetrics": next(
+                        (
+                            [metric_view(m) for m in result.get("fold_seen_metrics", [])]
+                            for result in candidates
+                            if result["experiment_id"] == selected
+                        ),
+                        [],
+                    ),
+                    "selectedDeferredDiagnostic": next(
+                        (
+                            safe_diagnostic(result.get("deferred_diagnostic"))
+                            for result in candidates
+                            if result["experiment_id"] == selected
+                        ),
+                        None,
+                    ),
+                    "selectionUsesDeferredDiagnostic": False,
+                }
+            )
         ensure(report_ids == original_ids, "incomplete_report_identity")
         discovery = report.get("discovery_curve", [])
         ensure(isinstance(discovery, list), "invalid_discovery_curve")
         if discovery:
             discovered_ids = [v.get("experiment_id") for v in discovery if isinstance(v, dict)]
-            ensure(len(discovery) == len(discovered_ids)
-                   and len(set(discovered_ids)) == len(discovered_ids)
-                   and set(discovered_ids) == original_ids,
-                   "invalid_discovery_identity")
+            ensure(
+                len(discovery) == len(discovered_ids)
+                and len(set(discovered_ids)) == len(discovered_ids)
+                and set(discovered_ids) == original_ids,
+                "invalid_discovery_identity",
+            )
         # Fail closed if any DB bytes changed during evidence projection.
         reader._read()
         report_id = hashlib.sha256(report_raw).hexdigest()
@@ -335,8 +380,7 @@ class ResearchLabPublication:
         self.groups[summary["comparisonGroupId"]].append(summary)
         self.reports[report_id] = summary | {
             "researchPeriod": {
-                key: report.get(key) for key in ("first_date", "last_date", "dates",
-                                                "observations")
+                key: report.get(key) for key in ("first_date", "last_date", "dates", "observations")
             },
             "sourceClass": "ARCHIVED_KRX_RESEARCH_NOT_INDEPENDENT_PIT",
             "memoryChangedChoices": report.get("memory_changed_choices"),
@@ -363,7 +407,9 @@ class ResearchLabPublication:
         rows = sorted(self.studies.values(), key=lambda s: (s["cohort"], s["selectionPolicy"]))
         return {
             "schemaVersion": "research_lab_studies_v1",
-            "total": len(rows), "offset": offset, "limit": limit,
+            "total": len(rows),
+            "offset": offset,
+            "limit": limit,
             "items": rows[offset : offset + limit],
         }
 
@@ -383,9 +429,9 @@ class ResearchLabPublication:
                     "experimentId": item["experimentId"],
                     "selectionOrder": item["selection"],
                     "cacheReused": item["cacheReused"],
-                    "parentExperimentId": self.experiments[
-                        (study_id, item["experimentId"])
-                    ]["parentExperimentId"],
+                    "parentExperimentId": self.experiments[(study_id, item["experimentId"])][
+                        "parentExperimentId"
+                    ],
                 }
                 for item in report["discoveryCurve"]
             ],
@@ -401,8 +447,11 @@ class ResearchLabPublication:
         rows = [row for (owner, _), row in self.experiments.items() if owner == study_id]
         rows.sort(key=lambda x: (x["horizon"], x["experimentId"]))
         return {
-            "schemaVersion": "research_lab_experiments_v1", "studyId": study_id,
-            "total": len(rows), "offset": offset, "limit": limit,
+            "schemaVersion": "research_lab_experiments_v1",
+            "studyId": study_id,
+            "total": len(rows),
+            "offset": offset,
+            "limit": limit,
             "items": rows[offset : offset + limit],
         }
 
@@ -413,7 +462,9 @@ class ResearchLabPublication:
         rows = sorted(self.studies.values(), key=lambda s: (s["cohort"], s["selectionPolicy"]))
         return {
             "schemaVersion": "research_lab_reports_v1",
-            "total": len(rows), "offset": offset, "limit": limit,
+            "total": len(rows),
+            "offset": offset,
+            "limit": limit,
             "items": rows[offset : offset + limit],
         }
 
@@ -425,22 +476,31 @@ class ResearchLabPublication:
         for group_id, arms in sorted(self.groups.items()):
             arm_list = sorted(arms, key=lambda x: x["selectionPolicy"])
             horizons = sorted({h["horizon"] for arm in arm_list for h in arm["horizons"]})
-            rows.append({
-                "comparisonGroupId": group_id,
-                "cohort": arm_list[0]["cohort"],
-                "policies": [arm["selectionPolicy"] for arm in arm_list],
-                "completeThreeArmComparison": set(a["selectionPolicy"] for a in arm_list) == {
-                    "adaptive", "predeclared", "robust"
-                },
-                "horizons": [{
-                    "horizon": horizon,
-                    "arms": [{
-                        "studyId": arm["studyId"],
-                        "policy": arm["selectionPolicy"],
-                        **next((h for h in arm["horizons"] if h["horizon"] == horizon), {}),
-                    } for arm in arm_list],
-                } for horizon in horizons],
-                "conclusionStatus": "DESCRIPTIVE_ONLY_NOT_INDEPENDENT",
-                "policySuperiorityEstablished": False,
-            })
+            rows.append(
+                {
+                    "comparisonGroupId": group_id,
+                    "cohort": arm_list[0]["cohort"],
+                    "policies": [arm["selectionPolicy"] for arm in arm_list],
+                    "completeThreeArmComparison": set(a["selectionPolicy"] for a in arm_list)
+                    == {"adaptive", "predeclared", "robust"},
+                    "horizons": [
+                        {
+                            "horizon": horizon,
+                            "arms": [
+                                {
+                                    "studyId": arm["studyId"],
+                                    "policy": arm["selectionPolicy"],
+                                    **next(
+                                        (h for h in arm["horizons"] if h["horizon"] == horizon), {}
+                                    ),
+                                }
+                                for arm in arm_list
+                            ],
+                        }
+                        for horizon in horizons
+                    ],
+                    "conclusionStatus": "DESCRIPTIVE_ONLY_NOT_INDEPENDENT",
+                    "policySuperiorityEstablished": False,
+                }
+            )
         return {"schemaVersion": "research_lab_comparisons_v1", "items": rows}

@@ -23,7 +23,9 @@ from donghak_stock_vision.storage.research_lab_publication import (
 def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(prog="dsv-research-lab-export")
     command.add_argument(
-        "--study", action="append", required=True,
+        "--study",
+        action="append",
+        required=True,
         help="absolute study root followed by colon and existing 64-character plan ID",
     )
     command.add_argument("--output", type=Path, required=True)
@@ -75,13 +77,15 @@ def export(studies: list[str], output: Path) -> dict[str, Any]:
         with report_destination.open("xb") as stream:
             os.chmod(report_destination, 0o600)
             stream.write(report_content)
-        entries.append({
-            "studyId": study_id,
-            "snapshot": snapshot_name,
-            "snapshotSha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
-            "report": report_name,
-            "reportSha256": hashlib.sha256(report_content).hexdigest(),
-        })
+        entries.append(
+            {
+                "studyId": study_id,
+                "snapshot": snapshot_name,
+                "snapshotSha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
+                "report": report_name,
+                "reportSha256": hashlib.sha256(report_content).hexdigest(),
+            }
+        )
     manifest = output / "index.json"
     with manifest.open("x", encoding="utf-8") as stream:
         os.chmod(manifest, 0o600)

@@ -79,17 +79,18 @@ def create_publication(tmp_path: Path) -> tuple[Path, str, list[dict[str, Any]]]
                         "brier_score": 0.24,
                         "n": 20,
                     }
-                    fold_baselines = {
-                        "training_prior": {"pr_auc_ap": 0.50, "n": 20}
-                    }
+                    fold_baselines = {"training_prior": {"pr_auc_ap": 0.50, "n": 20}}
                     robust_summary = {"passes": 1, "sufficient_folds": 1}
                     deferred_diagnostic = {
                         "assessment": {
                             "periods": {
-                                "2026-Q3": {"metrics": {
-                                    "balanced_accuracy": 0.48, "n": 20,
-                                    "private_details": "/private/never-public",
-                                }}
+                                "2026-Q3": {
+                                    "metrics": {
+                                        "balanced_accuracy": 0.48,
+                                        "n": 20,
+                                        "private_details": "/private/never-public",
+                                    }
+                                }
                             }
                         }
                     }
@@ -101,45 +102,51 @@ def create_publication(tmp_path: Path) -> tuple[Path, str, list[dict[str, Any]]]
                         "largest_train_gap": 0.02,
                         "robust_summary": robust_summary,
                         "deferred_diagnostic": deferred_diagnostic,
-                        "folds": [{
-                            "evaluation": {
-                                "metrics": fold_metrics, "baselines": fold_baselines
-                            }
-                        }],
+                        "folds": [
+                            {"evaluation": {"metrics": fold_metrics, "baselines": fold_baselines}}
+                        ],
                     }
                     result_id = store.put("autonomous_result", result)
                     parent = rows[index - 1][1] if index > 0 else None
-                    store.put("autonomous_attempt", {
-                        "plan_id": plan_id,
-                        "experiment_id": key,
-                        "parent_experiment": parent,
-                    })
-                    store.put("autonomous_terminal", result | {
-                        "state": "completed",
-                        "result_id": result_id,
-                        "checkpoint": "/private/checkpoint/not-for-transport",
-                    })
-                    experiments.append({
-                        "experiment_id": key,
-                        "config": config,
-                        "mean_seen_cv_ap": ap,
-                        "stability_seen_cv_ap": ap - 0.01,
-                        "overfit_gap": 0.02,
-                        "fold_seen_metrics": [fold_metrics],
-                        "fold_baselines": [fold_baselines],
-                        "robust_summary": robust_summary,
-                        "deferred_diagnostic": deferred_diagnostic,
-                    })
+                    store.put(
+                        "autonomous_attempt",
+                        {
+                            "plan_id": plan_id,
+                            "experiment_id": key,
+                            "parent_experiment": parent,
+                        },
+                    )
+                    store.put(
+                        "autonomous_terminal",
+                        result
+                        | {
+                            "state": "completed",
+                            "result_id": result_id,
+                            "checkpoint": "/private/checkpoint/not-for-transport",
+                        },
+                    )
+                    experiments.append(
+                        {
+                            "experiment_id": key,
+                            "config": config,
+                            "mean_seen_cv_ap": ap,
+                            "stability_seen_cv_ap": ap - 0.01,
+                            "overfit_gap": 0.02,
+                            "fold_seen_metrics": [fold_metrics],
+                            "fold_baselines": [fold_baselines],
+                            "robust_summary": robust_summary,
+                            "deferred_diagnostic": deferred_diagnostic,
+                        }
+                    )
                 horizons[str(h)] = {
                     "selected_without_heldout_scores": rows[0][1],
                     "experiments": experiments,
                 }
             store.close()
             os.chmod(snapshot_path, 0o600)
-            condition = digest({
-                k: v for k, v in plan.items()
-                if k not in ("selection_policy", "policy_parent")
-            })
+            condition = digest(
+                {k: v for k, v in plan.items() if k not in ("selection_policy", "policy_parent")}
+            )
             report = {
                 "version": "multi_stock_research_report_v1",
                 "dataset_version": "test-fixture",
@@ -164,24 +171,28 @@ def create_publication(tmp_path: Path) -> tuple[Path, str, list[dict[str, Any]]]
                 "last_date": "2026-09-30",
                 "dates": 1160,
                 "observations": 30000,
-                "historical": {
-                    "references": [{"root": "/private/secret", "pin": "a" * 64}]
-                },
-                "discovery_curve": [{
-                    "experiment_id": key, "selection": i + 1,
-                    "cache_reused": False,
-                } for i, (_, key, _) in enumerate(identities)],
+                "historical": {"references": [{"root": "/private/secret", "pin": "a" * 64}]},
+                "discovery_curve": [
+                    {
+                        "experiment_id": key,
+                        "selection": i + 1,
+                        "cache_reused": False,
+                    }
+                    for i, (_, key, _) in enumerate(identities)
+                ],
             }
             report_path = root / report_name
             report_path.write_text(json.dumps(report))
             os.chmod(report_path, 0o600)
-            entries.append({
-                "studyId": plan_id,
-                "snapshot": snapshot,
-                "snapshotSha256": hashlib.sha256(snapshot_path.read_bytes()).hexdigest(),
-                "report": report_name,
-                "reportSha256": hashlib.sha256(report_path.read_bytes()).hexdigest(),
-            })
+            entries.append(
+                {
+                    "studyId": plan_id,
+                    "snapshot": snapshot,
+                    "snapshotSha256": hashlib.sha256(snapshot_path.read_bytes()).hexdigest(),
+                    "report": report_name,
+                    "reportSha256": hashlib.sha256(report_path.read_bytes()).hexdigest(),
+                }
+            )
             original.append({"studyId": plan_id, "report": report, "reportPath": report_path})
     index = root / "index.json"
     index.write_text(json.dumps({"version": VERSION, "entries": entries}))
@@ -195,9 +206,7 @@ def test_six_reports_seventy_two_experiments_and_descriptive_comparisons(
     root, pin, original = create_publication(tmp_path)
     lab = ResearchLabPublication(root, pin)
     app = create_app(lab_reader=lab)
-    with TestClient(
-        app, client=("127.0.0.1", 12345), base_url="http://127.0.0.1"
-    ) as client:
+    with TestClient(app, client=("127.0.0.1", 12345), base_url="http://127.0.0.1") as client:
         catalog = client.get("/api/v1/research/lab/studies")
         assert catalog.status_code == 200
         assert catalog.json()["total"] == 6
@@ -206,8 +215,7 @@ def test_six_reports_seventy_two_experiments_and_descriptive_comparisons(
         comparisons = client.get("/api/v1/research/lab/comparisons").json()
         assert len(comparisons["items"]) == 2
         assert all(
-            item["completeThreeArmComparison"]
-            and not item["policySuperiorityEstablished"]
+            item["completeThreeArmComparison"] and not item["policySuperiorityEstablished"]
             for item in comparisons["items"]
         )
         for owner in original:
@@ -247,19 +255,16 @@ def test_missing_or_remote_access_denied(tmp_path: Path) -> None:
     app = create_app(lab_reader=ResearchLabPublication(root, pin))
     with TestClient(app) as client:
         assert client.get("/api/v1/research/lab/studies").status_code == 403
-    with TestClient(
-        app, client=("127.0.0.1", 12345), base_url="http://127.0.0.1"
-    ) as client:
-        assert client.get(
-            "/api/v1/research/lab/studies",
-            headers={"Origin": "https://remote.example"},
-        ).status_code == 403
-        assert client.get(
-            f"/api/v1/research/lab/reports/{'a' * 64}"
-        ).status_code == 404
-        assert client.get(
-            f"/api/v1/research/lab/studies/{'a' * 64}/experiments"
-        ).status_code == 404
+    with TestClient(app, client=("127.0.0.1", 12345), base_url="http://127.0.0.1") as client:
+        assert (
+            client.get(
+                "/api/v1/research/lab/studies",
+                headers={"Origin": "https://remote.example"},
+            ).status_code
+            == 403
+        )
+        assert client.get(f"/api/v1/research/lab/reports/{'a' * 64}").status_code == 404
+        assert client.get(f"/api/v1/research/lab/studies/{'a' * 64}/experiments").status_code == 404
     with TestClient(
         create_app(), client=("127.0.0.1", 12345), base_url="http://127.0.0.1"
     ) as client:
@@ -308,9 +313,9 @@ def test_offline_export_creates_valid_approved_copy(
         shutil.copy2(root / f"{cohort}-{policy}.json", private / "final-research-report.json")
         sources.append(f"{private}:{owner['studyId']}")
 
-    def read_context(private: Path, study_id: str, *, code_check: bool = False) -> tuple[
-        dict[str, Any], dict[str, Any]
-    ]:
+    def read_context(
+        private: Path, study_id: str, *, code_check: bool = False
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         assert not code_check
         with closing(ReadOnlyAnalysisStore(private / "experiments.sqlite3")) as store:
             return store.get("autonomous_plan", study_id), {}
@@ -352,9 +357,7 @@ def test_pinned_diagnostic_tamper_cannot_rewrite_historical_assessment(
     target = original[0]["reportPath"]
     report = json.loads(target.read_text())
     report["horizons"]["20"]["experiments"][0]["deferred_diagnostic"] = {
-        "assessment": {"periods": {"2026-Q3": {
-            "metrics": {"balanced_accuracy": 1.0}
-        }}}
+        "assessment": {"periods": {"2026-Q3": {"metrics": {"balanced_accuracy": 1.0}}}}
     }
     target.write_text(json.dumps(report))
     index_file = root / "index.json"
