@@ -2,8 +2,7 @@
 
 import re
 from collections.abc import Callable
-from typing import Any
-from typing import Annotated
+from typing import Annotated, Any
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
