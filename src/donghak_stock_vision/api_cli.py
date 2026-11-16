@@ -159,7 +159,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.study_snapshot is not None:
         if args.host not in {"127.0.0.1", "::1"}:
             parser().error("study evidence requires a loopback bind")
-        from donghak_stock_vision.api.research_studies import PinnedStudyReader, StudyReadError
+        from donghak_stock_vision.storage.research_studies import PinnedStudyReader, StudyReadError
 
         try:
             study_reader = PinnedStudyReader(
