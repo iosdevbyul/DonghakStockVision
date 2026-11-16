@@ -108,8 +108,8 @@ def main(argv: list[str] | None = None) -> None:
             )
         ):
             parser().error("--operational-only forbids research and publication inputs")
-    elif snapshot_path is None and not args.ai_management_only:
-        parser().error("--snapshot or DSV_API_SNAPSHOT_PATH is required")
+    elif snapshot_path is None and not args.ai_management_only and not args.study_snapshot:
+        parser().error("--snapshot, --study-snapshot or DSV_API_SNAPSHOT_PATH is required")
 
     try:
         import uvicorn
