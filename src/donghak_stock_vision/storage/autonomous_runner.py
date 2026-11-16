@@ -179,7 +179,12 @@ def run(
             or (
                 agent == "managed"
                 and plan["version"]
-                in ("autonomous_plan_v3", "autonomous_plan_v4", "autonomous_plan_v5")
+                in (
+                    "autonomous_plan_v3",
+                    "autonomous_plan_v4",
+                    "autonomous_plan_v5",
+                    "autonomous_plan_v6",
+                )
                 and agent_factory is not None
             )
         ),
@@ -228,6 +233,7 @@ def run(
                     "autonomous_plan_v3",
                     "autonomous_plan_v4",
                     "autonomous_plan_v5",
+                    "autonomous_plan_v6",
                 )
                 else dict(
                     version="research_agent_view_v1",
@@ -285,6 +291,8 @@ def run(
                 "autonomous_plan_v2",
                 "autonomous_plan_v3",
                 "autonomous_plan_v4",
+                "autonomous_plan_v5",
+                "autonomous_plan_v6",
             ):
                 # Covers rule mode after an orphaned Gemma process, including a
                 # different study. Never start a learner alongside a resident LLM.

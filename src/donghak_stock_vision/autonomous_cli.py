@@ -33,6 +33,7 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             "fork-policy",
         ),
     )
+    p.add_argument("--selection-policy", choices=("predeclared", "robust"), default="predeclared")
     p.add_argument("--root", type=Path, required=True)
     p.add_argument("--source-root", type=Path)
     p.add_argument("--source-plan-pin-file", type=Path)
@@ -76,10 +77,14 @@ def run_command(args: argparse.Namespace) -> int:
             "multi_stock_policy_fork_arguments",
         )
         fork_policy(
-            args.source_root, read_pin(args.source_plan_pin_file), args.root, args.pins_root
+            args.source_root,
+            read_pin(args.source_plan_pin_file),
+            args.root,
+            args.pins_root,
+            policy=args.selection_policy,
         )
         result = dict(
-            prepared=True, source_replayed=False, policy="predeclared", network_requests=0
+            prepared=True, source_replayed=False, policy=args.selection_policy, network_requests=0
         )
     elif args.action == "derive":
         from donghak_stock_vision.storage.gemma_memory import derive
@@ -157,7 +162,7 @@ def run_command(args: argparse.Namespace) -> int:
             from donghak_stock_vision.storage.adaptive_research_report import report
 
             plan, _ = context(args.root, pin, code_check=False)
-            if plan["version"] == "autonomous_plan_v5":
+            if plan["version"] in ("autonomous_plan_v5", "autonomous_plan_v6"):
                 from donghak_stock_vision.storage.stock_research import report as stock_report
 
                 result = stock_report(args.root, pin)

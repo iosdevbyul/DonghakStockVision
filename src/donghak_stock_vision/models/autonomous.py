@@ -103,10 +103,12 @@ def execute(
 ) -> tuple[dict[str, Any], bytes]:
     horizon = str(config["goal"]["horizon"])
     value = dataset["goals"][horizon]
-    multi = dataset["version"] == "direction_dataset_v3"
+    historical = dataset["version"] == "direction_dataset_v4"
+    multi = historical or dataset["version"] == "direction_dataset_v3"
     names = (
         config["goal"].get("features")
-        if dataset["version"] in ("direction_dataset_v2", "direction_dataset_v3")
+        if dataset["version"]
+        in ("direction_dataset_v2", "direction_dataset_v3", "direction_dataset_v4")
         else None
     )
     heldout_symbols = set(dataset["generalization"]["heldout_tickers"]) if multi else set()
@@ -127,7 +129,11 @@ def execute(
     returns = value["returns"]
     span = ResearchDateRange(
         date.fromisoformat(dataset["split"]["training"]["start"]),
-        date.fromisoformat(dataset["split"]["training"]["end"]),
+        date.fromisoformat(
+            dataset["historical"]["search_end"]
+            if historical
+            else dataset["split"]["training"]["end"]
+        ),
     )
     training = [
         s
@@ -146,6 +152,10 @@ def execute(
             )
             train, holdout, purged = purged_fold(samples, fold, "up")
             full_holdout = holdout
+            if historical:
+                train = [
+                    s for s in train if s.label_end is not None and s.label_end <= fold.training.end
+                ]
             if multi:
                 holdout = [s for s in holdout if s.ticker not in heldout_symbols]
                 if unseen:
@@ -176,12 +186,19 @@ def execute(
                 "autonomous_fold_population",
             )
             fitted = fit_candidate(candidate, masked(train, config["mask"]), feature_names=names)
+            validation_scores = predict_candidate(
+                candidate, fitted, masked(holdout, config["mask"])
+            )
             evaluated = measure(
                 holdout,
-                predict_candidate(candidate, fitted, masked(holdout, config["mask"])),
+                validation_scores,
                 train,
                 returns,
             )
+            if historical:
+                evaluated["seen_robustness"] = stock_generalization.assessments(
+                    holdout, validation_scores, set(), False
+                )
             if multi:
                 full_scores = predict_candidate(
                     candidate, fitted, masked(full_holdout, config["mask"])
@@ -192,7 +209,11 @@ def execute(
                 evaluated["selection_population"] = (
                     "seen_symbols_only_heldout_scores_not_search_inputs"
                 )
-            if dataset["version"] in ("direction_dataset_v2", "direction_dataset_v3"):
+            if dataset["version"] in (
+                "direction_dataset_v2",
+                "direction_dataset_v3",
+                "direction_dataset_v4",
+            ):
                 # One common calendar stride for all tickers avoids overlapping
                 # event windows; cross-sectional dependence remains unqualified.
                 calendar_rows = full_holdout if multi else holdout
@@ -301,6 +322,31 @@ def execute(
                 for f in folds
             ),
         )
+    if historical:
+        from donghak_stock_vision.models.historical_research import deferred_assessment, summary
+
+        result["robust_summary"] = summary(folds)
+        diagnostic = dataset["historical"]["diagnostic"]
+        deferred = [
+            s
+            for s in samples
+            if diagnostic["start"] <= s.trading_date.isoformat()
+            and s.label_end is not None
+            and s.label_end.isoformat() <= diagnostic["end"]
+        ]
+        predicted = (
+            predict_candidate(candidate, fitted, masked(deferred, config["mask"]))
+            if deferred
+            else []
+        )
+        result["deferred_diagnostic"] = stock_generalization.assessments(
+            deferred, predicted, heldout_symbols, unseen
+        )
+        result["deferred_diagnostic"]["nonoverlapping"] = deferred_assessment(
+            deferred, predicted, heldout_symbols, unseen
+        )
+        result["deferred_diagnostic"]["used_for_selection"] = False
+        result["deferred_diagnostic"]["independent_or_prospective"] = False
     return result, checkpoint
 
 
