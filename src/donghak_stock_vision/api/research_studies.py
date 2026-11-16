@@ -150,9 +150,18 @@ class PinnedStudyReader:
                 "modelFamily": config["candidate"]["family"],
                 "featureMask": config.get("mask"),
                 "parentExperimentId": attempts.get(key),
-                "meanAP": terminal.get("mean_ap") if terminal and terminal["state"] == "completed" else None,
-                "stabilityAP": terminal.get("stability_ap") if terminal and terminal["state"] == "completed" else None,
-                "largestTrainGap": terminal.get("largest_train_gap") if terminal and terminal["state"] == "completed" else None,
+                "meanAP": (
+                    terminal.get("mean_ap")
+                    if terminal and terminal["state"] == "completed" else None
+                ),
+                "stabilityAP": (
+                    terminal.get("stability_ap")
+                    if terminal and terminal["state"] == "completed" else None
+                ),
+                "largestTrainGap": (
+                    terminal.get("largest_train_gap")
+                    if terminal and terminal["state"] == "completed" else None
+                ),
                 "selectionPolicy": plan.get("selection_policy"),
                 "reportId": None,
                 "independentValidationStatus": "NOT_ESTABLISHED",
