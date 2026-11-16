@@ -37,10 +37,18 @@ def study(tmp_path: Path) -> tuple[Path, str, str, str]:
     store.put("autonomous_attempt", {
         "plan_id": plan_id, "experiment_id": experiment_id, "parent_experiment": None
     })
+    result_id = store.put("autonomous_result", {
+        "experiment_id": experiment_id,
+        "config": config,
+        "mean_ap": 0.55,
+        "stability_ap": 0.52,
+        "largest_train_gap": 0.04,
+    })
     store.put("autonomous_terminal", {
         "experiment_id": experiment_id,
         "config": config,
         "state": "completed",
+        "result_id": result_id,
         "mean_ap": 0.55,
         "stability_ap": 0.52,
         "largest_train_gap": 0.04,
