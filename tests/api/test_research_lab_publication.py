@@ -3,6 +3,8 @@
 import hashlib
 import json
 import os
+import shutil
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +13,8 @@ from fastapi.testclient import TestClient
 
 from donghak_stock_vision.api.app import create_app
 from donghak_stock_vision.data.learning import digest
-from donghak_stock_vision.storage.analysis import AnalysisStore
+from donghak_stock_vision.research_lab_export_cli import export
+from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.research_lab_publication import (
     ResearchLabError,
     ResearchLabPublication,
@@ -289,3 +292,37 @@ def test_publication_never_reloads_after_startup(tmp_path: Path) -> None:
     original[0]["reportPath"].write_text("tampered")
     assert lab.report_catalog()["total"] == 6
     assert lab.comparisons()["items"][0]["policySuperiorityEstablished"] is False
+
+
+def test_offline_export_creates_valid_approved_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, _, original = create_publication(tmp_path)
+    sources = []
+    for index, owner in enumerate(original):
+        private = tmp_path / f"source-{index}"
+        private.mkdir(mode=0o700)
+        policy = owner["report"]["selection_policy"]
+        cohort = owner["report"]["cohort"]
+        shutil.copy2(root / f"{cohort}-{policy}.sqlite3", private / "experiments.sqlite3")
+        shutil.copy2(root / f"{cohort}-{policy}.json", private / "final-research-report.json")
+        sources.append(f"{private}:{owner['studyId']}")
+
+    def read_context(private: Path, study_id: str, *, code_check: bool = False) -> tuple[
+        dict[str, Any], dict[str, Any]
+    ]:
+        assert not code_check
+        with closing(ReadOnlyAnalysisStore(private / "experiments.sqlite3")) as store:
+            return store.get("autonomous_plan", study_id), {}
+
+    monkeypatch.setattr("donghak_stock_vision.research_lab_export_cli.context", read_context)
+    output = tmp_path / "export"
+    receipt = export(sources, output)
+    assert receipt["httpServingEnabled"] is False
+    assert receipt["researchExecutionTriggered"] is False
+    assert receipt["studyCount"] == 6
+    assert output.stat().st_mode & 0o077 == 0
+    assert all(item.stat().st_mode & 0o077 == 0 for item in output.iterdir())
+    assert ResearchLabPublication(output, receipt["indexSha256"]).catalog()["total"] == 6
+    with pytest.raises(ValueError, match="invalid_publication_output"):
+        export(sources, output)
