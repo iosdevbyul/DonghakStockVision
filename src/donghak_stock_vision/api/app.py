@@ -42,6 +42,8 @@ from donghak_stock_vision.api.security_metadata import (
     SecurityMetadataDetail,
     SecurityMetadataReader,
 )
+from donghak_stock_vision.api.research_studies import PinnedStudyReader
+from donghak_stock_vision.api.research_study_routes import research_study_router
 from donghak_stock_vision.api.service import ResearchAPIReader
 from donghak_stock_vision.api.stock_analysis import (
     AnalysisPublicationReader,
@@ -75,6 +77,7 @@ def create_app(
     daily_research_report: Callable[[], Mapping[str, Any]] | None = None,
     security_metadata_reader: SecurityMetadataReader | None = None,
     portfolio_reader: PortfolioPublicationReader | None = None,
+    study_reader: PinnedStudyReader | None = None,
     allowed_origins: Sequence[str] = (
         "http://localhost:3000",
         "http://127.0.0.1:3000",
@@ -321,4 +324,5 @@ def create_app(
         return operations.alerts(offset, limit)
 
     app.include_router(portfolio_router(portfolio_reader))
+    app.include_router(research_study_router(study_reader))
     return app
