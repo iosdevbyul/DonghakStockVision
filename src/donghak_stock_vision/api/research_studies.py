@@ -73,12 +73,14 @@ class PinnedStudyReader:
                 store.connection.execute("PRAGMA query_only=ON")
                 plan = store.get("autonomous_plan", self.study_id)
                 if digest(plan) != self.study_id or plan.get("version") not in {
-                    "autonomous_plan_v5", "autonomous_plan_v6"
+                    "autonomous_plan_v5",
+                    "autonomous_plan_v6",
                 }:
                     raise StudyReadError("unsupported_study")
-                if any(plan.get(k) is not False for k in (
-                    "pit_qualified", "performance_approved", "execution_authorized"
-                )):
+                if any(
+                    plan.get(k) is not False
+                    for k in ("pit_qualified", "performance_approved", "execution_authorized")
+                ):
                     raise StudyReadError("unsafe_study_approval")
                 configurations = plan.get("configurations")
                 if not isinstance(configurations, list) or len(configurations) > 1000:
@@ -135,21 +137,23 @@ class PinnedStudyReader:
         plan, terminals, _ = self._read()
         return {
             "schemaVersion": "research_study_read_v1",
-            "items": [{
-                "studyId": self.study_id,
-                "planVersion": plan["version"],
-                "selectionPolicy": plan.get("selection_policy"),
-                "experimentBudget": plan.get("experiment_budget"),
-                "completed": sum(t["state"] == "completed" for t in terminals.values()),
-                "failed": sum(t["state"] == "failed" for t in terminals.values()),
-                "recordedExperiments": len(terminals),
-                "reportStatus": "UNAVAILABLE",
-                "policyComparisonStatus": "UNAVAILABLE",
-                "independentValidationStatus": "NOT_ESTABLISHED",
-                "pitQualified": False,
-                "performanceApproved": False,
-                "executionAuthorized": False,
-            }],
+            "items": [
+                {
+                    "studyId": self.study_id,
+                    "planVersion": plan["version"],
+                    "selectionPolicy": plan.get("selection_policy"),
+                    "experimentBudget": plan.get("experiment_budget"),
+                    "completed": sum(t["state"] == "completed" for t in terminals.values()),
+                    "failed": sum(t["state"] == "failed" for t in terminals.values()),
+                    "recordedExperiments": len(terminals),
+                    "reportStatus": "UNAVAILABLE",
+                    "policyComparisonStatus": "UNAVAILABLE",
+                    "independentValidationStatus": "NOT_ESTABLISHED",
+                    "pitQualified": False,
+                    "performanceApproved": False,
+                    "executionAuthorized": False,
+                    }
+            ],
         }
 
     def experiments(self, study_id: str, offset: int, limit: int) -> dict[str, Any]:
@@ -161,38 +165,43 @@ class PinnedStudyReader:
             key = item["experiment_id"]
             terminal = terminals.get(key)
             config = item["config"]
-            rows.append({
-                "studyId": self.study_id,
-                "experimentId": key,
-                "status": terminal["state"].upper() if terminal else "NOT_RUN",
-                "horizon": config["goal"]["horizon"],
-                "stockPolicy": config.get("stock_policy"),
-                "modelFamily": config["candidate"]["family"],
-                "featureMask": config.get("mask"),
-                "parentExperimentId": attempts.get(key),
-                "meanAP": (
-                    terminal.get("mean_ap")
-                    if terminal and terminal["state"] == "completed" else None
-                ),
-                "stabilityAP": (
-                    terminal.get("stability_ap")
-                    if terminal and terminal["state"] == "completed" else None
-                ),
-                "largestTrainGap": (
-                    terminal.get("largest_train_gap")
-                    if terminal and terminal["state"] == "completed" else None
-                ),
-                "selectionPolicy": plan.get("selection_policy"),
-                "reportId": None,
-                "independentValidationStatus": "NOT_ESTABLISHED",
-            })
+            rows.append(
+                {
+                    "studyId": self.study_id,
+                    "experimentId": key,
+                    "status": terminal["state"].upper() if terminal else "NOT_RUN",
+                    "horizon": config["goal"]["horizon"],
+                    "stockPolicy": config.get("stock_policy"),
+                    "modelFamily": config["candidate"]["family"],
+                    "featureMask": config.get("mask"),
+                    "parentExperimentId": attempts.get(key),
+                    "meanAP": (
+                        terminal.get("mean_ap")
+                        if terminal and terminal["state"] == "completed"
+                        else None
+                    ),
+                    "stabilityAP": (
+                        terminal.get("stability_ap")
+                        if terminal and terminal["state"] == "completed"
+                        else None
+                    ),
+                    "largestTrainGap": (
+                        terminal.get("largest_train_gap")
+                        if terminal and terminal["state"] == "completed"
+                        else None
+                    ),
+                    "selectionPolicy": plan.get("selection_policy"),
+                    "reportId": None,
+                    "independentValidationStatus": "NOT_ESTABLISHED",
+                    }
+            )
         return {
             "schemaVersion": "research_experiments_read_v1",
             "studyId": self.study_id,
             "total": len(rows),
             "offset": offset,
             "limit": limit,
-            "items": rows[offset:offset + limit],
+            "items": rows[offset : offset + limit],
         }
 
     def experiment(self, study_id: str, experiment_id: str) -> dict[str, Any] | None:
