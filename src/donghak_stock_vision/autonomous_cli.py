@@ -30,6 +30,7 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             "render-agent",
             "derive",
             "report",
+            "fork-policy",
         ),
     )
     p.add_argument("--root", type=Path, required=True)
@@ -65,7 +66,22 @@ def run_command(args: argparse.Namespace) -> int:
         not args.gate and args.plan is None and args.attempt is None,
         "autonomous_worker_only_arguments",
     )
-    if args.action == "derive":
+    if args.action == "fork-policy":
+        from donghak_stock_vision.storage.stock_research import fork_policy
+
+        require(
+            args.source_root is not None
+            and args.source_plan_pin_file is not None
+            and args.pins_root is not None,
+            "multi_stock_policy_fork_arguments",
+        )
+        fork_policy(
+            args.source_root, read_pin(args.source_plan_pin_file), args.root, args.pins_root
+        )
+        result = dict(
+            prepared=True, source_replayed=False, policy="predeclared", network_requests=0
+        )
+    elif args.action == "derive":
         from donghak_stock_vision.storage.gemma_memory import derive
 
         require(
@@ -140,7 +156,13 @@ def run_command(args: argparse.Namespace) -> int:
         elif args.action == "report":
             from donghak_stock_vision.storage.adaptive_research_report import report
 
-            result = report(args.root, pin)
+            plan, _ = context(args.root, pin, code_check=False)
+            if plan["version"] == "autonomous_plan_v5":
+                from donghak_stock_vision.storage.stock_research import report as stock_report
+
+                result = stock_report(args.root, pin)
+            else:
+                result = report(args.root, pin)
         elif args.action == "status":
             result = status(args.root, pin).to_dict()
         elif args.action == "render-agent":

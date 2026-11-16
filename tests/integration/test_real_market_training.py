@@ -40,7 +40,7 @@ def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def source(root: Path, count: int) -> RealMarketTrainingRequest:
+def source(root: Path, count: int, *, universe_size: int = 5) -> RealMarketTrainingRequest:
     database = root / "research.sqlite3"
     days: list[date] = []
     day = date(2020, 1, 2)
@@ -49,7 +49,7 @@ def source(root: Path, count: int) -> RealMarketTrainingRequest:
             days.append(day)
         day += timedelta(days=1)
     cutoff = datetime.combine(days[-1] + timedelta(days=3), time(8), UTC)
-    tickers = tuple(f"{i:06d}" for i in range(1, 6))
+    tickers = tuple(f"{i:06d}" for i in range(1, universe_size + 1))
     prices = dict.fromkeys(tickers, 10000)
     randoms = {t: random.Random(321 + int(t)) for t in tickers}
     with closing(SQLiteStore(database)) as store:

@@ -178,7 +178,8 @@ def run(
             or (agent == "gemma4" and plan["version"] == "autonomous_plan_v2")
             or (
                 agent == "managed"
-                and plan["version"] in ("autonomous_plan_v3", "autonomous_plan_v4")
+                and plan["version"]
+                in ("autonomous_plan_v3", "autonomous_plan_v4", "autonomous_plan_v5")
                 and agent_factory is not None
             )
         ),
@@ -222,7 +223,12 @@ def run(
             view: dict[str, Any] = (
                 memory_view(root, plan, data, done, choice)
                 if plan["version"]
-                in ("autonomous_plan_v2", "autonomous_plan_v3", "autonomous_plan_v4")
+                in (
+                    "autonomous_plan_v2",
+                    "autonomous_plan_v3",
+                    "autonomous_plan_v4",
+                    "autonomous_plan_v5",
+                )
                 else dict(
                     version="research_agent_view_v1",
                     candidates=[choice],
