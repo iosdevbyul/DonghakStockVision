@@ -326,3 +326,41 @@ def test_offline_export_creates_valid_approved_copy(
     assert ResearchLabPublication(output, receipt["indexSha256"]).catalog()["total"] == 6
     with pytest.raises(ValueError, match="invalid_publication_output"):
         export(sources, output)
+
+
+def test_pinned_metric_tamper_cannot_rewrite_original_experiment(
+    tmp_path: Path,
+) -> None:
+    root, _, original = create_publication(tmp_path)
+    target = original[0]["reportPath"]
+    report = json.loads(target.read_text())
+    report["horizons"]["5"]["experiments"][0]["mean_seen_cv_ap"] = 0.99
+    target.write_text(json.dumps(report))
+    index_file = root / "index.json"
+    index = json.loads(index_file.read_text())
+    index["entries"][0]["reportSha256"] = hashlib.sha256(target.read_bytes()).hexdigest()
+    index_file.write_text(json.dumps(index))
+    pin = hashlib.sha256(index_file.read_bytes()).hexdigest()
+    with pytest.raises(ResearchLabError, match="report_metrics_owner_mismatch"):
+        ResearchLabPublication(root, pin)
+
+
+def test_pinned_diagnostic_tamper_cannot_rewrite_historical_assessment(
+    tmp_path: Path,
+) -> None:
+    root, _, original = create_publication(tmp_path)
+    target = original[0]["reportPath"]
+    report = json.loads(target.read_text())
+    report["horizons"]["20"]["experiments"][0]["deferred_diagnostic"] = {
+        "assessment": {"periods": {"2026-Q3": {
+            "metrics": {"balanced_accuracy": 1.0}
+        }}}
+    }
+    target.write_text(json.dumps(report))
+    index_file = root / "index.json"
+    index = json.loads(index_file.read_text())
+    index["entries"][0]["reportSha256"] = hashlib.sha256(target.read_bytes()).hexdigest()
+    index_file.write_text(json.dumps(index))
+    pin = hashlib.sha256(index_file.read_bytes()).hexdigest()
+    with pytest.raises(ResearchLabError, match="report_diagnostic_owner_mismatch"):
+        ResearchLabPublication(root, pin)
