@@ -93,6 +93,18 @@ class PinnedStudyReader:
                         or item.get("state") not in ("completed", "failed")
                     ):
                         raise StudyReadError("invalid_terminal_link")
+                    if item["state"] == "completed":
+                        result_id = _pin(item["result_id"])
+                        original = store.get("autonomous_result", result_id)
+                        if (
+                            original.get("experiment_id") != key
+                            or original.get("config") != identities[key]
+                            or any(
+                                original.get(field) != item.get(field)
+                                for field in ("mean_ap", "stability_ap", "largest_train_gap")
+                            )
+                        ):
+                            raise StudyReadError("invalid_result_link")
                     terminals[key] = item
                 attempts = {}
                 for _, item in store.all("autonomous_attempt"):
