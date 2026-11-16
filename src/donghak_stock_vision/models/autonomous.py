@@ -24,9 +24,12 @@ from donghak_stock_vision.signals.dataset import counts
 
 
 def masked(rows: list[Sample], name: str) -> list[Sample]:
-    require(name in MASKS, "autonomous_feature_mask")
+    from donghak_stock_vision.features.research import GROUPS
+
+    masks = MASKS | {"v2_" + k: v for k, v in GROUPS.items()}
+    require(name in masks, "autonomous_feature_mask")
     return [
-        replace(s, values=tuple(v if i in MASKS[name] else 0.0 for i, v in enumerate(s.values)))
+        replace(s, values=tuple(v if i in masks[name] else 0.0 for i, v in enumerate(s.values)))
         for s in rows
     ]
 
@@ -100,6 +103,7 @@ def execute(
 ) -> tuple[dict[str, Any], bytes]:
     horizon = str(config["goal"]["horizon"])
     value = dataset["goals"][horizon]
+    names = config["goal"].get("features") if dataset["version"] == "direction_dataset_v2" else None
     samples = [Sample.from_dict(s) for s in value["samples"]]
     returns = value["returns"]
     span = ResearchDateRange(
@@ -114,7 +118,7 @@ def execute(
     candidate = Candidate(**config["candidate"])
     folds: list[dict[str, Any]] = []
     if not gate:
-        for f in dataset["folds"]:
+        for f in value.get("folds", dataset["folds"]):
             fold = Fold(
                 ResearchDateRange(**{k: date.fromisoformat(v) for k, v in f["training"].items()}),
                 ResearchDateRange(**{k: date.fromisoformat(v) for k, v in f["evaluation"].items()}),
@@ -134,13 +138,39 @@ def execute(
                 >= 20,
                 "autonomous_fold_population",
             )
-            fitted = fit_candidate(candidate, masked(train, config["mask"]))
+            fitted = fit_candidate(candidate, masked(train, config["mask"]), feature_names=names)
             evaluated = measure(
                 holdout,
                 predict_candidate(candidate, fitted, masked(holdout, config["mask"])),
                 train,
                 returns,
             )
+            if dataset["version"] == "direction_dataset_v2":
+                # One common calendar stride for all tickers avoids overlapping
+                # event windows; cross-sectional dependence remains unqualified.
+                days = sorted({s.trading_date for s in holdout})
+                selected_days = set()
+                last_end = None
+                for day in days:
+                    if last_end is None or day > last_end:
+                        selected_days.add(day)
+                        last_end = max(
+                            s.label_end
+                            for s in holdout
+                            if s.trading_date == day and s.label_end is not None
+                        )
+                independent_rows = [s for s in holdout if s.trading_date in selected_days]
+                independent_scores = predict_candidate(
+                    candidate, fitted, masked(independent_rows, config["mask"])
+                )
+                evaluated["nonoverlapping_event_metrics"] = metrics(
+                    [int(s.label) for s in independent_rows if s.label is not None],
+                    independent_scores,
+                )
+                evaluated["nonoverlapping_counts"] = counts(independent_rows)
+                evaluated["independent_performance_established"] = False
+                evaluated["cross_sectional_dependence"] = True
+                evaluated["overlapping_full_population_metrics"] = True
             learned = metrics(
                 [int(s.label) for s in train if s.label is not None],
                 predict_candidate(candidate, fitted, masked(train, config["mask"])),
@@ -152,7 +182,7 @@ def execute(
         and min(counts(training)["positive"], counts(training)["negative"]) >= 50,
         "autonomous_training_population",
     )
-    fitted = fit_candidate(candidate, masked(training, config["mask"]))
+    fitted = fit_candidate(candidate, masked(training, config["mask"]), feature_names=names)
     checkpoint = estimator_bytes(fitted)
     import hashlib
 

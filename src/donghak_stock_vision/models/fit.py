@@ -7,7 +7,14 @@ from donghak_stock_vision.data.learning import FEATURES, AnalysisError, Sample
 from donghak_stock_vision.signals.dataset import sample_weights
 
 
-def fit_linear(samples: list[Sample], c: float) -> dict[str, Any]:
+def fit_linear(
+    samples: list[Sample],
+    c: float,
+    *,
+    feature_names: list[str] | None = None,
+    solver: str = "lbfgs",
+    class_weight: str | None = "balanced",
+) -> dict[str, Any]:
     try:
         import numpy as np
         from sklearn.exceptions import ConvergenceWarning
@@ -26,14 +33,14 @@ def fit_linear(samples: list[Sample], c: float) -> dict[str, Any]:
         scaler = StandardScaler()
         transformed = scaler.fit_transform(x, sample_weight=weights)
         estimator = LogisticRegression(
-            C=c, solver="lbfgs", max_iter=2000, class_weight="balanced", random_state=42
+            C=c, solver=solver, max_iter=2000, class_weight=class_weight, random_state=42
         )
         try:
             estimator.fit(transformed, y, sample_weight=weights)
         except ConvergenceWarning as error:
             raise AnalysisError("convergence_failed") from error
     return {
-        "features": list(FEATURES),
+        "features": list(FEATURES) if feature_names is None else feature_names,
         "classes": estimator.classes_.tolist(),
         "mean": scaler.mean_.tolist(),
         "scale": scaler.scale_.tolist(),

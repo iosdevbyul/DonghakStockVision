@@ -21,7 +21,16 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     p = sub.add_parser("autonomous-research")
     p.add_argument(
         "action",
-        choices=("prepare", "run", "status", "worker", "reproduce", "render-agent", "derive"),
+        choices=(
+            "prepare",
+            "run",
+            "status",
+            "worker",
+            "reproduce",
+            "render-agent",
+            "derive",
+            "report",
+        ),
     )
     p.add_argument("--root", type=Path, required=True)
     p.add_argument("--source-root", type=Path)
@@ -128,6 +137,10 @@ def run_command(args: argparse.Namespace) -> int:
                     service.record_run(args.root, pin, config, result, args.steps)
             else:
                 result = run(args.root, pin, args.steps, agent=args.agent, reuse=reuse).to_dict()
+        elif args.action == "report":
+            from donghak_stock_vision.storage.adaptive_research_report import report
+
+            result = report(args.root, pin)
         elif args.action == "status":
             result = status(args.root, pin).to_dict()
         elif args.action == "render-agent":

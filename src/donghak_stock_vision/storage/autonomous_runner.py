@@ -15,6 +15,7 @@ from typing import Any
 
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
+from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.models.research_agent import RuleBasedAgent, select_proposal
 from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.autonomous_research import (
@@ -177,7 +178,7 @@ def run(
             or (agent == "gemma4" and plan["version"] == "autonomous_plan_v2")
             or (
                 agent == "managed"
-                and plan["version"] == "autonomous_plan_v3"
+                and plan["version"] in ("autonomous_plan_v3", "autonomous_plan_v4")
                 and agent_factory is not None
             )
         ),
@@ -220,17 +221,26 @@ def run(
 
             view: dict[str, Any] = (
                 memory_view(root, plan, data, done, choice)
-                if plan["version"] in ("autonomous_plan_v2", "autonomous_plan_v3")
+                if plan["version"]
+                in ("autonomous_plan_v2", "autonomous_plan_v3", "autonomous_plan_v4")
                 else dict(
                     version="research_agent_view_v1",
                     candidates=[choice],
                     history=[dict(experiment_id=k, state=v["state"]) for k, v in done.items()],
                 )
             )
+            rule_began = time.monotonic()
             selected = select_proposal(RuleBasedAgent(), view)
+            rule_seconds = time.monotonic() - rule_began
             decision: dict[str, Any] = dict(
                 agent=agent, at=clock(), state="rule", history_count=len(view["history"])
             )
+            if "adaptation" in choice:
+                decision["rule_selection_seconds"] = rule_seconds
+                decision["adaptation"] = choice["adaptation"]
+                decision["rule_counterfactual"] = selected
+                decision["candidate_view_pin"] = digest(view)
+                decision["comparison_view"] = view
             parent_experiment = choice["parent_experiment"]
             if agent != "rule":
                 if agent == "gemma4":
@@ -265,7 +275,11 @@ def run(
                 paused = resource_reason(root, resource_probe())
                 if paused:
                     break
-            if plan["version"] in ("autonomous_plan_v2", "autonomous_plan_v3"):
+            if plan["version"] in (
+                "autonomous_plan_v2",
+                "autonomous_plan_v3",
+                "autonomous_plan_v4",
+            ):
                 # Covers rule mode after an orphaned Gemma process, including a
                 # different study. Never start a learner alongside a resident LLM.
                 from donghak_stock_vision.storage.gemma_research import process_resources
