@@ -16,9 +16,9 @@ from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.research_lab_export_cli import export
 from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.research_lab_publication import (
+    VERSION,
     ResearchLabError,
     ResearchLabPublication,
-    VERSION,
 )
 
 
