@@ -10,7 +10,14 @@ from donghak_stock_vision.models.research_agent import validate_gemma_proposal
 
 PROMPT = "memory_guided_hypothesis_v2"
 ARMS = ("rule", "gemma_blind", "gemma_memory")
-METRICS = ("mean_ap", "stability_ap", "overfit_gap", "baseline_ap_gain", "worst_balanced_accuracy")
+METRICS = (
+    "mean_ap",
+    "stability_ap",
+    "overfit_gap",
+    "baseline_ap_gain",
+    "worst_balanced_accuracy",
+    "failure_reason",
+)
 EXTRA = (
     "promptVersion horizon cohort problem failureCondition baseline validation "
     "falsification minimumEvidence estimatedCost evidence"

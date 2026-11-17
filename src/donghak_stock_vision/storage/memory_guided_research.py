@@ -42,6 +42,38 @@ def evidence(root: Path, pin: str) -> tuple[dict[str, Any], dict[str, Any], list
                 r = store.get("autonomous_result", t["result_id"])
                 require(r["dataset_id"] == plan["dataset_id"], "memory_result_dataset")
                 fs = r["folds"]
+                fold_defs = data["goals"][str(t["config"]["goal"]["horizon"])]["folds"]
+                require(len(fs) == len(fold_defs), "memory_original_fold_owner")
+                details = []
+                for f, spec in zip(fs, fold_defs, strict=True):
+                    e = f["evaluation"]
+                    regimes = e.get("seen_robustness", {}).get("input_regimes", {})
+                    usable = [
+                        (name, row["metrics"]["balanced_accuracy"])
+                        for name, row in regimes.items()
+                        if row["metrics"].get("balanced_accuracy") is not None
+                    ]
+                    details.append(
+                        dict(
+                            period=spec["evaluation"],
+                            training_end=spec["training"]["end"],
+                            metrics={
+                                k: e["metrics"][k]
+                                for k in (
+                                    "balanced_accuracy",
+                                    "pr_auc_ap",
+                                    "roc_auc",
+                                    "brier_score",
+                                )
+                            },
+                            baseline_ap=max(b["pr_auc_ap"] for b in e["baselines"].values()),
+                            overfit_gap=f["train"]["balanced_accuracy"]
+                            - e["metrics"]["balanced_accuracy"],
+                            counts=e["counts"],
+                            weakest_seen_regime=min(usable, key=lambda pair: pair[1], default=None),
+                        )
+                    )
+                item["internal_folds"] = details[-3:]
                 item.update(
                     result_id=t["result_id"],
                     mean_ap=r["mean_ap"],
@@ -239,6 +271,10 @@ def arm_root(root: Path, arm: str) -> Path:
 class MemoryAgent(LLMResearchAgent):
     def proposal_input(self, view: dict[str, Any]) -> tuple[dict[str, Any], str, dict[str, Any]]:
         summary = prompt_view(view) | dict(cohort=view["cohort"], horizon=view["goal"]["horizon"])
+        summary["internal_period_evidence"] = [
+            dict(experimentId=h["experiment_id"], folds=h.get("internal_folds", []))
+            for h in view["history"]
+        ]
         prompt = (
             "Propose one falsifiable internal-development hypothesis. JSON only. Copy exact "
             "candidate id, family, featureSet, value and seed 42. Fill fixed schema enums exactly. "
@@ -327,7 +363,7 @@ def run(root: Path, pin: str, arm: str) -> dict[str, Any]:
                 if h["config"]["goal"]["horizon"] == frozen["request"]["horizon"]
                 and h["config"]["stock_policy"] == frozen["request"]["stock_policy"]
             ]
-            histories = list({h["experiment_id"]: h for h in histories}.values())[-4:]
+            histories = list({h["experiment_id"]: h for h in histories}.values())[-2:]
             return view | dict(
                 candidates=[c for c in view["candidates"] if c["experiment_id"] in allowed],
                 history=histories,
