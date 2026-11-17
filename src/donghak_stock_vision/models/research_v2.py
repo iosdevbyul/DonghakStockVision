@@ -2,7 +2,7 @@
 
 import statistics as st
 from collections import Counter
-from datetime import datetime, time
+from datetime import date, datetime, time
 from typing import Any
 
 from donghak_stock_vision.backtest.validation import require
@@ -108,6 +108,7 @@ def build(
     *,
     feature_cache: dict[str, list[dict[str, Any]]] | None = None,
     exclusions_by_ticker: dict[str, dict[str, int]] | None = None,
+    label_start: date | None = None,
 ) -> tuple[list[Sample], dict[str, float], dict[str, int]]:
     contract(h)
     rows, changes = [], {}
@@ -117,6 +118,8 @@ def build(
         original_rows = [b.to_dict() for b in bars]
         ticker_excluded: Counter[str] = Counter()
         for i, b in enumerate(bars):
+            if label_start is not None and b.trading_date < label_start:
+                continue
             try:
                 history = bars[: i + 1]
                 available = max(r.collected_at for r in history)

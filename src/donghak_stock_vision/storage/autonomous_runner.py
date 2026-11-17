@@ -44,7 +44,14 @@ from donghak_stock_vision.storage.research_resources import (
 )
 
 
-def worker_entry(root: Path, pin: str, attempt: str, gate: bool = False) -> None:
+def worker_entry(
+    root: Path,
+    pin: str,
+    attempt: str,
+    gate: bool = False,
+    *,
+    consumer: Callable[[Path, str, str], None] | None = None,
+) -> None:
     def deny(event: str, args: tuple[Any, ...]) -> None:
         if event in ("socket.connect", "socket.getaddrinfo"):
             raise RuntimeError("autonomous_network_forbidden")
@@ -56,7 +63,10 @@ def worker_entry(root: Path, pin: str, attempt: str, gate: bool = False) -> None
     resource.setrlimit(resource.RLIMIT_FSIZE, (LIMITS["maximum_study_mb"] * 1024**2,) * 2)
     os.nice(10)
     with lock(root, ".worker.lock"):
-        if gate:
+        if consumer is not None:
+            require(not gate, "research_consumer_cannot_unseal_confirmation")
+            consumer(root, pin, attempt)
+        elif gate:
             confirm(root, pin)
         else:
             worker(root, pin, attempt)
@@ -81,6 +91,7 @@ def launch(
     gate: bool = False,
     resource_probe: Callable[[], dict[str, Any]] = probe,
     reservation_fd: int | None = None,
+    selection_review: bool = False,
 ) -> dict[str, Any]:
     logs = root / "logs"
     logs.mkdir(mode=0o700, exist_ok=True)
@@ -96,12 +107,21 @@ def launch(
         env[name] = "1"
     env["LOKY_MAX_CPU_COUNT"] = "1"
     env.pop("KRX_API_KEY", None)
+    if selection_review:
+        for name in (
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SESSION_TOKEN",
+        ):
+            env.pop(name, None)
     args = [
         sys.executable,
         "-m",
         "donghak_stock_vision",
         "autonomous-research",
-        "worker",
+        "selection-worker" if selection_review else "worker",
         "--root",
         str(root),
         "--plan",

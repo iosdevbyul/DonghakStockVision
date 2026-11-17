@@ -40,10 +40,12 @@ def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def source(root: Path, count: int, *, universe_size: int = 5) -> RealMarketTrainingRequest:
+def source(
+    root: Path, count: int, *, universe_size: int = 5, first_day: date = date(2020, 1, 2)
+) -> RealMarketTrainingRequest:
     database = root / "research.sqlite3"
     days: list[date] = []
-    day = date(2020, 1, 2)
+    day = first_day
     while len(days) < count:
         if day.weekday() < 5:
             days.append(day)
