@@ -272,13 +272,13 @@ class MemoryAgent(LLMResearchAgent):
     def proposal_input(self, view: dict[str, Any]) -> tuple[dict[str, Any], str, dict[str, Any]]:
         summary = prompt_view(view) | dict(cohort=view["cohort"], horizon=view["goal"]["horizon"])
         summary["internal_period_evidence"] = [
-            dict(experimentId=h["experiment_id"], folds=h.get("internal_folds", []))
+            dict(experimentId=h["experiment_id"], folds=h.get("internal_folds", [])[-2:])
             for h in view["history"]
         ]
         prompt = (
             "Propose one falsifiable internal-development hypothesis. JSON only. Copy exact "
             "candidate id, family, featureSet, value and seed 42. Fill fixed schema enums exactly. "
-            "Use short text. Cite only supplied experiment IDs and their supplied metrics; "
+            "Use at most eight words per text. Cite exactly one supplied experiment ID and metric; "
             "empty evidence when history is empty. Correlation is not causation. Never code/tools. "
             "No independent or trading approval.\n" + json.dumps(summary, separators=(",", ":"))
         )

@@ -39,6 +39,9 @@ def test_hypothesis_schema_identity_and_evidence(agent_view: dict[str, Any]) -> 
             evidence=[],
         )
     )
+    from donghak_stock_vision.storage.gemma_research import proposal_schema
+
+    assert policy.schema(v, proposal_schema(v))["properties"]["evidence"]["maxItems"] == 0
     assert policy.validate(p, v) == p["experimentId"]
     old = digest(p)
     for k, val in (
@@ -54,6 +57,11 @@ def test_hypothesis_schema_identity_and_evidence(agent_view: dict[str, Any]) -> 
     history = [dict(experiment_id=digest("original"), mean_ap=0.4)]
     with pytest.raises(ValueError, match="missing_reasoning"):
         policy.validate(p, v | dict(history=history))
+    constrained = policy.schema(
+        v | dict(history=history), proposal_schema(v | dict(history=history))
+    )
+    assert constrained["properties"]["evidence"]["minItems"] == 1
+    assert constrained["properties"]["evidence"]["maxItems"] == 1
     p["evidence"] = [dict(experimentId=history[0]["experiment_id"], metric="mean_ap")]
     assert policy.validate(p, v | dict(history=history))
     assert policy.hypothesis_id(p, "session", "gemma_blind") != policy.hypothesis_id(

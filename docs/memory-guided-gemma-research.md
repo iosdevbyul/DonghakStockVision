@@ -34,9 +34,9 @@ IDs. Request/model/source/configuration bounds are checked before execution.
 
 ## Hypotheses and feedback
 
-The provider returns a schema-bounded existing candidate, short hypothesis,
-problem, expected improvement, failure condition, rationale and zero-to-three
-original experiment/metric citations. Citations must exist in the supplied view
+The provider returns a schema-bounded existing candidate, short hypothesis (at most 60 characters per text field),
+problem, expected improvement, failure condition, rationale and zero-or-one
+original experiment/metric citation. Citations must exist in the supplied view
 and include that metric. A nonempty history requires evidence. The host adds
 frozen cohort/horizon, baseline, validation/falsification conditions, minimum
 evidence, one-experiment cost and prompt version; these are host policy, not

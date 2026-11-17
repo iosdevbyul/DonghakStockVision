@@ -42,18 +42,20 @@ def schema(view: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
     props["horizon"] = dict(type="integer", enum=[view["goal"]["horizon"]])
     props["cohort"] = dict(type="string", enum=[view["cohort"]])
     for k in ("hypothesis", "expectedImprovement", "rationale", "problem", "failureCondition"):
-        props[k] = dict(type="string", minLength=1, maxLength=100)
+        props[k] = dict(type="string", minLength=1, maxLength=60)
     props["evidence"] = dict(
         type="array",
-        maxItems=3,
-        minItems=0,
+        maxItems=1,
+        minItems=1 if view["history"] else 0,
         items=dict(
             type="object",
             properties=dict(
                 experimentId=dict(
                     type="string", enum=[h["experiment_id"] for h in view["history"]]
                 ),
-                metric=dict(type="string", enum=list(METRICS)),
+                metric=dict(
+                    type="string", enum=[k for k in METRICS if any(k in h for h in view["history"])]
+                ),
             ),
             required=["experimentId", "metric"],
             additionalProperties=False,
@@ -81,9 +83,9 @@ def validate(value: dict[str, Any], view: dict[str, Any]) -> str:
         "memory_scope_substitution",
     )
     for k in ("hypothesis", "expectedImprovement", "rationale", "problem", "failureCondition"):
-        require(type(value[k]) is str and 0 < len(value[k]) <= 100, "memory_hypothesis_text")
+        require(type(value[k]) is str and 0 < len(value[k]) <= 60, "memory_hypothesis_text")
     evidence = value["evidence"]
-    require(type(evidence) is list and len(evidence) <= 3, "memory_evidence_bound")
+    require(type(evidence) is list and len(evidence) <= 1, "memory_evidence_bound")
     histories = {h["experiment_id"]: h for h in view["history"]}
     require(
         len({(e.get("experimentId"), e.get("metric")) for e in evidence}) == len(evidence),
