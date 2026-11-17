@@ -31,6 +31,10 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             "derive",
             "report",
             "fork-policy",
+            "selection-register",
+            "selection-assess",
+            "selection-prepare",
+            "selection-worker",
         ),
     )
     p.add_argument("--selection-policy", choices=("predeclared", "robust"), default="predeclared")
@@ -59,6 +63,15 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
 
 
 def run_command(args: argparse.Namespace) -> int:
+    if args.action == "selection-worker":
+        from donghak_stock_vision.storage.selection_review import assess_worker
+
+        require(
+            args.plan is not None and args.attempt is not None and not args.gate,
+            "selection_worker_reference",
+        )
+        worker_entry(args.root, args.plan, args.attempt, consumer=assess_worker)
+        return 0
     if args.action == "worker":
         require(args.plan is not None and args.attempt is not None, "autonomous_worker_reference")
         worker_entry(args.root, args.plan, args.attempt, args.gate)
@@ -67,7 +80,30 @@ def run_command(args: argparse.Namespace) -> int:
         not args.gate and args.plan is None and args.attempt is None,
         "autonomous_worker_only_arguments",
     )
-    if args.action == "fork-policy":
+    if args.action == "selection-register":
+        from donghak_stock_vision.storage.selection_review import register
+
+        require(
+            args.request is not None
+            and args.request_pin_file is not None
+            and args.pins_root is not None,
+            "selection_registration_reference",
+        )
+        d = document(str(args.request))
+        require(digest(d) == read_pin(args.request_pin_file), "selection_request_pin")
+        register(d, args.root, args.pins_root)
+        result = dict(registered=True, old_experiments_reexecuted=0, new_training_budget=0)
+    elif args.action == "selection-prepare":
+        from donghak_stock_vision.storage.selection_review import prepare_readout
+
+        require(args.plan_pin_file is not None, "selection_plan_pin_required")
+        result = prepare_readout(args.root, read_pin(args.plan_pin_file))
+    elif args.action == "selection-assess":
+        from donghak_stock_vision.storage.selection_review import run_assessment
+
+        require(args.plan_pin_file is not None, "selection_plan_pin_required")
+        result = run_assessment(args.root, read_pin(args.plan_pin_file))
+    elif args.action == "fork-policy":
         from donghak_stock_vision.storage.stock_research import fork_policy
 
         require(
