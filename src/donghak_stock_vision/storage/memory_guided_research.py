@@ -342,20 +342,19 @@ def run(root: Path, pin: str, arm: str) -> dict[str, Any]:
             if arm == "rule"
             else MemoryAgent(target, OllamaProvider(ModelConfig(**frozen["request"]["model"])))
         )
-        reuse = next(
+        peers = tuple(
             (
                 (arm_root(root, a), frozen["plan_id"])
                 for a in policy.ARMS
                 if a != arm and terminals_count(arm_root(root, a)) > 0
             ),
-            None,
         )
         result = run_worker(
             target,
             frozen["plan_id"],
             1,
             agent="managed",
-            reuse=reuse,
+            reuse_peers=peers,
             agent_factory=lambda r, p: agent,
             view_transform=project,
             strict_agent=True,

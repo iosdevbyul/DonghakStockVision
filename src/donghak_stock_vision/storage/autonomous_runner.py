@@ -187,6 +187,7 @@ def run(
     resource_probe: Callable[[], dict[str, Any]] = probe,
     agent: str = "rule",
     reuse: tuple[Path, str] | None = None,
+    reuse_peers: tuple[tuple[Path, str], ...] = (),
     agent_factory: Callable[[Path, dict[str, Any]], AuditedAgent] | None = None,
     view_transform: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
     strict_agent: bool = False,
@@ -364,7 +365,8 @@ def run(
             with closing(AnalysisStore(root / DB)) as store:
                 store.put("autonomous_selection", decision)
             selections.append(decision)
-            if reuse is not None and adopt(root, plan, *reuse, choice):
+            peers = (() if reuse is None else (reuse,)) + reuse_peers
+            if any(adopt(root, plan, *peer, choice) for peer in peers):
                 completed += 1
                 cache_hits += 1
                 continue

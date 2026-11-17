@@ -161,7 +161,7 @@ class Backend:
 
     def generate(self, prompt: str, schema: dict[str, Any]) -> str:
         v = json.loads(prompt.split("\n", 1)[1])
-        c = v["candidates"][0]
+        c = v["candidates"][1]
         result = dict(
             proposalVersion="gemma_research_proposal_v1",
             experimentId=c["id"],
@@ -233,8 +233,8 @@ def test_finite_abc_real_fit_feedback_recovery_and_publication(
     for arm in ("gemma_blind", "gemma_memory"):
         result = owner.run(root, pin, arm)
     assert all(a["completed"] == 1 for a in result["arms"].values())
-    assert sum(a["actual_python_trainings"] for a in result["arms"].values()) == 1
-    assert sum(a["reused"] for a in result["arms"].values()) == 2
+    assert sum(a["actual_python_trainings"] for a in result["arms"].values()) == 2
+    assert sum(a["reused"] for a in result["arms"].values()) == 1
     assert len(result["feedback"]) == 3
     for arm in policy.ARMS:
         assert owner.run(root, pin, arm) == result
