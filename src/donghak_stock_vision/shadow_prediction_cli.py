@@ -39,6 +39,8 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             "verify",
             "alignment",
             "evaluation-readiness",
+            "freeze-evidence",
+            "evidence-readiness",
         ),
     )
     p.add_argument("--request", type=Path)
@@ -57,6 +59,8 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     p.add_argument("--explain-timing", action="store_true")
     p.add_argument("--resume-report", type=Path)
     p.add_argument("--resume-pin-file", type=Path)
+    p.add_argument("--evidence-plan", type=Path)
+    p.add_argument("--evidence-plan-pin-file", type=Path)
 
 
 def run(args: argparse.Namespace) -> int:
@@ -154,6 +158,55 @@ def run(args: argparse.Namespace) -> int:
                         ).to_dict()
                     }
                 )
+        elif args.action in ("freeze-evidence", "evidence-readiness"):
+            from donghak_stock_vision.storage.evaluation_evidence import (
+                freeze_shadow,
+                output_paths,
+                shadow_readiness,
+            )
+
+            require(args.evidence_plan_pin_file is not None, "evidence_separate_pin_required")
+            require(
+                args.report.is_absolute()
+                and args.report.resolve() == args.report
+                and all(
+                    not args.report.is_relative_to(p.resolve())
+                    for p in (
+                        args.journal.parent,
+                        Path(d["model"]["database"]).parent,
+                        Path(d["operational"]["root"]),
+                    )
+                ),
+                "evidence_new_separate_private_outputs",
+            )
+            if args.action == "freeze-evidence":
+                require(
+                    args.evidence_plan is None
+                    and not args.evidence_plan_pin_file.exists()
+                    and args.evidence_plan_pin_file.parent.resolve()
+                    != args.report.parent.resolve(),
+                    "evidence_new_separate_registration",
+                )
+                output_paths(
+                    args.report,
+                    args.evidence_plan_pin_file,
+                    [
+                        args.journal.parent,
+                        Path(d["model"]["database"]).parent,
+                        Path(d["operational"]["root"]),
+                    ],
+                )
+                result = freeze_shadow(d, args.journal, head)
+                args.evidence_plan_pin_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                write_new(args.evidence_plan_pin_file, result.identifier)
+            else:
+                require(args.evidence_plan is not None, "evidence_registration_required")
+                registration = FrozenJSON.freeze(document(str(args.evidence_plan)))
+                require(
+                    registration.identifier == read_pin(args.evidence_plan_pin_file),
+                    "evidence_registration_pin",
+                )
+                result = shadow_readiness(registration, d, args.journal, head)
         elif args.action == "evaluation-readiness":
             result = evaluation_readiness(d, args.journal, head, config=config)
         elif args.action == "status":
@@ -219,6 +272,9 @@ def run(args: argparse.Namespace) -> int:
         )
         return int(bool(value.get("blocked")) or value.get("input_timing_ready") is False)
     except (ValueError, OSError, sqlite3.Error) as error:
+        if args.action in ("freeze-evidence", "evidence-readiness"):
+            print(json.dumps(dict(status="blocked", reason="evidence_validation_failed")))
+            return 2
         args.report.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         value = dict(
             status="blocked",
