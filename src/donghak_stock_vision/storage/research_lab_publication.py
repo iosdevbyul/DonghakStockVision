@@ -130,14 +130,44 @@ class ResearchLabPublication:
         raw = approved_file(root, "index.json", MAX_INDEX)
         ensure(hashlib.sha256(raw).hexdigest() == index_sha256, "index_pin_mismatch")
         index = approved_json(raw)
-        ensure(index.get("version") == VERSION, "unsupported_publication_version")
+        ensure(
+            index.get("version") in (VERSION, "research_lab_publication_index_v2"),
+            "unsupported_publication_version",
+        )
         entries = index.get("entries")
-        if not isinstance(entries, list) or not 1 <= len(entries) <= 24:
+        if (
+            not isinstance(entries, list)
+            or not 0 <= len(entries) <= 24
+            or (not entries and index.get("version") == VERSION)
+        ):
             raise ResearchLabError("invalid_study_count")
         self.studies: dict[str, dict[str, Any]] = {}
         self.experiments: dict[tuple[str, str], dict[str, Any]] = {}
         self.reports: dict[str, dict[str, Any]] = {}
         self.groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self.memory_reports: dict[str, dict[str, Any]] = {}
+        if index.get("version") == "research_lab_publication_index_v2":
+            from donghak_stock_vision.storage.memory_guided_research import validate_publication
+
+            memory = index.get("memoryReports", [])
+            ensure(type(memory) is list and 1 <= len(memory) <= 6, "invalid_memory_report_count")
+            for item in memory:
+                ensure(
+                    type(item) is dict and set(item) == {"report", "sha256"},
+                    "invalid_memory_report",
+                )
+                raw_report = approved_file(root, item["report"], MAX_REPORT)
+                ensure(
+                    hashlib.sha256(raw_report).hexdigest() == item["sha256"], "memory_report_pin"
+                )
+                try:
+                    report = validate_publication(approved_json(raw_report))
+                except (ValueError, KeyError, TypeError) as error:
+                    raise ResearchLabError("invalid_memory_publication") from error
+                key = report["sessionId"]
+                ensure(key not in self.memory_reports, "duplicate_memory_report")
+                self.memory_reports[key] = report
+                self.reports[key] = report
         for entry in entries:
             self._ingest(root, entry)
         ensure(len(self.studies) == len(entries), "duplicate_study")
@@ -459,6 +489,15 @@ class ResearchLabPublication:
 
     def report_catalog(self, offset: int = 0, limit: int = 25) -> dict[str, Any]:
         rows = sorted(self.studies.values(), key=lambda s: (s["cohort"], s["selectionPolicy"]))
+        rows += [
+            dict(
+                reportId=k,
+                researchKind="memory_guided",
+                model=v["model"],
+                independentGeneralization="NOT_ESTABLISHED",
+            )
+            for k, v in sorted(self.memory_reports.items())
+        ]
         return {
             "schemaVersion": "research_lab_reports_v1",
             "total": len(rows),
