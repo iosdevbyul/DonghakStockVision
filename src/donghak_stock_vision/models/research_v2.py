@@ -18,6 +18,11 @@ from donghak_stock_vision.models.experiment import Candidate, Fold
 SPACE = "adaptive_direction_v2"
 
 
+def direction_label(base: int, target: int) -> int | None:
+    """Unchanged unadjusted close direction and exact 20bps neutral exclusion."""
+    return int(target > base) if abs(target - base) * 10000 > 20 * base else None
+
+
 def contract(h: int) -> dict[str, Any]:
     return original_contract(h) | dict(
         version="observed_delayed_direction_v2",
@@ -136,16 +141,15 @@ def build(
                 check_segment(bars[max(0, i - 35) : i + h + 2], snapshot)
                 base = bars[i + 1].close
                 change = future[-1].close / base - 1
-                require(
-                    abs(future[-1].close - base) * 10000 > 20 * base, "research_neutral_cost_band"
-                )
+                label = direction_label(base, future[-1].close)
+                require(label is not None, "research_neutral_cost_band")
                 s = Sample(
                     ticker,
                     b.trading_date,
                     datetime.combine(bars[i + 1].trading_date, time(19), SEOUL),
                     values,
                     "up",
-                    int(change > 0),
+                    label,
                     future[0].trading_date,
                     future[-1].trading_date,
                     max(r.collected_at for r in bars[i : i + h + 2]),

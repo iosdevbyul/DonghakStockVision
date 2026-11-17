@@ -20,6 +20,10 @@ def identifier(kind: str, identity: Any) -> str:
 
 
 def validate_event(owner: FrozenJSON) -> dict[str, Any]:
+    if owner.to_dict().get("version") == "direction_shadow_event_v3":
+        from donghak_stock_vision.data.direction_shadow import validate_event as validate_direction
+
+        return validate_direction(owner)
     require(len(owner.payload_json.encode()) <= 120 * 1024, "shadow_event_byte_bound")
     d = fields(
         owner.to_dict(),

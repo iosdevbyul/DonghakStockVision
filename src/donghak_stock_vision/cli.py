@@ -59,6 +59,9 @@ def parser() -> argparse.ArgumentParser:
     from donghak_stock_vision.shadow_prediction_cli import add_commands as add_shadow
 
     add_shadow(sub)
+    from donghak_stock_vision.direction_shadow_cli import add_commands as add_direction
+
+    add_direction(sub)
     from donghak_stock_vision.autonomous_cli import add_commands as add_autonomous
 
     add_autonomous(sub)
@@ -115,6 +118,7 @@ def main(argv: list[str] | None = None) -> int:
             "real-market-dataset",
             "real-model-evaluation",
             "shadow-prediction",
+            "direction-shadow",
         )
         and not offline_real_training
         and not (args.command == "krx-scheduler" and args.action == "availability")
@@ -174,6 +178,10 @@ def main(argv: list[str] | None = None) -> int:
             from donghak_stock_vision.autonomous_cli import run_command
 
             return run_command(args)
+        if args.command == "direction-shadow":
+            from donghak_stock_vision.direction_shadow_cli import run as run_direction
+
+            return run_direction(args)
         if args.command == "shadow-prediction":
             from donghak_stock_vision.shadow_prediction_cli import run as run_shadow
 

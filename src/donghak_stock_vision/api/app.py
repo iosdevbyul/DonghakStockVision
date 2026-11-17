@@ -49,6 +49,8 @@ from donghak_stock_vision.api.stock_analysis import (
     AnalysisPublicationReader,
     PublishedStockAnalysis,
 )
+from donghak_stock_vision.direction_shadow_routes import DirectionPublication
+from donghak_stock_vision.direction_shadow_routes import router as direction_router
 from donghak_stock_vision.storage.daily_research_public_models import (
     DailyResearchReaderError,
     DailyResearchSeries,
@@ -83,6 +85,8 @@ def create_app(
     security_metadata_reader: SecurityMetadataReader | None = None,
     portfolio_reader: PortfolioPublicationReader | None = None,
     study_reader: PinnedStudyReader | None = None,
+    direction_reader: DirectionPublication | None = None,
+    direction_authorize: "Callable[[str],Principal|None] | None" = None,
     lab_reader: ResearchLabPublication | None = None,
     allowed_origins: Sequence[str] = (
         "http://localhost:3000",
@@ -102,7 +106,7 @@ def create_app(
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT"] if ai_management is not None else ["GET"],
         allow_headers=["Accept", "Content-Type", "Authorization"]
-        if ai_management is not None
+        if ai_management is not None or direction_reader is not None
         else ["Accept", "Content-Type"],
     )
 
@@ -112,6 +116,11 @@ def create_app(
         from donghak_stock_vision.ai_model_routes import model_router
 
         app.include_router(model_router(ai_management, ai_authorize))
+
+    if (direction_reader is None) != (direction_authorize is None):
+        raise ValueError("direction_authenticated_read_pair_required")
+    if direction_reader is not None and direction_authorize is not None:
+        app.include_router(direction_router(direction_reader, direction_authorize))
 
     def require_reader() -> ResearchAPIReader:
         if reader is None:

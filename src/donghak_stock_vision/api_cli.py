@@ -60,6 +60,10 @@ def parser() -> argparse.ArgumentParser:
         "--research-lab-root", type=Path, help="approved six-study publication directory"
     )
     result.add_argument("--research-lab-index-sha256", help="independently approved index SHA-256")
+    result.add_argument("--direction-publication", type=Path)
+    result.add_argument("--direction-publication-sha256")
+    result.add_argument("--direction-read-token-env")
+    result.add_argument("--direction-only", action="store_true")
     result.add_argument("--ai-management-root", type=Path)
     result.add_argument("--ai-model-config", type=Path)
     result.add_argument("--ai-model-config-sha256")
@@ -72,10 +76,57 @@ def parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     load_dotenv()
     args = parser().parse_args(argv)
+    direction_reader = None
+    direction_authorize = None
+    if any(
+        (
+            args.direction_publication,
+            args.direction_publication_sha256,
+            args.direction_read_token_env,
+            args.direction_only,
+        )
+    ):
+        if not all(
+            (
+                args.direction_publication,
+                args.direction_publication_sha256,
+                args.direction_read_token_env,
+            )
+        ) or args.host not in ("127.0.0.1", "::1"):
+            parser().error(
+                "direction evidence requires pinned publication, approved token env and loopback"
+            )
+        from donghak_stock_vision.ai_model_routes import Principal, ScopedBearerAuthority
+        from donghak_stock_vision.direction_shadow_routes import DirectionPublication
+
+        try:
+            direction_reader = DirectionPublication(
+                args.direction_publication, args.direction_publication_sha256
+            )
+            direction_authorize = ScopedBearerAuthority(
+                [
+                    (
+                        os.environ.get(args.direction_read_token_env, ""),
+                        Principal("research-reader", frozenset({"research:read"})),
+                    )
+                ]
+            )
+        except (ValueError, OSError):
+            raise SystemExit("direction publication or approved credential unavailable") from None
     snapshot_path = args.snapshot
-    if snapshot_path is None:
+    if snapshot_path is None and not args.direction_only:
         configured = os.getenv("DSV_API_SNAPSHOT_PATH", "").strip()
         snapshot_path = Path(configured) if configured else None
+    if args.direction_only and any(
+        (
+            snapshot_path,
+            args.operational_only,
+            args.ai_management_only,
+            args.study_snapshot,
+            args.research_lab_root,
+        )
+    ):
+        parser().error("direction-only forbids other research sources")
     if args.operational_only and any(
         (
             args.study_snapshot,
@@ -121,6 +172,7 @@ def main(argv: list[str] | None = None) -> None:
     elif (
         snapshot_path is None
         and not args.ai_management_only
+        and not args.direction_only
         and not args.study_snapshot
         and not args.research_lab_root
     ):
@@ -294,6 +346,8 @@ def main(argv: list[str] | None = None) -> None:
         ai_authorize=ai_authorize,
         portfolio_reader=portfolio_reader,
         study_reader=study_reader,
+        direction_reader=direction_reader,
+        direction_authorize=direction_authorize,
         lab_reader=lab_reader,
         ohlcv_reader=ohlcv_reader,
         operational_reader=operational_reader,
@@ -308,7 +362,8 @@ def main(argv: list[str] | None = None) -> None:
         ),
     )
     if (
-        portfolio_reader is not None
+        direction_reader is not None
+        or portfolio_reader is not None
         or study_reader is not None
         or lab_reader is not None
         or daily_research_reader is not None
