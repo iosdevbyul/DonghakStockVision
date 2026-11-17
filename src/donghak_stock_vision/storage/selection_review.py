@@ -237,7 +237,7 @@ def register(request: dict[str, Any], root: Path, pins: Path) -> str:
     return digest(plan)
 
 
-def review_context(root: Path, pin: str) -> dict[str, Any]:
+def review_context(root: Path, pin: str, *, code_check: bool = True) -> dict[str, Any]:
     require(
         root.is_absolute()
         and root.resolve() == root
@@ -258,7 +258,10 @@ def review_context(root: Path, pin: str) -> dict[str, Any]:
         "selection_plan_binding",
     )
     require(
-        plan["code"]["implementation_hash"] == provenance()["implementation_hash"]
+        (
+            not code_check
+            or plan["code"]["implementation_hash"] == provenance()["implementation_hash"]
+        )
         and plan["code"]["versions"] == provenance()["versions"],
         "selection_code_or_runtime_changed",
     )

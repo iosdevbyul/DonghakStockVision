@@ -35,6 +35,7 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             "selection-assess",
             "selection-prepare",
             "selection-worker",
+            "evidence-audit",
         ),
     )
     p.add_argument("--selection-policy", choices=("predeclared", "robust"), default="predeclared")
@@ -80,7 +81,45 @@ def run_command(args: argparse.Namespace) -> int:
         not args.gate and args.plan is None and args.attempt is None,
         "autonomous_worker_only_arguments",
     )
-    if args.action == "selection-register":
+    if args.action == "evidence-audit":
+        from donghak_stock_vision.storage.evaluation_evidence import availability_audit
+
+        require(
+            args.plan_pin_file is not None
+            and args.report is not None
+            and args.pins_root is not None
+            and not args.report.exists(),
+            "evidence_audit_references",
+        )
+        require(
+            args.report.parent.resolve() != args.pins_root.resolve()
+            and not args.pins_root.is_relative_to(args.root)
+            and not args.report.is_relative_to(args.root),
+            "evidence_separate_outputs",
+        )
+        audit_view = availability_audit(
+            args.root,
+            read_pin(args.plan_pin_file),
+            outputs=(args.report, args.pins_root / "report.pin"),
+        )
+        args.report.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        args.pins_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        write_new(args.report, audit_view.payload_json)
+        write_new(args.pins_root / "report.pin", audit_view.identifier)
+        print(
+            json.dumps(
+                dict(
+                    status="INSUFFICIENT_EVIDENCE",
+                    new_training=0,
+                    network_requests=0,
+                    pit_qualified=False,
+                    performance_approved=False,
+                    execution_authorized=False,
+                )
+            )
+        )
+        return 0
+    elif args.action == "selection-register":
         from donghak_stock_vision.storage.selection_review import register
 
         require(
