@@ -41,8 +41,11 @@ def now() -> datetime:
     return datetime.now(UTC)
 
 
-def _calendar(d: dict[str, Any]) -> tuple[dict[str, str], str]:
-    require(type(d["calendars"]) is list and 1 <= len(d["calendars"]) <= 3, "shadow_calendar_bound")
+def _calendar(d: dict[str, Any], *, maximum_months: int = 3) -> tuple[dict[str, str], str]:
+    require(
+        type(d["calendars"]) is list and 1 <= len(d["calendars"]) <= maximum_months,
+        "shadow_calendar_bound",
+    )
     days: dict[str, str] = {}
     pins = []
     for item in d["calendars"]:
@@ -141,7 +144,9 @@ def _journal_contract(d: dict[str, Any], entries: list[dict[str, Any]]) -> None:
         else "reversal_barrier_v1"
     )
     require(
-        all(e["payload"]["event_rule"] == expected for e in entries if e["kind"] == "prediction"),
+        all(
+            e["payload"].get("event_rule") == expected for e in entries if e["kind"] == "prediction"
+        ),
         "shadow_cross_contract_journal",
     )
 

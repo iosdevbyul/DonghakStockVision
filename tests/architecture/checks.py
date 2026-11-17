@@ -130,7 +130,8 @@ def domain(module: str) -> Domain:
     ):
         return Domain.CORE
     if len(parts) == 1 and (
-        short in {"cli", "__main__", "ai_model_routes"} or short.endswith("_cli")
+        short in {"cli", "__main__", "ai_model_routes", "direction_shadow_routes"}
+        or short.endswith("_cli")
     ):
         return Domain.APPLICATION
     if parts[0] in {"api", "config"}:
