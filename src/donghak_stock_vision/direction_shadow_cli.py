@@ -1,5 +1,7 @@
 """Manual multi-horizon research actions, never provider or scheduler activation."""
 
+from __future__ import annotations
+
 import argparse
 import json
 import re
