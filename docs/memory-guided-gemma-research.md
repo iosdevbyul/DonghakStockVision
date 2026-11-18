@@ -129,3 +129,57 @@ small finite budget are descriptive; stochastic model outputs, caches and partia
 budgets must be reported rather than selecting only successful proposals.
 Generalization superiority remains `NOT_ESTABLISHED`; PIT qualification,
 performance approval and execution authorization remain false.
+
+## Verified local comparison (2026-11-18 KST)
+
+The corrected session used original KRX historical cohort 1, H1 and two candidate
+evaluations per arm. The 72 original experiments were audited without refitting.
+All six controlled hypotheses passed the host contract and completed evaluation.
+
+| Arm | Real Gemma inferences | New Python fits | Exact-result reuses | Mean internal AP | Worst fold BA | Mean Brier |
+|---|---:|---:|---:|---:|---:|---:|
+| Rule | 0 | 2 | 0 | .473657 | .466048 | .250849 |
+| Gemma without memory | 2 | 0 | 2 | .473657 | .466048 | .250849 |
+| Gemma with memory | 2 | 2 | 0 | .481286 | .468728 | .253203 |
+
+The blind arm selected the same experiments as Rule; verified reuse prevented
+unnecessary fitting. These order-dependent shared-cache savings do not establish
+a causal agent efficiency advantage. Memory selected linear and histogram-gradient-boosting
+candidates instead of the Rule arm's random forests. Its second request included
+the first selected experiment's verified result. Both blind requests had zero
+history. All memory period evidence ended by 2026-06-30. Model release preceded
+Python launches, and all six feedback records were retained.
+
+One Memory candidate passed the internal numerical screen; this is not independent
+generalization evidence. AP was higher while Brier was worse. Memory inference
+cost was 406.66 seconds versus 240.23 seconds without memory. Python worker time
+was 30.28 seconds for Memory and 30.93 seconds for Rule. Peak observed Ollama RSS
+was about 4.43 GiB; maximum Python worker RSS was about 365 MiB. Different selected
+candidates and two evaluations per arm cannot establish a statistically reliable
+agent superiority. New independent evaluation evidence remains zero.
+
+Separate engineering pilots remain preserved, including the original missing-
+citation rejection that exposed the schema mismatch. They add three Python fits
+and two Gemma inferences (one accepted, one rejected) and are excluded from the
+corrected comparison table. Across engineering and comparison executions there
+were seven new Python fits and six actual Gemma inferences. No KRX request was
+made. Original 1,398 protected files, including the old Shadow journals, retained
+identical SHA-256 values. No original model, PIN or operating setting was replaced.
+
+Focused verification commands:
+
+```sh
+pytest tests/integration/test_memory_guided_research.py -q
+pytest tests/architecture tests/api/test_research_study_read_api.py \
+  tests/api/test_research_lab_publication.py -q
+ruff check src tests
+ruff format --check src tests
+mypy --strict
+python -m build --no-isolation
+```
+
+The local report's `schema_passed` counter counts proposals that passed the complete
+host proposal contract; it is not a separately measured grammar-only pass rate.
+Raw failures and resource costs remain in private audits. Report destinations must
+be new files in the session directory or its parent. The published index is an
+explicit optional artifact; this verification did not deploy a service.
