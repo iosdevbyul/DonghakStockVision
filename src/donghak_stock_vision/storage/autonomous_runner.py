@@ -187,7 +187,11 @@ def run(
     resource_probe: Callable[[], dict[str, Any]] = probe,
     agent: str = "rule",
     reuse: tuple[Path, str] | None = None,
+    reuse_peers: tuple[tuple[Path, str], ...] = (),
     agent_factory: Callable[[Path, dict[str, Any]], AuditedAgent] | None = None,
+    view_transform: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+    strict_agent: bool = False,
+    allowed_experiments: frozenset[str] | None = None,
 ) -> FrozenJSON:
     require(type(steps) is int and 1 <= steps <= 36, "autonomous_step_bound")
     plan, data = context(root, pin)
@@ -227,7 +231,20 @@ def run(
         for _ in range(steps):
             with closing(ReadOnlyAnalysisStore(root / DB)) as store:
                 done = terminals(store)
-                choice = next_experiment(plan, data, done)
+                selection_plan = plan
+                if allowed_experiments is not None:
+                    require(
+                        allowed_experiments <= {c["experiment_id"] for c in plan["configurations"]},
+                        "research_agent_scope_expansion",
+                    )
+                    selection_plan = plan | dict(
+                        configurations=[
+                            c
+                            for c in plan["configurations"]
+                            if c["experiment_id"] in allowed_experiments
+                        ]
+                    )
+                choice = next_experiment(selection_plan, data, done)
                 attempts = [v for _, v in store.all("autonomous_attempt")]
                 failures = [v for _, v in store.all("autonomous_backoff")]
             if choice is None:
@@ -261,6 +278,14 @@ def run(
                     history=[dict(experiment_id=k, state=v["state"]) for k, v in done.items()],
                 )
             )
+            if view_transform is not None:
+                original = {c["experiment_id"]: c for c in view["candidates"]}
+                view = view_transform(view)
+                require(
+                    bool(view["candidates"])
+                    and all(original.get(c["experiment_id"]) == c for c in view["candidates"]),
+                    "research_agent_view_expansion",
+                )
             rule_began = time.monotonic()
             selected = select_proposal(RuleBasedAgent(), view)
             rule_seconds = time.monotonic() - rule_began
@@ -293,6 +318,11 @@ def run(
                         reason=str(error),
                         request_id=gemma.audit.get("request_id"),
                     )
+                if strict_agent and decision["state"] == "fallback":
+                    with closing(AnalysisStore(root / DB)) as store:
+                        store.put("autonomous_selection", decision | dict(state="rejected"))
+                    paused = "research_agent_proposal_rejected"
+                    break
                 if not gemma.unloaded:
                     paused = (
                         "llm_release_unverified"
@@ -335,7 +365,8 @@ def run(
             with closing(AnalysisStore(root / DB)) as store:
                 store.put("autonomous_selection", decision)
             selections.append(decision)
-            if reuse is not None and adopt(root, plan, *reuse, choice):
+            peers = (() if reuse is None else (reuse,)) + reuse_peers
+            if any(adopt(root, plan, *peer, choice) for peer in peers):
                 completed += 1
                 cache_hits += 1
                 continue

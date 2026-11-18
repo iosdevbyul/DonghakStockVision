@@ -31,6 +31,20 @@ class LLMResearchAgent:
         self.audit: dict[str, Any] = {}
         self.unloaded = True
 
+    def proposal_input(self, view: dict[str, Any]) -> tuple[dict[str, Any], str, dict[str, Any]]:
+        summary = prompt_view(view)
+        prompt = (
+            "Select one allowed unexecuted experiment. Return schema JSON only. Copy exact "
+            "id, family, featureSet and value; seed=42. Keep prose below 100 characters. "
+            "Use the provided internal history; improvements are hypotheses, not verified "
+            "performance. Never emit code, tools, source data or change safety gates.\n"
+            + json.dumps(summary, separators=(",", ":"))
+        )
+        return summary, prompt, proposal_schema(view)
+
+    def validate(self, proposal: dict[str, Any], view: dict[str, Any]) -> str:
+        return validate_gemma_proposal(proposal, view)
+
     def propose(self, view: dict[str, Any]) -> str:
         import shutil
 
@@ -40,14 +54,7 @@ class LLMResearchAgent:
             "llm_disk_resource_limit",
         )
         # The whitelist projection remains common for local and approved remote models.
-        summary = prompt_view(view)
-        prompt = (
-            "Select one allowed unexecuted experiment. Return schema JSON only. Copy exact "
-            "id, family, featureSet and value; seed=42. Keep prose below 100 characters. "
-            "Use the provided internal history; improvements are hypotheses, not verified "
-            "performance. Never emit code, tools, source data or change safety gates.\n"
-            + json.dumps(summary, separators=(",", ":"))
-        )
+        summary, prompt, schema = self.proposal_input(view)
         require(len(prompt.encode()) <= 14000, "llm_prompt_bound")
         config = self.provider.config
         with closing(AnalysisStore(self.root / DB)) as store:
@@ -74,11 +81,11 @@ class LLMResearchAgent:
         )
         began = time.monotonic()
         try:
-            text = self.provider.generate(prompt, proposal_schema(view))
+            text = self.provider.generate(prompt, schema)
             require(len(text) <= 8192, "llm_proposal_size")
             self.audit["response_text"] = text
             proposal = decode_gemma_proposal(text)
-            chosen = validate_gemma_proposal(proposal, view)
+            chosen = self.validate(proposal, view)
             self.audit.update(state="accepted", proposal=proposal, selected=chosen)
             return chosen
         except Exception as error:
@@ -87,7 +94,7 @@ class LLMResearchAgent:
             reason = str(error)
             reason = (
                 reason
-                if re.fullmatch(r"(?:llm|gemma)_[a-z0-9_]{1,90}", reason)
+                if re.fullmatch(r"(?:llm|gemma|memory)_[a-z0-9_]{1,90}", reason)
                 else "llm_proposal_rejected"
             )
             self.audit.update(reason=reason, error_class=type(error).__name__)
