@@ -152,7 +152,14 @@ class OllamaProvider:
                 maximum_cpu_percent=maximum_cpu,
                 timings={
                     k: response[k]
-                    for k in ("total_duration", "eval_count", "load_duration")
+                    for k in (
+                        "total_duration",
+                        "eval_count",
+                        "load_duration",
+                        "prompt_eval_count",
+                        "prompt_eval_duration",
+                        "eval_duration",
+                    )
                     if k in response
                 },
             )

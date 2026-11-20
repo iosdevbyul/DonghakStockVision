@@ -27,9 +27,12 @@ from donghak_stock_vision.storage.real_market_training import _quiescent
 from donghak_stock_vision.storage.research_resources import lock
 
 VERSION = "memory_guided_session_v1"
+CAMPAIGN_VERSION = "memory_guided_session_v2"
 
 
-def evidence(root: Path, pin: str) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+def evidence(
+    root: Path, pin: str, *, extended: bool = False
+) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     plan, data = context(root, pin, code_check=False)
     require(plan["version"] == "autonomous_plan_v6", "memory_historical_owner")
     allowed = {c["experiment_id"]: c["config"] for c in plan["configurations"]}
@@ -74,6 +77,12 @@ def evidence(root: Path, pin: str) -> tuple[dict[str, Any], dict[str, Any], list
                         )
                     )
                 item["internal_folds"] = details[-3:]
+                if extended:
+                    item["calibration_delta"] = statistics.mean(
+                        f["evaluation"]["metrics"]["brier_score"]
+                        - f["evaluation"]["baselines"]["training_prior"]["brier_score"]
+                        for f in fs
+                    )
                 item.update(
                     result_id=t["result_id"],
                     mean_ap=r["mean_ap"],
@@ -95,9 +104,9 @@ def evidence(root: Path, pin: str) -> tuple[dict[str, Any], dict[str, Any], list
 def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
     fields(request, "version source memory horizon stock_policy budget model")
     require(
-        request["version"] == VERSION
+        request["version"] in (VERSION, CAMPAIGN_VERSION)
         and type(request["budget"]) is int
-        and 1 <= request["budget"] <= 4
+        and 1 <= request["budget"] <= (4 if request["version"] == VERSION else 8)
         and type(request["horizon"]) is int
         and request["horizon"] in (1, 5, 20)
         and request["stock_policy"] in ("pooled", "heldout"),
@@ -120,7 +129,10 @@ def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
     original = document(str(source / "request.json"))
     require(digest(original) == plan["request_pin"], "memory_original_request")
     _quiescent(Path(original["research"]["database"]), original["research"]["pin"])
-    require(1 <= len(request["memory"]) <= 6, "memory_source_bound")
+    require(
+        1 <= len(request["memory"]) <= (6 if request["version"] == VERSION else 12),
+        "memory_source_bound",
+    )
     memory, references = [], []
     seen = set()
     for ref in request["memory"]:
@@ -129,7 +141,7 @@ def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
         pin = read_pin(Path(ref["plan_pin_file"]))
         require(p not in seen, "memory_duplicate_owner")
         seen.add(p)
-        prior, prior_data, rows = evidence(p, pin)
+        prior, prior_data, rows = evidence(p, pin, extended=request["version"] == CAMPAIGN_VERSION)
         # Only same-cohort internal folds can inform the frozen population.
         require(
             prior["dataset_id"] == plan["dataset_id"] and prior_data == data, "memory_cross_dataset"
@@ -172,12 +184,15 @@ def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
         and c["config"]["stock_policy"] == request["stock_policy"]
         and digest(c["config"]) not in excluded
     ]
-    require(len(candidates) >= request["budget"], "memory_unseen_candidates_insufficient")
+    require(
+        len(candidates) >= (request["budget"] if request["version"] == VERSION else 1),
+        "memory_unseen_candidates_insufficient",
+    )
     new = {k: v for k, v in plan.items() if k != "policy_parent"} | dict(
         code=code, configurations=configs, selection_policy="predeclared"
     )
     frozen = dict(
-        version=VERSION,
+        version=request["version"],
         registered_at=clock(),
         request=request,
         source_plan=source_pin,
@@ -207,6 +222,9 @@ def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
         performance_approved=False,
         execution_authorized=False,
     )
+    if request["version"] == CAMPAIGN_VERSION:
+        frozen["effective_budget"] = min(request["budget"], len(candidates))
+        frozen["comparison"]["training_budget_per_arm"] = frozen["effective_budget"]
     require(all(not arm_root(root, a).exists() for a in policy.ARMS), "memory_arm_exists")
     require(
         not pins.is_relative_to(Path(original["research"]["database"]).parent)
@@ -249,7 +267,10 @@ def file_sha(path: Path) -> str:
 
 def load(root: Path, pin: str) -> dict[str, Any]:
     frozen = document(str(root / "session.json"), maximum=8 * 1024**2)
-    require(digest(frozen) == pin and frozen["version"] == VERSION, "memory_session_pin")
+    require(
+        digest(frozen) == pin and frozen["version"] in (VERSION, CAMPAIGN_VERSION),
+        "memory_session_pin",
+    )
     require(
         frozen["arms"] == list(policy.ARMS) and frozen["prompt_version"] == policy.PROMPT,
         "memory_session_policy",
@@ -275,11 +296,33 @@ class MemoryAgent(LLMResearchAgent):
             dict(experimentId=h["experiment_id"], folds=h.get("internal_folds", [])[-2:])
             for h in view["history"]
         ]
+        if view.get("campaign_reasoning"):
+            summary["reasoningVersion"] = "campaign_counterfactual_v1"
+            summary["previous_expectation"] = view.get("own_feedback", [])
+            summary["diagnosis"] = policy.failure_patterns(view)
+            # Cross-arm cache entries never enter this view. Only permitted memory/own results do.
+            summary["counterfactual"] = (
+                [
+                    dict(
+                        candidateId=c["experiment_id"],
+                        parentId=view["history"][-1]["experiment_id"],
+                        changed=[
+                            k
+                            for k in ("mask", "candidate")
+                            if c["config"][k] != view["history"][-1]["config"][k]
+                        ],
+                    )
+                    for c in view["candidates"][:3]
+                ]
+                if view["history"]
+                else []
+            )
         prompt = (
             "Propose one falsifiable internal-development hypothesis. JSON only. Copy exact "
             "candidate id, family, featureSet, value and seed 42. Fill fixed schema enums exactly. "
             "Use at most eight words per text. Cite exactly one supplied experiment ID and metric; "
             "empty evidence when history is empty. Correlation is not causation. Never code/tools. "
+            "With counterfactual evidence, set parentExperimentId to your cited experiment. "
             "No independent or trading approval.\n" + json.dumps(summary, separators=(",", ":"))
         )
         return summary, prompt, policy.schema(view, proposal_schema(view))
@@ -348,11 +391,13 @@ def run(root: Path, pin: str, arm: str) -> dict[str, Any]:
                 len(store.all("llm_proposal")), len(store.all("autonomous_selection"))
             )
             completed = terminals(store)
-        budget = frozen["request"]["budget"]
+        budget = frozen.get("effective_budget", frozen["request"]["budget"])
         if len(completed) >= budget or proposal_count >= 2 * budget:
             return report(root, pin)
         plan, data = context(target, frozen["plan_id"])
-        _, _, own_history = evidence(target, frozen["plan_id"])
+        _, _, own_history = evidence(
+            target, frozen["plan_id"], extended=frozen["version"] == CAMPAIGN_VERSION
+        )
         allowed = {c["experiment_id"] for c in frozen["candidates"]}
 
         def project(view: dict[str, Any]) -> dict[str, Any]:
@@ -364,12 +409,42 @@ def run(root: Path, pin: str, arm: str) -> dict[str, Any]:
                 and h["config"]["stock_policy"] == frozen["request"]["stock_policy"]
             ]
             histories = list({h["experiment_id"]: h for h in histories}.values())[-2:]
+            own_feedback = []
+            if frozen["version"] == CAMPAIGN_VERSION and arm == "gemma_memory":
+                with closing(ReadOnlyAnalysisStore(root / DB)) as feedback_store:
+                    prior = [
+                        f
+                        for _, f in feedback_store.all("memory_hypothesis_feedback")
+                        if f["arm"] == arm
+                    ]
+                for f in prior[-1:]:
+                    proposal = f["proposal"] or {}
+                    own_feedback.append(
+                        dict(
+                            experimentId=f["outcome"]["experiment_id"],
+                            hypothesis=proposal.get("hypothesis"),
+                            expected=proposal.get("expectedImprovement"),
+                            observedAPGain=f["outcome"].get("baseline_ap_gain"),
+                            observedWorstBA=f["outcome"].get("worst_balanced_accuracy"),
+                            falsification=proposal.get("failureCondition"),
+                            causal=False,
+                        )
+                    )
             return view | dict(
                 candidates=[c for c in view["candidates"] if c["experiment_id"] in allowed],
                 history=histories,
                 leader=None,
                 budget=budget - len(completed),
                 cohort=data["generalization"]["cohort"],
+                **(
+                    dict(
+                        counterfactual_required=arm == "gemma_memory",
+                        campaign_reasoning=True,
+                        own_feedback=own_feedback,
+                    )
+                    if frozen["version"] == CAMPAIGN_VERSION
+                    else {}
+                ),
             )
 
         agent: MemoryAgent | RuleAgent
@@ -499,7 +574,9 @@ def report(root: Path, pin: str) -> dict[str, Any]:
             rejected=sum(v.get("state") in ("rejected", "blocked_unload") for _, v in selections),
             completed=len(results),
             failed=sum(t["state"] == "failed" for t in done.values()),
-            actual_python_trainings=len(costs),
+            actual_python_trainings=len(costs)
+            if frozen["version"] == VERSION
+            else sum(t["state"] == "completed" and "cache_source" not in t for t in done.values()),
             reused=sum("cache_source" in t for t in done.values()),
             gemma_calls=sum(v.get("metadata", {}).get("inference_calls", 0) for v in proposals),
             inference_seconds=sum(v["wall_seconds"] for v in proposals),
@@ -513,8 +590,10 @@ def report(root: Path, pin: str) -> dict[str, Any]:
             failure_reasons=[
                 p.get("reason", "UNKNOWN") for p in proposals if p["state"] != "accepted"
             ],
-            training_budget=frozen["request"]["budget"],
-            unreached_budget=max(0, frozen["request"]["budget"] - len(done)),
+            training_budget=frozen.get("effective_budget", frozen["request"]["budget"]),
+            unreached_budget=max(
+                0, frozen.get("effective_budget", frozen["request"]["budget"]) - len(done)
+            ),
             configuration_diversity=len({digest(t["config"]) for t in done.values()}),
             evidence_references=sum(
                 len(p.get("proposal", {}).get("evidence", [])) for p in proposals
@@ -523,10 +602,15 @@ def report(root: Path, pin: str) -> dict[str, Any]:
             internal_worst_ba=[r["worst_balanced_accuracy"] for r in results],
             observations="Internal adaptive development only; no fresh independent evaluation",
         )
+        if frozen["version"] == CAMPAIGN_VERSION:
+            with closing(ReadOnlyAnalysisStore(target / DB)) as attempts_store:
+                arms[arm]["python_worker_attempts"] = len(attempts_store.all("autonomous_attempt"))
     with closing(ReadOnlyAnalysisStore(root / DB)) as store:
         feedbacks = [v for _, v in store.all("memory_hypothesis_feedback")]
     return dict(
-        version="memory_guided_report_v1",
+        version="memory_guided_report_v1"
+        if frozen["version"] == VERSION
+        else "memory_guided_report_v2",
         session_id=pin,
         arms=arms,
         feedback=feedbacks,
@@ -570,7 +654,9 @@ def publication(value: dict[str, Any]) -> dict[str, Any]:
             )
         )
     result = dict(
-        version="memory_guided_publication_v1",
+        version="memory_guided_publication_v1"
+        if value["version"] == "memory_guided_report_v1"
+        else "memory_guided_publication_v2",
         sessionId=value["session_id"],
         arms=value["arms"],
         model=value["model"],
@@ -594,7 +680,7 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
         "performanceApproved pitQualified executionAuthorized",
     )
     require(
-        value["version"] == "memory_guided_publication_v1"
+        value["version"] in ("memory_guided_publication_v1", "memory_guided_publication_v2")
         and value["independentGeneralization"] == "NOT_ESTABLISHED"
         and all(
             value[k] is False
@@ -622,10 +708,21 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
         "configuration_diversity evidence_references"
     ).split()
     for arm, row in value["arms"].items():
+        if value["version"] == "memory_guided_publication_v2":
+            require(
+                type(row["python_worker_attempts"]) is int
+                and 0 <= row["python_worker_attempts"] <= 32,
+                "memory_publication_worker_count",
+            )
         fields(
             row,
             " ".join(
                 counts
+                + (
+                    ["python_worker_attempts"]
+                    if value["version"] == "memory_guided_publication_v2"
+                    else []
+                )
                 + [
                     "memory_enabled",
                     "inference_seconds",
@@ -644,8 +741,10 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
             "memory_publication_counts",
         )
         require(
-            row["training_budget"] <= 4
-            and row["generated"] <= 8
+            row["training_budget"]
+            <= (4 if value["version"] == "memory_guided_publication_v1" else 8)
+            and row["generated"]
+            <= (8 if value["version"] == "memory_guided_publication_v1" else 16)
             and row["completed"] + row["failed"] <= row["training_budget"],
             "memory_publication_budget",
         )
@@ -677,7 +776,9 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
             "memory_publication_numbers",
         )
     require(
-        type(value["hypotheses"]) is list and len(value["hypotheses"]) <= 12,
+        type(value["hypotheses"]) is list
+        and len(value["hypotheses"])
+        <= (12 if value["version"] == "memory_guided_publication_v1" else 24),
         "memory_publication_bound",
     )
     for h in value["hypotheses"]:

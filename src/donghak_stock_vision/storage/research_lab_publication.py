@@ -131,7 +131,8 @@ class ResearchLabPublication:
         ensure(hashlib.sha256(raw).hexdigest() == index_sha256, "index_pin_mismatch")
         index = approved_json(raw)
         ensure(
-            index.get("version") in (VERSION, "research_lab_publication_index_v2"),
+            index.get("version")
+            in (VERSION, "research_lab_publication_index_v2", "research_lab_publication_index_v3"),
             "unsupported_publication_version",
         )
         entries = index.get("entries")
@@ -167,6 +168,34 @@ class ResearchLabPublication:
                 key = report["sessionId"]
                 ensure(key not in self.memory_reports, "duplicate_memory_report")
                 self.memory_reports[key] = report
+                self.reports[key] = report
+        self.campaign_reports: dict[str, dict[str, Any]] = {}
+        if index.get("version") == "research_lab_publication_index_v3":
+            from donghak_stock_vision.storage.research_campaign import (
+                validate_publication as validate_campaign,
+            )
+
+            campaigns = index.get("campaignReports", [])
+            ensure(
+                type(campaigns) is list and 1 <= len(campaigns) <= 6,
+                "invalid_campaign_report_count",
+            )
+            for item in campaigns:
+                ensure(
+                    type(item) is dict and set(item) == {"report", "sha256"},
+                    "invalid_campaign_report",
+                )
+                raw_report = approved_file(root, item["report"], MAX_REPORT)
+                ensure(
+                    hashlib.sha256(raw_report).hexdigest() == item["sha256"], "campaign_report_pin"
+                )
+                try:
+                    report = validate_campaign(approved_json(raw_report))
+                except (ValueError, KeyError, TypeError) as error:
+                    raise ResearchLabError("invalid_campaign_publication") from error
+                key = report["campaignId"]
+                ensure(key not in self.reports, "duplicate_campaign_report")
+                self.campaign_reports[key] = report
                 self.reports[key] = report
         for entry in entries:
             self._ingest(root, entry)
@@ -497,6 +526,14 @@ class ResearchLabPublication:
                 independentGeneralization="NOT_ESTABLISHED",
             )
             for k, v in sorted(self.memory_reports.items())
+        ]
+        rows += [
+            dict(
+                reportId=k,
+                researchKind="research_campaign",
+                independentGeneralization="GENERALIZATION_NOT_ESTABLISHED",
+            )
+            for k in sorted(self.campaign_reports)
         ]
         return {
             "schemaVersion": "research_lab_reports_v1",

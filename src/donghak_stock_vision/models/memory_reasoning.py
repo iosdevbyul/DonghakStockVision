@@ -17,6 +17,7 @@ METRICS = (
     "baseline_ap_gain",
     "worst_balanced_accuracy",
     "failure_reason",
+    "calibration_delta",
 )
 EXTRA = (
     "promptVersion horizon cohort problem failureCondition baseline validation "
@@ -67,6 +68,10 @@ def schema(view: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
     # Scope and evaluation policy are host-owned, frozen facts rather than generated prose.
     for key in (*FIXED, "horizon", "cohort"):
         props.pop(key)
+    if view.get("counterfactual_required") and view["history"]:
+        props["parentExperimentId"] = dict(
+            type="string", enum=[h["experiment_id"] for h in view["history"]]
+        )
     value["required"] = list(props)
     return value
 
@@ -101,6 +106,10 @@ def validate(value: dict[str, Any], view: dict[str, Any]) -> str:
             "memory_metric_owner",
         )
     parent = value["parentExperimentId"]
+    if view.get("counterfactual_required") and histories:
+        require(parent is not None, "memory_counterfactual_parent")
+        chosen = next(c["config"] for c in view["candidates"] if c["experiment_id"] == selected)
+        require(chosen != histories[parent]["config"], "memory_counterfactual_unchanged")
     require(
         parent is None or parent in {e["experimentId"] for e in evidence}, "memory_parent_evidence"
     )
@@ -109,3 +118,24 @@ def validate(value: dict[str, Any], view: dict[str, Any]) -> str:
 
 def hypothesis_id(value: dict[str, Any], session: str, arm: str) -> str:
     return digest(dict(version=PROMPT, session=session, arm=arm, proposal=value))
+
+
+def failure_patterns(view: dict[str, Any]) -> list[dict[str, Any]]:
+    """Source-backed associations, not causal findings or held-out feedback."""
+    rows = []
+    for h in view["history"]:
+        tags = []
+        for key, boundary, direction, name in (
+            ("baseline_ap_gain", 0.0, "below", "baseline_failure"),
+            ("overfit_gap", 0.15, "above", "overfit_gap"),
+            ("worst_balanced_accuracy", 0.5, "below", "period_instability"),
+            ("calibration_delta", 0.0, "above", "calibration_regression"),
+        ):
+            if key in h and (h[key] <= boundary if direction == "below" else h[key] > boundary):
+                tags.append(dict(metric=key, observed=h[key], association=name))
+        if h["state"] == "failed":
+            tags.append(
+                dict(metric="failure_reason", observed=h["failure_reason"], association="failed")
+            )
+        rows.append(dict(experimentId=h["experiment_id"], observations=tags, causal=False))
+    return rows
