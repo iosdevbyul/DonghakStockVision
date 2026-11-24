@@ -608,13 +608,31 @@ def status(root: Path, pin: str) -> dict[str, Any]:
 
 
 def publication(value: dict[str, Any]) -> dict[str, Any]:
-    result = value | dict(version="research_campaign_publication_v1")
-    return validate_publication(result)
+    require(
+        value["version"] in ("research_campaign_report_v1", "research_campaign_report_v2"),
+        "campaign_report_version",
+    )
+    version = (
+        "research_campaign_publication_v2"
+        if value["version"] == "research_campaign_report_v2"
+        else "research_campaign_publication_v1"
+    )
+    return validate_publication(value | dict(version=version))
 
 
 def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
     import math
     import re
+
+    if value.get("version") == "research_campaign_publication_v2":
+        require("executionWindows" in value, "campaign_execution_windows_required")
+        base = {k: v for k, v in value.items() if k != "executionWindows"}
+        base["version"] = "research_campaign_publication_v1"
+        require(
+            combine_execution_windows(base, value["executionWindows"]) == value,
+            "campaign_window_reconstruction",
+        )
+        return value
 
     fields(
         value,
@@ -899,3 +917,100 @@ def native_ready(root: Path) -> str | None:
         return "shared_ollama_unavailable"
     finally:
         backend.close()
+
+
+def combine_execution_windows(
+    source: dict[str, Any], windows: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Read-only projection of verified source results and separately approved windows.
+
+    The caller retains independently pinned source exports and window audits. This
+    projection verifies local consistency, not operator or chronology authenticity.
+    It never executes, changes budgets, or rewrites a source plan.
+    """
+    import copy
+    import math
+    import re
+
+    require(type(windows) is list and 1 <= len(windows) <= 8, "campaign_window_bound")
+    result = copy.deepcopy(source)
+    require(
+        result["version"] in ("research_campaign_report_v1", "research_campaign_publication_v1"),
+        "campaign_window_source_version",
+    )
+    seen = set()
+    for w in windows:
+        fields(
+            w,
+            "windowId sourceCampaignId maxWallSeconds maxSteps maxInferences attempts "
+            "reservedInferences evaluations failedEvaluations newFits cacheHits rejections "
+            "inferenceCalls recordedStepSeconds peakParentRSS status independentChronology "
+            "frozenDesignUnchanged",
+        )
+        require(
+            type(w["windowId"]) is str
+            and re.fullmatch("[a-f0-9]{64}", w["windowId"]) is not None
+            and w["windowId"] not in seen
+            and w["sourceCampaignId"] == result["campaignId"]
+            and w["independentChronology"] is False
+            and w["frozenDesignUnchanged"] is True,
+            "campaign_window_binding",
+        )
+        seen.add(w["windowId"])
+        for k in (
+            "maxWallSeconds maxSteps maxInferences attempts reservedInferences evaluations "
+            "failedEvaluations newFits cacheHits rejections inferenceCalls peakParentRSS"
+        ).split():
+            require(type(w[k]) is int and w[k] >= 0, "campaign_window_integer")
+        require(
+            900 <= w["maxWallSeconds"] <= 14400
+            and 1 <= w["maxSteps"] <= 144
+            and w["attempts"] <= w["maxSteps"]
+            and w["inferenceCalls"] <= w["reservedInferences"] <= w["maxInferences"] <= 96
+            and w["reservedInferences"] <= w["attempts"]
+            and w["newFits"] + w["cacheHits"] == w["evaluations"]
+            and w["evaluations"] + w["failedEvaluations"] + w["rejections"] <= w["attempts"]
+            and w["peakParentRSS"] <= 1024 * 1024
+            and type(w["recordedStepSeconds"]) in (int, float)
+            and math.isfinite(w["recordedStepSeconds"])
+            and 0 <= w["recordedStepSeconds"] <= w["maxWallSeconds"]
+            and type(w["status"]) is str
+            and re.fullmatch("[a-z][a-z0-9_]{0,120}", w["status"]) is not None,
+            "campaign_window_limits",
+        )
+    costs = [v for c in result["cells"] for v in c.get("costs", {}).values()]
+    sessions = [v for c in result["cells"] for v in c.get("session", {}).get("arms", {}).values()]
+    require(
+        sum(w["evaluations"] for w in windows) == result["progress"]["successfulEvaluations"]
+        and sum(w["failedEvaluations"] for w in windows) == result["progress"]["failedEvaluations"]
+        and sum(w["newFits"] for w in windows) == sum(c["successfulFits"] for c in costs)
+        and sum(w["cacheHits"] for w in windows) == sum(c["cacheHits"] for c in costs)
+        and sum(w["inferenceCalls"] for w in windows) == sum(c["inferenceCalls"] for c in costs)
+        and sum(w["rejections"] for w in windows) == sum(v["rejected"] for v in sessions),
+        "campaign_window_source_counts",
+    )
+    result.update(
+        attempts=sum(w["attempts"] for w in windows),
+        reservedInferences=sum(w["reservedInferences"] for w in windows),
+        wallSeconds=sum(w["recordedStepSeconds"] for w in windows),
+        peakParentRSS=max(w["peakParentRSS"] for w in windows),
+    )
+    require(result["attempts"] <= result["plannedSlots"], "campaign_window_total_steps")
+    result["progress"]["lastPause"] = "authorized_execution_windows_closed"
+    for row in result["progress"]["unexecuted"]:
+        if row["reason"] not in (
+            "proposal_rejected",
+            "eligible_catalog_exhausted",
+            "source_unavailable",
+        ):
+            row["reason"] = "authorized_execution_windows_closed"
+    original_version = result["version"]
+    result["version"] = "research_campaign_publication_v1"
+    validate_publication(result)
+    result["version"] = (
+        "research_campaign_report_v2"
+        if original_version == "research_campaign_report_v1"
+        else "research_campaign_publication_v2"
+    )
+    result["executionWindows"] = copy.deepcopy(windows)
+    return result

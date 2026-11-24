@@ -208,28 +208,88 @@ def test_campaign_real_worker_recovery_expiry_and_legacy_api(
     bad["cells"][0]["analysis"]["arms"]["rule"]["ap"]["mean"] = 0.99
     with pytest.raises(ValueError, match="reconstruction"):
         campaign.validate_publication(bad)
-    output = tmp_path / "pub"
-    output.mkdir(mode=0o700)
-    p = output / "campaign.json"
-    p.write_text(json.dumps(pub))
-    p.chmod(0o600)
-    index = output / "index.json"
-    index.write_text(
-        json.dumps(
-            dict(
-                version="research_lab_publication_index_v3",
-                entries=[],
-                campaignReports=[
-                    dict(report="campaign.json", sha256=hashlib.sha256(p.read_bytes()).hexdigest())
-                ],
+    costs = [v for c in report["cells"] for v in c.get("costs", {}).values()]
+    first_window = dict(
+        windowId=digest(dict(window=1)),
+        sourceCampaignId=pin,
+        maxWallSeconds=7200,
+        maxSteps=144,
+        maxInferences=36,
+        attempts=report["attempts"],
+        reservedInferences=report["reservedInferences"],
+        evaluations=report["progress"]["successfulEvaluations"],
+        failedEvaluations=report["progress"]["failedEvaluations"],
+        newFits=sum(v["successfulFits"] for v in costs),
+        cacheHits=sum(v["cacheHits"] for v in costs),
+        rejections=0,
+        inferenceCalls=sum(v["inferenceCalls"] for v in costs),
+        recordedStepSeconds=report["wallSeconds"],
+        peakParentRSS=report["peakParentRSS"],
+        status="closed",
+        independentChronology=False,
+        frozenDesignUnchanged=True,
+    )
+    second_window = first_window | dict(
+        windowId=digest(dict(window=2)),
+        maxWallSeconds=5400,
+        maxSteps=9,
+        maxInferences=6,
+        attempts=0,
+        reservedInferences=0,
+        evaluations=0,
+        failedEvaluations=0,
+        newFits=0,
+        cacheHits=0,
+        rejections=0,
+        inferenceCalls=0,
+        recordedStepSeconds=0,
+        peakParentRSS=0,
+        status="not_executed",
+    )
+    before = copy.deepcopy(report)
+    combined = campaign.combine_execution_windows(report, [first_window, second_window])
+    assert report == before
+    pub2 = campaign.publication(combined)
+    assert pub2["version"] == "research_campaign_publication_v2"
+    assert pub2["executionWindows"][1]["attempts"] == 0
+    forged = copy.deepcopy(pub2)
+    forged["executionWindows"][1]["reservedInferences"] = 7
+    with pytest.raises(ValueError, match="campaign_window_limits"):
+        campaign.validate_publication(forged)
+    forged = copy.deepcopy(pub2)
+    forged["executionWindows"][0].update(evaluations=0, newFits=0)
+    with pytest.raises(ValueError, match="campaign_window_source_counts"):
+        campaign.validate_publication(forged)
+    forged = copy.deepcopy(pub2)
+    forged["executionWindows"][1]["independentChronology"] = True
+    with pytest.raises(ValueError, match="campaign_window_binding"):
+        campaign.validate_publication(forged)
+    for version, published in (("legacy", pub), ("windows", pub2)):
+        output = tmp_path / ("pub-" + version)
+        output.mkdir(mode=0o700)
+        p = output / "campaign.json"
+        p.write_text(json.dumps(published))
+        p.chmod(0o600)
+        index = output / "index.json"
+        index.write_text(
+            json.dumps(
+                dict(
+                    version="research_lab_publication_index_v3",
+                    entries=[],
+                    campaignReports=[
+                        dict(
+                            report="campaign.json",
+                            sha256=hashlib.sha256(p.read_bytes()).hexdigest(),
+                        )
+                    ],
+                )
             )
         )
-    )
-    index.chmod(0o600)
-    from donghak_stock_vision.storage.research_lab_publication import ResearchLabPublication
+        index.chmod(0o600)
+        from donghak_stock_vision.storage.research_lab_publication import ResearchLabPublication
 
-    reader = ResearchLabPublication(output, hashlib.sha256(index.read_bytes()).hexdigest())
-    assert reader.report_catalog()["total"] == 1 and reader.report(pin) == pub
+        reader = ResearchLabPublication(output, hashlib.sha256(index.read_bytes()).hexdigest())
+        assert reader.report_catalog()["total"] == 1 and reader.report(pin) == published
     assert all(hashlib.sha256(p.read_bytes()).hexdigest() == h for p, h in protected.items())
 
 
