@@ -377,9 +377,8 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> FrozenJSON:
     )
 
 
-def context(
-    root: Path, pin: str, *, code_check: bool = True
-) -> tuple[dict[str, Any], dict[str, Any]]:
+def private_root(root: Path) -> None:
+    """Shared filesystem boundary; callers must separately verify content owners."""
     require(
         root.is_absolute()
         and root.resolve() == root
@@ -391,6 +390,12 @@ def context(
         and root.stat().st_mode & 0o077 == 0,
         "autonomous_private_root",
     )
+
+
+def context(
+    root: Path, pin: str, *, code_check: bool = True
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    private_root(root)
     with closing(ReadOnlyAnalysisStore(root / DB)) as store:
         plan = store.get("autonomous_plan", pin)
         data = store.get("autonomous_dataset", plan["dataset_id"])

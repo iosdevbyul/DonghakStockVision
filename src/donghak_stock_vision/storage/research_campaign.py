@@ -26,16 +26,28 @@ from donghak_stock_vision.storage.real_market_dataset import document
 from donghak_stock_vision.storage.research_resources import _command, lock
 
 VERSION = "research_campaign_plan_v1"
+GROUNDED_VERSION = "research_campaign_plan_v2"
+
+
+def arms(d: dict[str, Any]) -> tuple[str, ...]:
+    return session.arms(
+        session.GROUNDED_VERSION if d["version"] == GROUNDED_VERSION else session.CAMPAIGN_VERSION
+    )
+
+
+def planned_cells(d: dict[str, Any]) -> int:
+    return 6 * len(arms(d))
 
 
 def prepare(d: dict[str, Any], root: Path, pins: Path) -> str:
     fields(
         d,
         "version studies horizons candidate_budget llm_budget wall_seconds step_seconds "
-        "calibration_steps disk_mb model",
+        "calibration_steps disk_mb model"
+        + (" execution_steps" if d.get("version") == GROUNDED_VERSION else ""),
     )
     require(
-        d["version"] == VERSION
+        d["version"] in (VERSION, GROUNDED_VERSION)
         and type(d["candidate_budget"]) is int
         and 1 <= d["candidate_budget"] <= 8
         and d["horizons"] == [1, 5, 20]
@@ -53,6 +65,12 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> str:
         and 1 <= d["calibration_steps"] <= 18,
         "campaign_preregistered_bounds",
     )
+    if d["version"] == GROUNDED_VERSION:
+        require(
+            type(d["execution_steps"]) is int
+            and 1 <= d["execution_steps"] <= 30 * d["candidate_budget"],
+            "campaign_execution_step_bound",
+        )
     require(
         all(p.is_absolute() and p.resolve() == p and not p.exists() for p in (root, pins))
         and not root.is_relative_to(pins)
@@ -88,6 +106,9 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> str:
     started_at = clock()
     cells = []
     for i, item in enumerate(d["studies"]):
+        # At most thirteen original owners and one shared immutable dataset. Release at
+        # the cohort boundary; no global/durable cache and no raw HTTP response bodies.
+        verified: dict[str, Any] | None = {} if d["version"] == GROUNDED_VERSION else None
         for h in d["horizons"]:
             name = f"{root.name}-c{i + 1}-h{h}"
             child = root.parent / name
@@ -96,7 +117,9 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> str:
                 dict(campaign_request=digest(d), cohort=sources[i]["cohort"], horizon=h)
             )
             req = dict(
-                version=session.CAMPAIGN_VERSION,
+                version=session.GROUNDED_VERSION
+                if d["version"] == GROUNDED_VERSION
+                else session.CAMPAIGN_VERSION,
                 source=item["source"],
                 memory=item["memory"],
                 horizon=h,
@@ -105,7 +128,7 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> str:
                 model=d["model"],
             )
             try:
-                pin = session.prepare(req, child, childpins)
+                pin = session.prepare(req, child, childpins, _verified=verified)
                 frozen = session.load(child, pin)
                 cells.append(
                     dict(
@@ -141,10 +164,10 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> str:
                 )
     shared = sorted(set(sources[0]["tickers"]) & set(sources[1]["tickers"]))
     frozen = dict(
-        version=VERSION,
+        version=d["version"],
         request=d,
         cells=cells,
-        schedule=policy.schedule(cells, d["candidate_budget"]),
+        schedule=policy.schedule(cells, d["candidate_budget"], arms(d)),
         registered_at=started_at,
         comparison_policy=policy.POLICY,
         cohort_overlap=dict(
@@ -170,16 +193,68 @@ def prepare(d: dict[str, Any], root: Path, pins: Path) -> str:
 def load(root: Path, pin: str) -> dict[str, Any]:
     d = document(str(root / "campaign.json"), maximum=2 * 1024**2)
     require(
-        digest(d) == pin and d["version"] == VERSION and d["comparison_policy"] == policy.POLICY,
+        digest(d) == pin
+        and d["version"] in (VERSION, GROUNDED_VERSION)
+        and d["comparison_policy"] == policy.POLICY,
         "campaign_plan_pin",
     )
     require(
-        d["schedule"] == policy.schedule(d["cells"], d["request"]["candidate_budget"]),
+        d["schedule"] == policy.schedule(d["cells"], d["request"]["candidate_budget"], arms(d)),
         "campaign_schedule_changed",
     )
     with closing(ReadOnlyAnalysisStore(root / DB)) as store:
         require(store.get("research_campaign_plan", pin) == d, "campaign_plan_owner")
     return d
+
+
+def start(root: Path, pin: str, *, approved: bool = False) -> dict[str, Any]:
+    """Explicit local approval gate for v2 only; never authenticate an operator/clock."""
+    d = load(root, pin)
+    require(
+        d["version"] == GROUNDED_VERSION and approved is True,
+        "campaign_execution_approval_required",
+    )
+    with lock(root, ".campaign.lock"):
+        with closing(AnalysisStore(root / DB)) as store:
+            existing = store.all("research_campaign_execution_window")
+            if existing:
+                require(len(existing) == 1, "campaign_execution_window_conflict")
+                return existing[0][1]
+            value = dict(
+                version="research_campaign_execution_window_v1",
+                campaign_id=pin,
+                started_at=clock(),
+                max_wall_seconds=d["request"]["wall_seconds"],
+                max_inferences=d["request"]["llm_budget"],
+                max_steps=d["request"]["execution_steps"],
+                authority="explicit_local_operator_action_not_independent_authentication",
+            )
+            store.put("research_campaign_execution_window", value)
+            return value
+
+
+def execution_start(root: Path, d: dict[str, Any]) -> datetime:
+    if d["version"] == VERSION:
+        return datetime.fromisoformat(d["registered_at"])
+    with closing(ReadOnlyAnalysisStore(root / DB)) as store:
+        windows = store.all("research_campaign_execution_window")
+    require(len(windows) == 1, "campaign_execution_approval_required")
+    w = windows[0][1]
+    fields(w, "version campaign_id started_at max_wall_seconds max_inferences max_steps authority")
+    require(
+        w["version"] == "research_campaign_execution_window_v1"
+        and w["campaign_id"] == digest(d)
+        and w["max_wall_seconds"] == d["request"]["wall_seconds"]
+        and w["max_inferences"] == d["request"]["llm_budget"]
+        and w["max_steps"] == d["request"]["execution_steps"]
+        and w["authority"] == "explicit_local_operator_action_not_independent_authentication",
+        "campaign_execution_window_binding",
+    )
+    began = datetime.fromisoformat(w["started_at"])
+    require(
+        began >= datetime.fromisoformat(d["registered_at"]), "campaign_execution_window_chronology"
+    )
+    return began
 
 
 def counts(cell: dict[str, Any], arm: str) -> dict[str, Any]:
@@ -286,6 +361,12 @@ def worker(root: Path, pin: str, attempt_id: str) -> None:
     d = load(root, pin)
     with closing(ReadOnlyAnalysisStore(root / DB)) as store:
         a = store.get("research_campaign_attempt", attempt_id)
+    began = execution_start(root, d)
+    require(
+        began <= datetime.now(UTC) < began + timedelta(seconds=d["request"]["wall_seconds"]),
+        "campaign_worker_window_closed",
+    )
+    require(a["step"] in d["schedule"], "campaign_worker_step_owner")
     cell = next(c for c in d["cells"] if c["cell_id"] == a["step"]["cell"])
     result = session.run(Path(cell["root"]), cell["pin"], a["step"]["arm"])
     with closing(AnalysisStore(root / DB)) as writer:
@@ -296,16 +377,23 @@ def worker(root: Path, pin: str, attempt_id: str) -> None:
 
 
 def run(root: Path, pin: str, steps: int = 1) -> dict[str, Any]:
-    require(type(steps) is int and 1 <= steps <= 144, "campaign_step_bound")
+    require(type(steps) is int and 1 <= steps <= 240, "campaign_step_bound")
     d = load(root, pin)
     paused = None
     import shutil
 
     with lock(root, ".campaign.lock") as fd:
+        began = execution_start(root, d)
         for _ in range(steps):
             with closing(ReadOnlyAnalysisStore(root / DB)) as store:
                 attempts = store.all("research_campaign_attempt")
             _reconcile(root, d)
+            if (
+                d["version"] == GROUNDED_VERSION
+                and len(attempts) >= d["request"]["execution_steps"]
+            ):
+                paused = "campaign_execution_step_budget_exhausted"
+                break
             reserved = sum(a["step"]["arm"] != "rule" for _, a in attempts)
             spent = {a["step"]["step_id"] for _, a in attempts}
             candidate = None
@@ -335,7 +423,7 @@ def run(root: Path, pin: str, steps: int = 1) -> dict[str, Any]:
                     session.arm_root(Path(c["root"]), a)
                     for c in d["cells"]
                     if c["status"] == "READY"
-                    for a in ARMS
+                    for a in arms(d)
                 ]
             )
             used = sum(p.stat().st_size for owner in owned for p in owner.rglob("*") if p.is_file())
@@ -343,7 +431,7 @@ def run(root: Path, pin: str, steps: int = 1) -> dict[str, Any]:
                 paused = "campaign_disk_budget"
                 break
             now = datetime.now(UTC)
-            registered = datetime.fromisoformat(d["registered_at"])
+            registered = began
             remaining = (
                 registered + timedelta(seconds=d["request"]["wall_seconds"]) - now
             ).total_seconds()
@@ -407,7 +495,7 @@ def _report(root: Path, pin: str) -> dict[str, Any]:
         costs: dict[str, Any] = {}
         frozen = document(str(Path(c["root"]) / "session.json"), maximum=8 * 1024**2)
         require(digest(frozen) == c["pin"], "campaign_child_pin")
-        for arm in ARMS:
+        for arm in arms(d):
             p = session.arm_root(Path(c["root"]), arm)
             with closing(ReadOnlyAnalysisStore(p / DB)) as source:
                 plan = source.get("autonomous_plan", frozen["plan_id"])
@@ -441,7 +529,7 @@ def _report(root: Path, pin: str) -> dict[str, Any]:
                         (
                             v["metadata"]["maximum_rss_kb"]
                             for v in llm
-                            if "maximum_rss_kb" in v.get("metadata", {})
+                            if type(v.get("metadata", {}).get("maximum_rss_kb")) in (int, float)
                         ),
                         default=None,
                     )
@@ -451,13 +539,35 @@ def _report(root: Path, pin: str) -> dict[str, Any]:
                         (
                             v["metadata"]["maximum_cpu_percent"]
                             for v in llm
-                            if "maximum_cpu_percent" in v.get("metadata", {})
+                            if type(v.get("metadata", {}).get("maximum_cpu_percent"))
+                            in (int, float)
                         ),
                         default=None,
                     )
                     if llm
                     else 0,
                 )
+                if d["version"] == GROUNDED_VERSION:
+
+                    def total(key: str, observations: list[dict[str, Any]] = llm) -> float | None:
+                        values = [v.get("metadata", {}).get(key) for v in observations]
+                        return sum(values) if all(type(n) in (int, float) for n in values) else None
+
+                    wall = sum(v["wall_seconds"] for v in proposals)
+                    valid = sum(v["state"] == "accepted" for v in proposals)
+                    evaluated = sum(t["state"] == "completed" for t in outcomes.values())
+                    costs[arm].update(
+                        promptCharacters=sum(len(v["prompt"]) for v in requests),
+                        preparationSeconds=sum(v.get("preparation_seconds", 0) for v in proposals),
+                        loadSeconds=total("load_seconds"),
+                        modelInferenceSeconds=total("inference_seconds"),
+                        unloadSeconds=total("unload_seconds"),
+                        secondsPerValidProposal=wall / valid if valid else None,
+                        secondsPerCompletedEvaluation=(wall + costs[arm]["workerSeconds"])
+                        / evaluated
+                        if evaluated
+                        else None,
+                    )
                 for key, t in outcomes.items():
                     if t["state"] != "completed":
                         continue
@@ -511,7 +621,7 @@ def _report(root: Path, pin: str) -> dict[str, Any]:
             horizon=c["horizon"],
             status="INSUFFICIENT_EVIDENCE",
             effectiveBudget=c["effective"],
-            analysis=policy.analyze(rows, d["request"]["candidate_budget"]),
+            analysis=policy.analyze(rows, d["request"]["candidate_budget"], arms(d)),
             costs=costs,
         )
         cell["session"] = session.publication(session.report(Path(c["root"]), c["pin"]))
@@ -542,10 +652,12 @@ def _report(root: Path, pin: str) -> dict[str, Any]:
                 )
     calibration = sorted(ends, key=lambda e: e["at"])[: d["request"]["calibration_steps"]]
     return dict(
-        version="research_campaign_report_v1",
+        version="research_campaign_report_v3"
+        if d["version"] == GROUNDED_VERSION
+        else "research_campaign_report_v1",
         campaignId=pin,
-        plannedCells=18,
-        plannedSlots=18 * d["request"]["candidate_budget"],
+        plannedCells=planned_cells(d),
+        plannedSlots=planned_cells(d) * d["request"]["candidate_budget"],
         cells=cells,
         attempts=len(attempts),
         reservedInferences=sum(a["reserved_inferences"] for a in attempts),
@@ -562,7 +674,7 @@ def _report(root: Path, pin: str) -> dict[str, Any]:
             consumedSlots=consumed,
             successfulEvaluations=completed,
             failedEvaluations=consumed - completed,
-            remainingSlots=18 * d["request"]["candidate_budget"] - consumed,
+            remainingSlots=planned_cells(d) * d["request"]["candidate_budget"] - consumed,
             lastPause=progress["lastPause"],
             unexecuted=missing,
         ),
@@ -584,8 +696,8 @@ def status(root: Path, pin: str) -> dict[str, Any]:
     return dict(
         version="research_campaign_status_v1",
         campaignId=pin,
-        plannedCells=18,
-        plannedSlots=18 * d["request"]["candidate_budget"],
+        plannedCells=planned_cells(d),
+        plannedSlots=planned_cells(d) * d["request"]["candidate_budget"],
         attempts=len(attempts),
         reservedInferences=sum(a["reserved_inferences"] for a in attempts),
         recordedSeconds=sum(e.get("wall_seconds") or 0 for e in ends),
@@ -596,7 +708,7 @@ def status(root: Path, pin: str) -> dict[str, Any]:
                 horizon=c["horizon"],
                 status=c["status"],
                 effective=c["effective"],
-                arms={a: counts(c, a) for a in ARMS},
+                arms={a: counts(c, a) for a in arms(d)},
             )
             for c in d["cells"]
         ],
@@ -609,7 +721,12 @@ def status(root: Path, pin: str) -> dict[str, Any]:
 
 def publication(value: dict[str, Any]) -> dict[str, Any]:
     require(
-        value["version"] in ("research_campaign_report_v1", "research_campaign_report_v2"),
+        value["version"]
+        in (
+            "research_campaign_report_v1",
+            "research_campaign_report_v2",
+            "research_campaign_report_v3",
+        ),
         "campaign_report_version",
     )
     version = (
@@ -617,6 +734,8 @@ def publication(value: dict[str, Any]) -> dict[str, Any]:
         if value["version"] == "research_campaign_report_v2"
         else "research_campaign_publication_v1"
     )
+    if value["version"] == "research_campaign_report_v3":
+        version = "research_campaign_publication_v3"
     return validate_publication(value | dict(version=version))
 
 
@@ -634,6 +753,9 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
         )
         return value
 
+    grounded = value.get("version") == "research_campaign_publication_v3"
+    arm_names = session.arms(session.GROUNDED_VERSION) if grounded else ARMS
+    cell_count = 6 * len(arm_names)
     fields(
         value,
         "version campaignId plannedCells plannedSlots cells attempts reservedInferences "
@@ -643,10 +765,10 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
         "pitQualified performanceApproved executionAuthorized",
     )
     require(
-        value["version"] == "research_campaign_publication_v1"
-        and value["plannedCells"] == 18
+        value["version"] in ("research_campaign_publication_v1", "research_campaign_publication_v3")
+        and value["plannedCells"] == cell_count
         and type(value["plannedSlots"]) is int
-        and 1 <= value["plannedSlots"] <= 144
+        and 1 <= value["plannedSlots"] <= cell_count * 8
         and value["independentGeneralization"] == "GENERALIZATION_NOT_ESTABLISHED"
         and value["uncertaintyInterval"] is None
         and all(
@@ -690,7 +812,7 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
     )
     require(
         all(
-            type(value["progress"][k]) is int and 0 <= value["progress"][k] <= 144
+            type(value["progress"][k]) is int and 0 <= value["progress"][k] <= cell_count * 8
             for k in (
                 "consumedSlots",
                 "successfulEvaluations",
@@ -713,14 +835,14 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
     )
     require(
         type(value["progress"]["unexecuted"]) is list
-        and len(value["progress"]["unexecuted"]) <= 18,
+        and len(value["progress"]["unexecuted"]) <= cell_count,
         "campaign_publication_unexecuted",
     )
     for row in value["progress"]["unexecuted"]:
         fields(row, "cellId arm missing reason")
         require(
             identifier(row["cellId"])
-            and row["arm"] in ARMS
+            and row["arm"] in arm_names
             and type(row["missing"]) is int
             and 1 <= row["missing"] <= 8
             and re.fullmatch("[a-z][a-z0-9_]{0,120}", row["reason"]) is not None,
@@ -766,24 +888,31 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
             type(c["effectiveBudget"]) is int and 1 <= c["effectiveBudget"] <= 8,
             "campaign_publication_budget",
         )
-        fields(c["costs"], " ".join(ARMS))
+        fields(c["costs"], " ".join(arm_names))
         for cost in c["costs"].values():
             fields(
                 cost,
                 "inferenceCalls promptBytes promptTokens outputTokens inferenceSeconds "
                 "workerSeconds "
-                "successfulFits workerAttempts cacheHits peakWorkerRSS peakOllamaRSS peakOllamaCPU",
+                "successfulFits workerAttempts cacheHits peakWorkerRSS peakOllamaRSS peakOllamaCPU"
+                + (
+                    " promptCharacters preparationSeconds loadSeconds modelInferenceSeconds "
+                    "unloadSeconds secondsPerValidProposal secondsPerCompletedEvaluation"
+                    if grounded
+                    else ""
+                ),
             )
             require(
                 all(v is None or number(v) for v in cost.values()), "campaign_publication_costs"
             )
         if "session" in c:
             session.validate_publication(c["session"])
+            require(set(c["session"]["arms"]) == set(arm_names), "campaign_session_arms")
         a = c["analysis"]
         fields(a, "arms comparisons policy generalization")
         require(a["policy"] == policy.POLICY, "campaign_publication_policy")
         rows = []
-        fields(a["arms"], " ".join(ARMS))
+        fields(a["arms"], " ".join(arm_names))
         for arm, group in a["arms"].items():
             fields(group, "evaluated planned ap ba brier baseline_ap_gain worst_ba models")
             require(
@@ -848,7 +977,7 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
                 )
         # All candidate folds use the same preregistered cell source/split. No CI is inferred.
         require(
-            policy.analyze(rows, value["plannedSlots"] // 18) == a,
+            policy.analyze(rows, value["plannedSlots"] // cell_count, arm_names) == a,
             "campaign_publication_reconstruction",
         )
     return value
