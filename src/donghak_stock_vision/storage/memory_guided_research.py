@@ -219,6 +219,9 @@ def prepare(
                         "created_at",
                         "content_hash",
                         "parent_experiment_id",
+                        "hypothesis_parent_experiment_id",
+                        "execution_started_at",
+                        "execution_finished_at",
                     )
                 }
                 == {
@@ -231,6 +234,9 @@ def prepare(
                         "created_at",
                         "content_hash",
                         "parent_experiment_id",
+                        "hypothesis_parent_experiment_id",
+                        "execution_started_at",
+                        "execution_finished_at",
                     )
                 }
             )

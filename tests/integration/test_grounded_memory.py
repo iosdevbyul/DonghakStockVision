@@ -175,6 +175,11 @@ def test_five_arm_real_fitter_catalog_and_legacy_owners(
     assert len(rows) == 1 and rows[0]["model_sha256"] and rows[0]["mean_brier"] >= 0
     assert all(f["period"]["end"] <= scope["search_end"] for r in rows for f in r["internal_folds"])
     assert not rows[0]["chronology_authenticated"]
+    with closing(ReadOnlyAnalysisStore(parent / DB)) as original_store:
+        terminal = original_store.get("autonomous_terminal", rows[0]["terminal_hash"])
+    assert rows[0]["parent_experiment_id"] == terminal["parent_experiment"]
+    assert rows[0]["execution_started_at"] == terminal["started_at"]
+    assert rows[0]["execution_finished_at"] == terminal["finished_at"]
     # Reuse only verified immutable context; original checkpoint/rows are re-read.
     replay: dict[str, Any] = {}
     real_context = original_context

@@ -624,7 +624,39 @@ def _report(root: Path, pin: str) -> dict[str, Any]:
             analysis=policy.analyze(rows, d["request"]["candidate_budget"], arms(d)),
             costs=costs,
         )
-        cell["session"] = session.publication(session.report(Path(c["root"]), c["pin"]))
+        detail = session.report(Path(c["root"]), c["pin"])
+        cell["session"] = session.publication(detail)
+        if d["version"] == GROUNDED_VERSION:
+            for arm in arms(d):
+                keys = {
+                    digest(a)
+                    for a in attempts
+                    if a["step"]["cell"] == c["cell_id"] and a["step"]["arm"] == arm
+                }
+                durations = [e.get("wall_seconds") for e in ends if e["attempt_id"] in keys]
+                tracked = len(durations) == len(keys) and all(
+                    type(v) in (int, float) for v in durations
+                )
+                # Pre-existing/manual session results have no campaign wall-time proof.
+                if not keys and (
+                    detail["arms"][arm]["generated"] or detail["arms"][arm]["completed"]
+                ):
+                    tracked = False
+                wall = sum(durations) if tracked else None
+                legacy_passes = sum(
+                    f["arm"] == arm and f["preregistered_internal_pass"] for f in detail["feedback"]
+                )
+                evaluated = detail["arms"][arm]["completed"]
+                costs[arm].update(
+                    controllerWallSeconds=wall,
+                    legacyInternalPasses=legacy_passes,
+                    secondsPerCompletedEvaluation=wall / evaluated
+                    if wall is not None and evaluated
+                    else None,
+                    secondsPerLegacyInternalPass=wall / legacy_passes
+                    if wall is not None and legacy_passes
+                    else None,
+                )
         cells.append(cell)
     progress = status(root, pin)
     consumed = sum(a["done"] for c in progress["cells"] for a in c["arms"].values())
@@ -897,7 +929,8 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
                 "successfulFits workerAttempts cacheHits peakWorkerRSS peakOllamaRSS peakOllamaCPU"
                 + (
                     " promptCharacters preparationSeconds loadSeconds modelInferenceSeconds "
-                    "unloadSeconds secondsPerValidProposal secondsPerCompletedEvaluation"
+                    "unloadSeconds secondsPerValidProposal secondsPerCompletedEvaluation "
+                    "controllerWallSeconds legacyInternalPasses secondsPerLegacyInternalPass"
                     if grounded
                     else ""
                 ),

@@ -153,3 +153,25 @@ do not authorize extra time/calls. The full schedule is fixed before results.
 Missing slots remain unavailable, including when the first window cannot reach
 the minimum four evaluations per group. These limits are a proposal until the
 operator explicitly approves the new long-running study.
+
+The existing runner's twelve-candidate host projection remains unchanged. The
+frozen catalog is broader than any one prompt: a read-only first-round audit
+found 3/8/8 allowed choices for cohort 1 H1/H5/H20 and 8/7/6 for cohort 2 after
+that projection and frozen exclusions. Value ranking operates within that same
+allowed view; it does not claim exhaustive search of the entire catalog.
+Retrieval's descriptive success bucket means positive AP gain with nonregressing
+Brier; it is not the stricter preregistered qualification/approval decision.
+
+Model execution parent and LLM hypothesis parent are separate original facts in
+the catalog. Cache adoption can legitimately have a different hypothesis parent;
+neither relationship is fabricated or substituted for the other. Original
+execution start/finish and local artifact insertion time are retained separately.
+
+For v3 reports, `controllerWallSeconds` sums completed campaign dispatch audits,
+including source verification and orchestration. Missing/interrupted audits or
+manually produced session outcomes make the full cost unavailable.
+`secondsPerCompletedEvaluation` uses that full observed dispatch cost.
+`legacyInternalPasses` and `secondsPerLegacyInternalPass` use the existing session
+owner's unchanged baseline-gain/worst-BA/overfit conditions; these are not the
+matched campaign improvement decision or independent performance approval. Zero
+passes yield a null cost per pass.

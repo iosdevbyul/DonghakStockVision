@@ -55,7 +55,10 @@ def catalog(
             require(len(parents) <= 1, "memory_grounded_parent")
             record = row | dict(
                 scope=scope,
-                parent_experiment_id=next(iter(parents), None),
+                parent_experiment_id=owner.get("parent_experiment"),
+                hypothesis_parent_experiment_id=next(iter(parents), None),
+                execution_started_at=owner.get("started_at"),
+                execution_finished_at=owner.get("finished_at"),
                 source_plan=pin,
                 terminal_hash=digest(owner),
                 created_at=store.created_at("autonomous_terminal", digest(owner)).isoformat(),
