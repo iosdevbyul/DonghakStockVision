@@ -2,21 +2,27 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-import statistics
 from contextlib import closing
 from pathlib import Path
 from typing import Any
 
 from donghak_stock_vision.backtest.validation import fields, require
-from donghak_stock_vision.data.learning import digest
+from donghak_stock_vision.data.learning import canonical, digest
+from donghak_stock_vision.models import grounded_memory as grounded
 from donghak_stock_vision.models import memory_reasoning as policy
 from donghak_stock_vision.models.llm_provider import ModelConfig
 from donghak_stock_vision.models.research_agent import RuleBasedAgent
 from donghak_stock_vision.models.service import provenance
+from donghak_stock_vision.storage import memory_research_evidence
 from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
-from donghak_stock_vision.storage.autonomous_research import DB, clock, context, terminals
+from donghak_stock_vision.storage.autonomous_research import (
+    DB,
+    clock,
+    context,
+    private_root,
+    terminals,
+)
 from donghak_stock_vision.storage.autonomous_runner import run as run_worker
 from donghak_stock_vision.storage.gemma_research import prompt_view, proposal_schema
 from donghak_stock_vision.storage.krx_backfill import read_pin, write_new
@@ -28,83 +34,21 @@ from donghak_stock_vision.storage.research_resources import lock
 
 VERSION = "memory_guided_session_v1"
 CAMPAIGN_VERSION = "memory_guided_session_v2"
+GROUNDED_VERSION = "memory_guided_session_v3"
+evidence = memory_research_evidence.evidence
+file_sha = memory_research_evidence.file_sha
 
 
-def evidence(
-    root: Path, pin: str, *, extended: bool = False
-) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
-    plan, data = context(root, pin, code_check=False)
-    require(plan["version"] == "autonomous_plan_v6", "memory_historical_owner")
-    allowed = {c["experiment_id"]: c["config"] for c in plan["configurations"]}
-    rows = []
-    with closing(ReadOnlyAnalysisStore(root / DB)) as store:
-        for key, t in terminals(store).items():
-            require(allowed.get(key) == t["config"], "memory_original_experiment_owner")
-            item = dict(experiment_id=key, config=t["config"], state=t["state"])
-            if t["state"] == "completed":
-                r = store.get("autonomous_result", t["result_id"])
-                require(r["dataset_id"] == plan["dataset_id"], "memory_result_dataset")
-                fs = r["folds"]
-                fold_defs = data["goals"][str(t["config"]["goal"]["horizon"])]["folds"]
-                require(len(fs) == len(fold_defs), "memory_original_fold_owner")
-                details = []
-                for f, spec in zip(fs, fold_defs, strict=True):
-                    e = f["evaluation"]
-                    regimes = e.get("seen_robustness", {}).get("input_regimes", {})
-                    usable = [
-                        (name, row["metrics"]["balanced_accuracy"])
-                        for name, row in regimes.items()
-                        if row["metrics"].get("balanced_accuracy") is not None
-                    ]
-                    details.append(
-                        dict(
-                            period=spec["evaluation"],
-                            training_end=spec["training"]["end"],
-                            metrics={
-                                k: e["metrics"][k]
-                                for k in (
-                                    "balanced_accuracy",
-                                    "pr_auc_ap",
-                                    "roc_auc",
-                                    "brier_score",
-                                )
-                            },
-                            baseline_ap=max(b["pr_auc_ap"] for b in e["baselines"].values()),
-                            overfit_gap=f["train"]["balanced_accuracy"]
-                            - e["metrics"]["balanced_accuracy"],
-                            counts=e["counts"],
-                            weakest_seen_regime=min(usable, key=lambda pair: pair[1], default=None),
-                        )
-                    )
-                item["internal_folds"] = details[-3:]
-                if extended:
-                    item["calibration_delta"] = statistics.mean(
-                        f["evaluation"]["metrics"]["brier_score"]
-                        - f["evaluation"]["baselines"]["training_prior"]["brier_score"]
-                        for f in fs
-                    )
-                item.update(
-                    result_id=t["result_id"],
-                    mean_ap=r["mean_ap"],
-                    stability_ap=r["stability_ap"],
-                    overfit_gap=r["largest_train_gap"],
-                    worst_balanced_accuracy=r["worst_balanced_accuracy"],
-                    baseline_ap_gain=statistics.mean(
-                        f["evaluation"]["metrics"]["pr_auc_ap"]
-                        - max(b["pr_auc_ap"] for b in f["evaluation"]["baselines"].values())
-                        for f in fs
-                    ),
-                )
-            else:
-                item["failure_reason"] = t["reason"]
-            rows.append(item)
-    return plan, data, rows
+def arms(version: str) -> tuple[str, ...]:
+    return grounded.ARMS if version == GROUNDED_VERSION else policy.ARMS
 
 
-def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
+def prepare(
+    request: dict[str, Any], root: Path, pins: Path, *, _verified: dict[str, Any] | None = None
+) -> str:
     fields(request, "version source memory horizon stock_policy budget model")
     require(
-        request["version"] in (VERSION, CAMPAIGN_VERSION)
+        request["version"] in (VERSION, CAMPAIGN_VERSION, GROUNDED_VERSION)
         and type(request["budget"]) is int
         and 1 <= request["budget"] <= (4 if request["version"] == VERSION else 8)
         and type(request["horizon"]) is int
@@ -119,9 +63,15 @@ def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
         "memory_new_outputs",
     )
     fields(request["source"], "root plan_pin_file")
+    if request["version"] == GROUNDED_VERSION:
+        _verified = {} if _verified is None else _verified
+    else:
+        require(_verified is None, "memory_legacy_cache_not_supported")
     source = Path(request["source"]["root"])
     source_pin = read_pin(Path(request["source"]["plan_pin_file"]))
-    plan, data, _ = evidence(source, source_pin)
+    plan, data, _ = evidence(
+        source, source_pin, extended=request["version"] == GROUNDED_VERSION, _verified=_verified
+    )
     require(
         root.parent == source.parent and not pins.is_relative_to(source),
         "memory_shared_resource_parent",
@@ -141,20 +91,62 @@ def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
         pin = read_pin(Path(ref["plan_pin_file"]))
         require(p not in seen, "memory_duplicate_owner")
         seen.add(p)
-        prior, prior_data, rows = evidence(p, pin, extended=request["version"] == CAMPAIGN_VERSION)
+        prior, prior_data, rows = evidence(
+            p, pin, extended=request["version"] != VERSION, _verified=_verified
+        )
         # Only same-cohort internal folds can inform the frozen population.
         require(
             prior["dataset_id"] == plan["dataset_id"] and prior_data == data, "memory_cross_dataset"
         )
+        if request["version"] == GROUNDED_VERSION:
+            from donghak_stock_vision.storage.grounded_evidence import catalog
+
+            _, rows = catalog(
+                p, pin, request["horizon"], request["stock_policy"], _verified=_verified
+            )
         memory.extend(rows)
         references.append(dict(root=str(p), plan=pin, database_sha256=file_sha(p / DB)))
     unique: dict[str, dict[str, Any]] = {}
     for row in memory:
         require(
-            row["experiment_id"] not in unique or unique[row["experiment_id"]] == row,
+            row["experiment_id"] not in unique
+            or (
+                {
+                    k: v
+                    for k, v in unique[row["experiment_id"]].items()
+                    if k
+                    not in (
+                        "source_plan",
+                        "terminal_hash",
+                        "created_at",
+                        "content_hash",
+                        "parent_experiment_id",
+                        "hypothesis_parent_experiment_id",
+                        "execution_started_at",
+                        "execution_finished_at",
+                    )
+                }
+                == {
+                    k: v
+                    for k, v in row.items()
+                    if k
+                    not in (
+                        "source_plan",
+                        "terminal_hash",
+                        "created_at",
+                        "content_hash",
+                        "parent_experiment_id",
+                        "hypothesis_parent_experiment_id",
+                        "execution_started_at",
+                        "execution_finished_at",
+                    )
+                }
+            )
+            if request["version"] == GROUNDED_VERSION
+            else row["experiment_id"] not in unique or unique[row["experiment_id"]] == row,
             "memory_conflicting_original",
         )
-        unique[row["experiment_id"]] = row
+        unique.setdefault(row["experiment_id"], row)
     memory = sorted(unique.values(), key=lambda r: r["experiment_id"])
     config = ModelConfig(**request["model"])
     require(
@@ -202,7 +194,7 @@ def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
         memory=memory,
         memory_sources=references,
         candidates=candidates,
-        arms=list(policy.ARMS),
+        arms=list(arms(request["version"])),
         prompt_version=policy.PROMPT,
         comparison=dict(
             independent_generalization="NOT_ESTABLISHED",
@@ -222,10 +214,21 @@ def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
         performance_approved=False,
         execution_authorized=False,
     )
-    if request["version"] == CAMPAIGN_VERSION:
+    if request["version"] == GROUNDED_VERSION:
+        from donghak_stock_vision.storage.grounded_evidence import rejection_catalog
+
+        frozen["grounded_policy"] = grounded.POLICY
+        rejections = [r for ref in references for r in rejection_catalog(Path(ref["root"]))]
+        frozen["rejected_proposal_catalog"] = sorted(
+            {r["proposal_artifact_id"]: r for r in rejections}.values(),
+            key=lambda r: r["proposal_artifact_id"],
+        )
+    if request["version"] != VERSION:
         frozen["effective_budget"] = min(request["budget"], len(candidates))
         frozen["comparison"]["training_budget_per_arm"] = frozen["effective_budget"]
-    require(all(not arm_root(root, a).exists() for a in policy.ARMS), "memory_arm_exists")
+    require(
+        all(not arm_root(root, a).exists() for a in arms(request["version"])), "memory_arm_exists"
+    )
     require(
         not pins.is_relative_to(Path(original["research"]["database"]).parent)
         and all(not pins.is_relative_to(Path(r["root"])) for r in references),
@@ -246,7 +249,7 @@ def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
             ("autonomous_source_verification", v)
             for _, v in old.all("autonomous_source_verification")
         )
-    for arm in policy.ARMS:
+    for arm in arms(request["version"]):
         target = root.parent / (root.name + "-" + arm)
         require(not target.exists(), "memory_arm_exists")
         target.mkdir(mode=0o700)
@@ -260,32 +263,49 @@ def prepare(request: dict[str, Any], root: Path, pins: Path) -> str:
     return digest(frozen)
 
 
-def file_sha(path: Path) -> str:
-    with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
-
-
 def load(root: Path, pin: str) -> dict[str, Any]:
     frozen = document(str(root / "session.json"), maximum=8 * 1024**2)
     require(
-        digest(frozen) == pin and frozen["version"] in (VERSION, CAMPAIGN_VERSION),
+        digest(frozen) == pin
+        and frozen["version"] in (VERSION, CAMPAIGN_VERSION, GROUNDED_VERSION),
         "memory_session_pin",
     )
     require(
-        frozen["arms"] == list(policy.ARMS) and frozen["prompt_version"] == policy.PROMPT,
+        frozen["arms"] == list(arms(frozen["version"]))
+        and frozen["prompt_version"] == policy.PROMPT,
         "memory_session_policy",
     )
+    if frozen["version"] == GROUNDED_VERSION:
+        require(frozen["grounded_policy"] == grounded.POLICY, "memory_grounded_policy_changed")
     for ref in frozen["memory_sources"]:
         require(
             file_sha(Path(ref["root"]) / DB) == ref["database_sha256"], "memory_original_changed"
         )
-    for arm in policy.ARMS:
-        context(arm_root(root, arm), frozen["plan_id"])
+    if frozen["version"] == GROUNDED_VERSION:
+        # One full replay per load, not five. Exact canonical bytes bind every sibling
+        # to the same verified immutable objects. This cache exists only in this call.
+        plan, data = context(arm_root(root, "rule"), frozen["plan_id"])
+        owners = (
+            ("autonomous_plan", frozen["plan_id"], canonical(plan)),
+            ("autonomous_dataset", plan["dataset_id"], canonical(data)),
+        )
+        for arm in frozen["arms"]:
+            target = arm_root(root, arm)
+            private_root(target)
+            with closing(ReadOnlyAnalysisStore(target / DB)) as store:
+                for kind, key, payload in owners:
+                    row = store.connection.execute(
+                        "SELECT payload FROM analysis_artifacts WHERE kind=? AND id=?", (kind, key)
+                    ).fetchone()
+                    require(row is not None and row[0] == payload, "memory_sibling_content_changed")
+    else:
+        for arm in frozen["arms"]:
+            context(arm_root(root, arm), frozen["plan_id"])
     return frozen
 
 
 def arm_root(root: Path, arm: str) -> Path:
-    require(arm in policy.ARMS, "memory_arm")
+    require(arm in (*policy.ARMS, *grounded.ARMS), "memory_arm")
     return root.parent / (root.name + "-" + arm)
 
 
@@ -383,6 +403,7 @@ class RuleAgent:
 
 def run(root: Path, pin: str, arm: str) -> dict[str, Any]:
     frozen = load(root, pin)
+    require(arm in frozen["arms"], "memory_arm")
     target = arm_root(root, arm)
     with lock(root, ".session.lock"):
         feedback(root, frozen, arm)
@@ -396,8 +417,18 @@ def run(root: Path, pin: str, arm: str) -> dict[str, Any]:
             return report(root, pin)
         plan, data = context(target, frozen["plan_id"])
         _, _, own_history = evidence(
-            target, frozen["plan_id"], extended=frozen["version"] == CAMPAIGN_VERSION
+            target, frozen["plan_id"], extended=frozen["version"] != VERSION
         )
+        scope = None
+        if frozen["version"] == GROUNDED_VERSION:
+            from donghak_stock_vision.storage.grounded_evidence import catalog
+
+            scope, own_history = catalog(
+                target,
+                frozen["plan_id"],
+                frozen["request"]["horizon"],
+                frozen["request"]["stock_policy"],
+            )
         allowed = {c["experiment_id"] for c in frozen["candidates"]}
 
         def project(view: dict[str, Any]) -> dict[str, Any]:
@@ -408,9 +439,19 @@ def run(root: Path, pin: str, arm: str) -> dict[str, Any]:
                 if h["config"]["goal"]["horizon"] == frozen["request"]["horizon"]
                 and h["config"]["stock_policy"] == frozen["request"]["stock_policy"]
             ]
-            histories = list({h["experiment_id"]: h for h in histories}.values())[-2:]
+            histories = list({h["experiment_id"]: h for h in histories}.values())
+            if arm not in ("verified", "compact", "value_ranked"):
+                histories = histories[-2:]
+            elif len(histories) > 36:
+                representatives, _ = grounded.select(histories, view["candidates"])
+                histories = (
+                    representatives
+                    + [h for h in histories if h not in representatives][
+                        : 36 - len(representatives)
+                    ]
+                )
             own_feedback = []
-            if frozen["version"] == CAMPAIGN_VERSION and arm == "gemma_memory":
+            if frozen["version"] != VERSION and arm in ("gemma_memory", "phase_c"):
                 with closing(ReadOnlyAnalysisStore(root / DB)) as feedback_store:
                     prior = [
                         f
@@ -436,27 +477,36 @@ def run(root: Path, pin: str, arm: str) -> dict[str, Any]:
                 leader=None,
                 budget=budget - len(completed),
                 cohort=data["generalization"]["cohort"],
+                **(dict(evidence_scope=scope) if scope is not None else {}),
                 **(
                     dict(
-                        counterfactual_required=arm == "gemma_memory",
+                        counterfactual_required=arm
+                        in ("gemma_memory", "phase_c", "verified", "compact", "value_ranked"),
                         campaign_reasoning=True,
                         own_feedback=own_feedback,
                     )
-                    if frozen["version"] == CAMPAIGN_VERSION
+                    if frozen["version"] != VERSION
                     else {}
                 ),
             )
 
-        agent: MemoryAgent | RuleAgent
+        agent: LLMResearchAgent | RuleAgent
         agent = (
             RuleAgent(target)
             if arm == "rule"
             else MemoryAgent(target, OllamaProvider(ModelConfig(**frozen["request"]["model"])))
         )
+        if arm in ("verified", "compact", "value_ranked"):
+            from donghak_stock_vision.storage.grounded_evidence import GroundedAgent
+
+            config = frozen["request"]["model"] | dict(
+                max_output_tokens=grounded.POLICY["output_tokens"]
+            )
+            agent = GroundedAgent(target, OllamaProvider(ModelConfig(**config)), arm)
         peers = tuple(
             (
                 (arm_root(root, a), frozen["plan_id"])
-                for a in policy.ARMS
+                for a in frozen["arms"]
                 if a != arm and terminals_count(arm_root(root, a)) > 0
             ),
         )
@@ -554,7 +604,7 @@ def feedback(root: Path, frozen: dict[str, Any], arm: str) -> None:
 def report(root: Path, pin: str) -> dict[str, Any]:
     frozen = load(root, pin)
     arms = {}
-    for arm in policy.ARMS:
+    for arm in frozen["arms"]:
         target = arm_root(root, arm)
         with closing(ReadOnlyAnalysisStore(target / DB)) as store:
             done = terminals(store)
@@ -583,7 +633,7 @@ def report(root: Path, pin: str) -> dict[str, Any]:
             python_seconds=sum(c["wall_seconds"] for c in costs),
             peak_python_rss_kb=max((c["maximum_rss_kb"] for c in costs), default=0),
             peak_ollama_rss_kb=max(
-                (p.get("metadata", {}).get("maximum_rss_kb", 0) for p in proposals), default=0
+                ((p.get("metadata", {}).get("maximum_rss_kb") or 0) for p in proposals), default=0
             ),
             experiment_ids=list(done),
             schema_passed=sum("proposal" in p for p in proposals),
@@ -602,14 +652,20 @@ def report(root: Path, pin: str) -> dict[str, Any]:
             internal_worst_ba=[r["worst_balanced_accuracy"] for r in results],
             observations="Internal adaptive development only; no fresh independent evaluation",
         )
-        if frozen["version"] == CAMPAIGN_VERSION:
+        if frozen["version"] == GROUNDED_VERSION:
+            from donghak_stock_vision.storage.grounded_evidence import diagnostics
+
+            arms[arm]["grounded"] = diagnostics(target)
+        if frozen["version"] != VERSION:
             with closing(ReadOnlyAnalysisStore(target / DB)) as attempts_store:
                 arms[arm]["python_worker_attempts"] = len(attempts_store.all("autonomous_attempt"))
     with closing(ReadOnlyAnalysisStore(root / DB)) as store:
         feedbacks = [v for _, v in store.all("memory_hypothesis_feedback")]
-    return dict(
+    result = dict(
         version="memory_guided_report_v1"
         if frozen["version"] == VERSION
+        else "memory_guided_report_v3"
+        if frozen["version"] == GROUNDED_VERSION
         else "memory_guided_report_v2",
         session_id=pin,
         arms=arms,
@@ -624,6 +680,24 @@ def report(root: Path, pin: str) -> dict[str, Any]:
         pit_qualified=False,
         execution_authorized=False,
     )
+
+    if frozen["version"] == GROUNDED_VERSION:
+        counts = {
+            name: sum(grounded.category(r) == name for r in frozen["memory"])
+            for name in ("success", "failure", "neutral")
+        }
+        rejections = frozen["rejected_proposal_catalog"]
+        result["evidenceCatalog"] = dict(
+            originalExperiments=len(frozen["memory"]),
+            categories=counts,
+            rejectedProposals=len(rejections),
+            rejectionsWithoutExperiment=len(rejections),
+            failureClasses={
+                name: sum(r["failure_class"] == name for r in rejections)
+                for name in sorted(set(grounded.FAILURES.values()) | {"Resource Unavailable"})
+            },
+        )
+    return result
 
 
 def publication(value: dict[str, Any]) -> dict[str, Any]:
@@ -656,6 +730,8 @@ def publication(value: dict[str, Any]) -> dict[str, Any]:
     result = dict(
         version="memory_guided_publication_v1"
         if value["version"] == "memory_guided_report_v1"
+        else "memory_guided_publication_v3"
+        if value["version"] == "memory_guided_report_v3"
         else "memory_guided_publication_v2",
         sessionId=value["session_id"],
         arms=value["arms"],
@@ -666,6 +742,8 @@ def publication(value: dict[str, Any]) -> dict[str, Any]:
         pitQualified=False,
         executionAuthorized=False,
     )
+    if value["version"] == "memory_guided_report_v3":
+        result["evidenceCatalog"] = value["evidenceCatalog"]
     return validate_publication(result)
 
 
@@ -677,10 +755,16 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
     fields(
         value,
         "version sessionId arms model hypotheses independentGeneralization "
-        "performanceApproved pitQualified executionAuthorized",
+        "performanceApproved pitQualified executionAuthorized"
+        + (" evidenceCatalog" if value.get("version") == "memory_guided_publication_v3" else ""),
     )
     require(
-        value["version"] in ("memory_guided_publication_v1", "memory_guided_publication_v2")
+        value["version"]
+        in (
+            "memory_guided_publication_v1",
+            "memory_guided_publication_v2",
+            "memory_guided_publication_v3",
+        )
         and value["independentGeneralization"] == "NOT_ESTABLISHED"
         and all(
             value[k] is False
@@ -688,6 +772,33 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
         ),
         "memory_publication_approval",
     )
+
+    if value["version"] == "memory_guided_publication_v3":
+        c = fields(
+            value["evidenceCatalog"],
+            "originalExperiments categories rejectedProposals "
+            "rejectionsWithoutExperiment failureClasses",
+        )
+        fields(c["categories"], "success failure neutral")
+        require(
+            set(c["failureClasses"]) == set(grounded.FAILURES.values()) | {"Resource Unavailable"},
+            "memory_publication_catalog",
+        )
+        values = [
+            c["originalExperiments"],
+            c["rejectedProposals"],
+            c["rejectionsWithoutExperiment"],
+            *c["categories"].values(),
+            *c["failureClasses"].values(),
+        ]
+        require(
+            all(type(n) is int and 0 <= n <= 5000 for n in values)
+            and c["originalExperiments"] == sum(c["categories"].values())
+            and c["rejectedProposals"]
+            == c["rejectionsWithoutExperiment"]
+            == sum(c["failureClasses"].values()),
+            "memory_publication_catalog",
+        )
 
     def hex_id(s: Any) -> bool:
         return type(s) is str and re.fullmatch(r"[a-f0-9]{64}", s) is not None
@@ -700,7 +811,10 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
         and hex_id(value["model"]["revision"]),
         "memory_publication_model",
     )
-    fields(value["arms"], " ".join(policy.ARMS))
+    expected_arms = (
+        grounded.ARMS if value["version"] == "memory_guided_publication_v3" else policy.ARMS
+    )
+    fields(value["arms"], " ".join(expected_arms))
     counts = (
         "generated attempted accepted rejected completed failed actual_python_trainings "
         "reused gemma_calls "
@@ -708,7 +822,11 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
         "configuration_diversity evidence_references"
     ).split()
     for arm, row in value["arms"].items():
-        if value["version"] == "memory_guided_publication_v2":
+        if value["version"] == "memory_guided_publication_v3":
+            from donghak_stock_vision.storage.grounded_evidence import validate_diagnostics
+
+            validate_diagnostics(row["grounded"])
+        if value["version"] != "memory_guided_publication_v1":
             require(
                 type(row["python_worker_attempts"]) is int
                 and 0 <= row["python_worker_attempts"] <= 32,
@@ -720,10 +838,11 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
                 counts
                 + (
                     ["python_worker_attempts"]
-                    if value["version"] == "memory_guided_publication_v2"
+                    if value["version"] != "memory_guided_publication_v1"
                     else []
                 )
                 + [
+                    *(["grounded"] if value["version"] == "memory_guided_publication_v3" else []),
                     "memory_enabled",
                     "inference_seconds",
                     "python_seconds",
@@ -778,7 +897,13 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
     require(
         type(value["hypotheses"]) is list
         and len(value["hypotheses"])
-        <= (12 if value["version"] == "memory_guided_publication_v1" else 24),
+        <= (
+            12
+            if value["version"] == "memory_guided_publication_v1"
+            else 40
+            if value["version"] == "memory_guided_publication_v3"
+            else 24
+        ),
         "memory_publication_bound",
     )
     for h in value["hypotheses"]:
@@ -790,7 +915,7 @@ def validate_publication(value: dict[str, Any]) -> dict[str, Any]:
         )
         require(
             hex_id(h["hypothesisId"])
-            and h["agent"] in policy.ARMS
+            and h["agent"] in expected_arms
             and h["experimentId"] in value["arms"][h["agent"]]["experiment_ids"]
             and h["independentlyQualified"] is False
             and type(h["baselineImprovementObserved"]) is bool,

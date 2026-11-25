@@ -22,6 +22,7 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             "report",
             "publish",
             "campaign-prepare",
+            "campaign-start",
             "campaign-run",
             "campaign-report",
             "campaign-recover",
@@ -34,11 +35,23 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     p.add_argument("--request", type=Path)
     p.add_argument("--request-pin-file", type=Path)
     p.add_argument("--pins-root", type=Path)
-    p.add_argument("--arm", choices=("rule", "gemma_blind", "gemma_memory"))
+    p.add_argument(
+        "--arm",
+        choices=(
+            "rule",
+            "gemma_blind",
+            "gemma_memory",
+            "phase_c",
+            "verified",
+            "compact",
+            "value_ranked",
+        ),
+    )
     p.add_argument("--report", type=Path)
     p.add_argument("--campaign-pin-file", type=Path)
     p.add_argument("--attempt-id")
     p.add_argument("--steps", type=int, default=1)
+    p.add_argument("--execution-approved", action="store_true")
 
 
 def run(args: argparse.Namespace) -> int:
@@ -81,7 +94,9 @@ def run(args: argparse.Namespace) -> int:
             require(args.campaign_pin_file is not None, "campaign_pin_required")
             pin = read_pin(args.campaign_pin_file)
             result = (
-                campaign.run(args.root, pin, args.steps)
+                campaign.start(args.root, pin, approved=args.execution_approved)
+                if args.action == "campaign-start"
+                else campaign.run(args.root, pin, args.steps)
                 if args.action == "campaign-run"
                 else campaign.report(args.root, pin)
             )

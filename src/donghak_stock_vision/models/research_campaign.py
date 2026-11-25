@@ -23,14 +23,25 @@ POLICY: dict[str, Any] = dict(
 )
 
 
-def schedule(cells: list[dict[str, Any]], budget: int) -> list[dict[str, Any]]:
+def schedule(
+    cells: list[dict[str, Any]], budget: int, arms: tuple[str, ...] = ARMS
+) -> list[dict[str, Any]]:
     require(
         1 <= len(cells) <= 6 and type(budget) is int and 1 <= budget <= 8, "campaign_schedule_bound"
+    )
+    orders = (
+        ORDERS
+        if arms == ARMS
+        else tuple(
+            tuple(order[(i + j) % len(order)] for j in range(len(order)))
+            for order in (arms, tuple(reversed(arms)))
+            for i in range(len(arms))
+        )
     )
     result = []
     for round_index in range(budget):
         for index, cell in enumerate(cells):
-            for position, arm in enumerate(ORDERS[(index + round_index) % len(ORDERS)]):
+            for position, arm in enumerate(orders[(index + round_index) % len(orders)]):
                 body = dict(cell=cell["cell_id"], arm=arm, round=round_index + 1, position=position)
                 result.append(body | dict(step_id=digest(body)))
     return result
@@ -47,9 +58,11 @@ def distribution(values: list[float]) -> dict[str, Any]:
     )
 
 
-def analyze(rows: list[dict[str, Any]], planned: int) -> dict[str, Any]:
+def analyze(
+    rows: list[dict[str, Any]], planned: int, arm_names: tuple[str, ...] = ARMS
+) -> dict[str, Any]:
     arms: dict[str, Any] = {}
-    for arm in ARMS:
+    for arm in arm_names:
         group = [r for r in rows if r["arm"] == arm]
         folds = [f for r in group for f in r["folds"]]
         arms[arm] = dict(
@@ -73,11 +86,7 @@ def analyze(rows: list[dict[str, Any]], planned: int) -> dict[str, Any]:
             ],
         )
     comparisons = []
-    for left, right in (
-        ("rule", "gemma_blind"),
-        ("rule", "gemma_memory"),
-        ("gemma_blind", "gemma_memory"),
-    ):
+    for left, right in itertools.combinations(arm_names, 2):
         a, b = arms[left], arms[right]
         same = bool(a["evaluated"] and a["evaluated"] == b["evaluated"])
         populations = {r["population"] for r in rows if r["arm"] in (left, right)}

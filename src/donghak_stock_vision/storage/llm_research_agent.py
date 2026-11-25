@@ -54,7 +54,9 @@ class LLMResearchAgent:
             "llm_disk_resource_limit",
         )
         # The whitelist projection remains common for local and approved remote models.
+        preparation_started = time.monotonic()
         summary, prompt, schema = self.proposal_input(view)
+        preparation_seconds = time.monotonic() - preparation_started
         require(len(prompt.encode()) <= 14000, "llm_prompt_bound")
         config = self.provider.config
         with closing(AnalysisStore(self.root / DB)) as store:
@@ -78,6 +80,8 @@ class LLMResearchAgent:
             configuration_id=config.fingerprint,
             state="rejected",
             started_at=clock(),
+            preparation_seconds=preparation_seconds,
+            prompt_characters=len(prompt),
         )
         began = time.monotonic()
         try:

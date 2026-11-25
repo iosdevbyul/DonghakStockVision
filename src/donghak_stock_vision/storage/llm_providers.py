@@ -41,6 +41,20 @@ class OllamaProvider:
         )
 
     def generate(self, prompt: str, schema: dict[str, Any]) -> str:
+        began = time.monotonic()
+        self.metadata.update(
+            load_seconds=None,
+            inference_seconds=None,
+            unload_seconds=None,
+            maximum_rss_kb=None,
+            maximum_cpu_percent=None,
+        )
+        try:
+            return self._generate(prompt, schema)
+        finally:
+            self.metadata["total_wall_seconds"] = time.monotonic() - began
+
+    def _generate(self, prompt: str, schema: dict[str, Any]) -> str:
         c = self.config
         c.require_execution()
         self.discover()
@@ -78,6 +92,10 @@ class OllamaProvider:
         thread: threading.Thread | None = None
         began = time.monotonic()
         result: queue.Queue[tuple[bool, Any]] = queue.Queue(1)
+        inference_start = None
+        inference_finished = None
+        maximum_rss = None
+        maximum_cpu = None
         try:
             self.backend.request(
                 "/api/generate",
@@ -91,6 +109,7 @@ class OllamaProvider:
                 and loaded[0].get("size_vram") == 0,
                 "llm_resident_identity",
             )
+            self.metadata["load_seconds"] = time.monotonic() - began
             self.metadata["inference_calls"] = 1
             body = dict(
                 model=c.model_id,
@@ -114,8 +133,6 @@ class OllamaProvider:
             thread = threading.Thread(target=execute, daemon=True)
             thread.start()
             inference_start = time.monotonic()
-            maximum_rss = 0
-            maximum_cpu = 0.0
             while thread.is_alive():
                 thread.join(timeout=2)
                 resources = process_resources()
@@ -124,8 +141,8 @@ class OllamaProvider:
                     resources["verified"] and bool(state.get("verified")),
                     "llm_resource_probe_unknown",
                 )
-                maximum_rss = max(maximum_rss, resources["rss_kb"])
-                maximum_cpu = max(maximum_cpu, resources["cpu_percent"])
+                maximum_rss = max(maximum_rss or 0, resources["rss_kb"])
+                maximum_cpu = max(maximum_cpu or 0.0, resources["cpu_percent"])
                 require(
                     resources["rss_kb"] <= c.max_memory_mb * 1024
                     and resources["cpu_percent"] <= c.max_cpu_percent,
@@ -138,8 +155,11 @@ class OllamaProvider:
                     "llm_resource_pressure",
                 )
                 require(time.monotonic() - inference_start <= c.timeout, "llm_inference_timeout")
+            inference_finished = time.monotonic()
             ok, response = result.get_nowait()
             if not ok:
+                if isinstance(response, httpx.TimeoutException):
+                    raise ValueError("llm_inference_timeout")
                 raise ValueError("llm_transport_failed")
             require(
                 response.get("done") is True
@@ -163,8 +183,40 @@ class OllamaProvider:
                     if k in response
                 },
             )
+            # Bytes alone cannot guarantee token headroom. Use only provider-reported
+            # input counts, retain unknown when unavailable, and reserve one safety token.
+            prompt_tokens = response.get("prompt_eval_count")
+            headroom = (
+                c.context_window - prompt_tokens
+                if type(prompt_tokens) is int and prompt_tokens >= 0
+                else None
+            )
+            self.metadata.update(
+                context_headroom_tokens=headroom,
+                requested_output_tokens=c.max_output_tokens,
+                context_safety_tokens=1,
+                context_reservation_fits=headroom >= c.max_output_tokens + 1
+                if headroom is not None
+                else None,
+            )
+            require(
+                headroom is None or headroom >= c.max_output_tokens + 1,
+                "llm_context_headroom_insufficient",
+            )
             return str(response["response"])
         finally:
+            stopped = time.monotonic()
+            self.metadata.update(
+                maximum_rss_kb=maximum_rss,
+                maximum_cpu_percent=maximum_cpu,
+                load_seconds=self.metadata["load_seconds"]
+                if inference_start is not None
+                else stopped - began,
+                inference_seconds=(inference_finished or stopped) - inference_start
+                if inference_start is not None
+                else None,
+            )
+            unload_start = time.monotonic()
             if thread is not None and thread.is_alive():
                 self.previous_calls += self.backend.calls
                 self.backend.close()
@@ -174,6 +226,7 @@ class OllamaProvider:
                 thread is None or not thread.is_alive()
             )
             self.metadata.update(
+                unload_seconds=time.monotonic() - unload_start,
                 wall_seconds=time.monotonic() - began,
                 unloaded=self.unloaded,
                 local_http_requests=self.previous_calls + self.backend.calls,
