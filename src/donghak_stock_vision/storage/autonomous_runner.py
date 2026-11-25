@@ -92,7 +92,12 @@ def launch(
     resource_probe: Callable[[], dict[str, Any]] = probe,
     reservation_fd: int | None = None,
     selection_review: bool = False,
+    failure_feedback: bool = False,
 ) -> dict[str, Any]:
+    require(
+        not (selection_review and failure_feedback) and not (failure_feedback and gate),
+        "autonomous_worker_action_conflict",
+    )
     logs = root / "logs"
     logs.mkdir(mode=0o700, exist_ok=True)
     env = dict(os.environ)
@@ -107,7 +112,7 @@ def launch(
         env[name] = "1"
     env["LOKY_MAX_CPU_COUNT"] = "1"
     env.pop("KRX_API_KEY", None)
-    if selection_review:
+    if selection_review or failure_feedback:
         for name in (
             "OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
@@ -121,7 +126,11 @@ def launch(
         "-m",
         "donghak_stock_vision",
         "autonomous-research",
-        "selection-worker" if selection_review else "worker",
+        "selection-worker"
+        if selection_review
+        else "failure-feedback-worker"
+        if failure_feedback
+        else "worker",
         "--root",
         str(root),
         "--plan",

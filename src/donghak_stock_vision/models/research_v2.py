@@ -113,6 +113,7 @@ def build(
     *,
     feature_cache: dict[str, list[dict[str, Any]]] | None = None,
     exclusions_by_ticker: dict[str, dict[str, int]] | None = None,
+    excluded_inputs: dict[tuple[str, str], str] | None = None,
     label_start: date | None = None,
 ) -> tuple[list[Sample], dict[str, float], dict[str, int]]:
     contract(h)
@@ -163,6 +164,8 @@ def build(
             except ValueError as error:
                 excluded[str(error)] += 1
                 ticker_excluded[str(error)] += 1
+                if excluded_inputs is not None:
+                    excluded_inputs[ticker, b.trading_date.isoformat()] = str(error)
         if exclusions_by_ticker is not None:
             exclusions_by_ticker[ticker] = dict(ticker_excluded)
     return sorted(rows, key=lambda s: (s.anchor_at, s.ticker)), changes, dict(excluded)
