@@ -6,7 +6,8 @@ User-approved direction, 2026-11-25. This is the active roadmap; the earlier roo
 
 - #252 merged: Phase C 15 evaluations, 10 new fits, 5 exact cache adoptions, 11 Gemma calls, 2 rejected proposals; 18 formal comparisons insufficient.
 - #253 Phase D: study completed, PR pending CI repair at this checkpoint; 30 dispatches, 24 Gemma inferences, 99.5 minutes, 12 evaluations (11 new fits, 1 cache), 18 rejected proposals. Compact vs Verified: 67.7% fewer reported input tokens, 63.7% lower inference time; model quality advantage not established; all 60 comparisons insufficient, 108 evaluation slots incomplete. Do not automatically execute them. [Execution record](docs/gemma-evidence-grounded-study.md).
-- Next core work: **R1 Prediction Performance Audit**, only after #253 is confirmed merged and latest main inspected. R1 is not started by this CI repair. No Phase E Gemma-only detour.
+- #254 merged after the three required Python checks. **R1 Prediction Performance Audit remains PARTIAL**. It linked 2,657 retained model–row records to actual prices across 34 checkpoints. Original development-fold scores and independent future performance remain unavailable. [R1 audit](docs/prediction-performance-audit.md).
+- The user approved **R2 Prediction Failure Feedback**. The internal H5 follow-up fitted five models and two calibrators, evaluated 914 rows and preserved the feedback. The calibration hypothesis was rejected. The Daily/Legacy comparison remains insufficient under the volatility-group anchor criteria. [R2 results](docs/prediction-failure-feedback.md).
 - Existing assets: #240–245 actual KRX research including 72 historical fits across six study configurations; 46 causal features, 7 masks, 14 profiles, H1/H5/H20; Logistic Regression, Random Forest, HistGradientBoosting; Experiment Memory, exact cache, #246–247 Research Lab API, #250 prospective Shadow, #251–253 research agents. #253 assets remain conditional on merge. Check actual current local coverage before use.
 
 ## Fixed stages and completion gates
@@ -40,7 +41,8 @@ Stages cannot be changed without explicit user approval. R5 can accumulate in pa
 | Phase B (#251) | H1 6 evaluations (4 new fits, 2 cache), pilot separate; Memory AP .481286 vs Rule .473657, Brier worse |
 | Phase C (#252) | 15 evaluations / 10 fits / 5 cache; 18 insufficient comparisons |
 | Phase D (#253) | 12 evaluations / 11 fits / 1 cache, 6/24 accepted Gemma proposals; 60 insufficient comparisons |
-| Per-ticker prediction/actual/correctness and overall accuracy | R1 must inspect; unknown, never invent |
+| Per-ticker prediction and actual outcome | R1 retained 2,657 model–row outcomes (1,159 correct, 1,498 incorrect). R2 retained 914 matched H5 rows across two cohort populations and 23 nonoverlapping dates each. |
+| H5 failure feedback | Intercept calibration increased FPR by 1.36 and 27.37 percentage points. The Daily mask increased high-volatility error rates by 2.11 and 1.99 points, with insufficient group anchors for a final comparison. |
 | Repeated model improvement and independent future generalization | Not established |
 | #250 Shadow as of that study | 8 legacy pending, new H1/H5/H20 predictions/evaluations 0; recheck current local state |
 | Phase D inference cost | Compact 403.59s vs Verified 1112.30s across six calls each; not quality superiority |
