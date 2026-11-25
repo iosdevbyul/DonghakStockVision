@@ -237,7 +237,7 @@ def register(request: dict[str, Any], root: Path, pins: Path) -> str:
     return digest(plan)
 
 
-def review_context(root: Path, pin: str, *, code_check: bool = True) -> dict[str, Any]:
+def retained_review_plan(root: Path, pin: str) -> dict[str, Any]:
     require(
         root.is_absolute()
         and root.resolve() == root
@@ -258,20 +258,9 @@ def review_context(root: Path, pin: str, *, code_check: bool = True) -> dict[str
         "selection_plan_binding",
     )
     require(
-        (
-            not code_check
-            or plan["code"]["implementation_hash"] == provenance()["implementation_hash"]
-        )
-        and plan["code"]["versions"] == provenance()["versions"],
-        "selection_code_or_runtime_changed",
-    )
-    require(
         FrozenJSON((root / "preregistration.json").read_text()).identifier == pin,
         "selection_preregistration_changed",
     )
-    a = plan["request"]["assessment"]
-    _quiescent(Path(a["research"]["database"]), a["research"]["pin"])
-    _quiescent(Path(a["operational"]["root"]) / OP_DB, a["operational"]["pin"])
     for s in plan["studies"]:
         _quiescent(Path(s["root"]) / DB, s["database_sha256"])
         require(
@@ -279,6 +268,20 @@ def review_context(root: Path, pin: str, *, code_check: bool = True) -> dict[str
             and file_hash(Path(s["report"])) == s["report_sha256"],
             "selection_retained_reference_changed",
         )
+    return plan
+
+
+def review_context(root: Path, pin: str, *, code_check: bool = True) -> dict[str, Any]:
+    plan = retained_review_plan(root, pin)
+    code = provenance()
+    require(
+        (not code_check or plan["code"]["implementation_hash"] == code["implementation_hash"])
+        and plan["code"]["versions"] == code["versions"],
+        "selection_code_or_runtime_changed",
+    )
+    a = plan["request"]["assessment"]
+    _quiescent(Path(a["research"]["database"]), a["research"]["pin"])
+    _quiescent(Path(a["operational"]["root"]) / OP_DB, a["operational"]["pin"])
     return plan
 
 

@@ -36,6 +36,7 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             "selection-prepare",
             "selection-worker",
             "evidence-audit",
+            "prediction-audit",
         ),
     )
     p.add_argument("--selection-policy", choices=("predeclared", "robust"), default="predeclared")
@@ -81,6 +82,32 @@ def run_command(args: argparse.Namespace) -> int:
         not args.gate and args.plan is None and args.attempt is None,
         "autonomous_worker_only_arguments",
     )
+    if args.action == "prediction-audit":
+        from donghak_stock_vision.storage.prediction_audit import audit
+
+        require(
+            args.plan_pin_file is not None
+            and args.report is not None
+            and args.pins_root is not None,
+            "prediction_audit_references",
+        )
+        pin_file = args.pins_root / "report.pin"
+        view = audit(args.root, read_pin(args.plan_pin_file), outputs=(args.report, pin_file))
+        args.report.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        args.pins_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        require(
+            all(p.stat().st_mode & 0o077 == 0 for p in (args.report.parent, args.pins_root)),
+            "prediction_audit_private_outputs",
+        )
+        write_new(args.report, view.payload_json)
+        write_new(pin_file, view.identifier)
+        result = {
+            k: v
+            for k, v in view.to_dict().items()
+            if k not in ("development", "readout", "readout_id", "retained_selection_comparisons")
+        }
+        print(json.dumps(result))
+        return 0
     if args.action == "evidence-audit":
         from donghak_stock_vision.storage.evaluation_evidence import availability_audit
 
