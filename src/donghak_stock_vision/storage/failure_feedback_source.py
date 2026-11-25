@@ -168,16 +168,18 @@ def _snapshot(study: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         "feedback_snapshot_population",
     )
     unavailable = json.loads(metadata[2])
-    return dict(
+    projected = dict(
         rows=rows,
         mode="historical_research",
-        quality=json.loads(metadata[0]),
+        quality=json.loads(metadata[0]) if metadata[0] is not None else None,
         session_basis=metadata[1],
-        research_calendar=json.loads(metadata[3]) if metadata[3] is not None else None,
         unavailable_dates={
             t: [d for d in unavailable[t] if span["start"] <= d <= span["end"]] for t in tickers
         },
-    ), [r[0] for r in market_days]
+    )
+    if metadata[3] is not None:
+        projected["research_calendar"] = json.loads(metadata[3])
+    return projected, [r[0] for r in market_days]
 
 
 def outcomes(

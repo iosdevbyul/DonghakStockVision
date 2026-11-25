@@ -33,6 +33,7 @@ from donghak_stock_vision.storage.failure_feedback_source import (
 )
 from donghak_stock_vision.storage.krx_backfill import read_pin, write_new
 from donghak_stock_vision.storage.real_market_training import _quiescent
+from donghak_stock_vision.storage.research_checkpoint import verified_estimator
 from donghak_stock_vision.storage.research_resources import lock, probe, resource_reason
 from donghak_stock_vision.storage.selection_review import retained_review_plan
 
@@ -47,7 +48,11 @@ FLAGS = dict(
 
 
 def register(request: dict[str, Any], root: Path, pins: Path) -> str:
-    fields(request, "version selection_root selection_plan_pin_file r1_report r1_report_pin_file")
+    fields(
+        request,
+        "version selection_root selection_plan_pin_file r1_report r1_report_pin_file"
+        + (" fit_recovery" if "fit_recovery" in request else ""),
+    )
     require(
         request["version"] == "prediction_failure_feedback_request_v1", "feedback_request_version"
     )
@@ -173,6 +178,33 @@ def register(request: dict[str, Any], root: Path, pins: Path) -> str:
         classification="previously_exposed_internal_development",
         **FLAGS,
     )
+    if "fit_recovery" in request:
+        spec = fields(request["fit_recovery"], "root plan_pin_file")
+        previous = Path(spec["root"])
+        previous_pin = read_pin(Path(spec["plan_pin_file"]))
+        require(previous.parent == root.parent and previous != root, "feedback_recovery_root")
+        old = _plan(previous, previous_pin)
+        require(
+            _fit_design(old) == _fit_design(plan) and "fit_recovery" not in old,
+            "feedback_recovery_design_changed",
+        )
+        with closing(ReadOnlyAnalysisStore(previous / DB)) as store:
+            frozen = store.all("failure_feedback_frozen_models")
+            audits = store.all("failure_feedback_resource_audit")
+            require(
+                len(frozen) == len(audits) == 1
+                and not store.all("failure_feedback")
+                and frozen[0][1]["plan_id"] == previous_pin
+                and audits[0][1]["returncode"] != 0,
+                "feedback_recovery_frozen_fit_required",
+            )
+        plan["fit_recovery"] = dict(
+            root=str(previous),
+            fit_plan_id=previous_pin,
+            frozen_id=frozen[0][0],
+            prior_execution=audits[0][1],
+            implementation=old["code"],
+        )
     root.mkdir(mode=0o700)
     pins.mkdir(mode=0o700)
     fd = os.open(root / DB, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -196,6 +228,33 @@ def _plan(root: Path, pin: str) -> dict[str, Any]:
         "feedback_plan_binding",
     )
     return plan
+
+
+def _fit_design(plan: dict[str, Any]) -> dict[str, Any]:
+    return {
+        k: plan[k]
+        for k in (
+            "sources",
+            "r1_report_id",
+            "origins",
+            "hypotheses",
+            "ranges",
+            "label_contract",
+            "seed",
+            "limits",
+            "maximum_base_fits",
+            "maximum_calibration_fits",
+        )
+    } | dict(versions=plan["code"]["versions"])
+
+
+def _retain_checkpoint(path: Path, body: bytes) -> None:
+    require(len(body) <= LIMITS["model_maximum_mb"] * 1024**2, "feedback_checkpoint_bound")
+    with path.open("xb") as out:
+        os.fchmod(out.fileno(), 0o600)
+        out.write(body)
+        out.flush()
+        os.fsync(out.fileno())
 
 
 def _models(
@@ -247,12 +306,7 @@ def _models(
             candidate, masked(train, cfg["mask"]), feature_names=plan["label_contract"]["features"]
         )
         binary = estimator_bytes(model)
-        require(len(binary) <= LIMITS["model_maximum_mb"] * 1024**2, "feedback_checkpoint_bound")
-        with (directory / (key + ".checkpoint")).open("xb") as out:
-            os.fchmod(out.fileno(), 0o600)
-            out.write(binary)
-            out.flush()
-            os.fsync(out.fileno())
+        _retain_checkpoint(directory / (key + ".checkpoint"), binary)
         fitted[arm] = model
         exact[key] = arm
         descriptors[arm] = dict(
@@ -297,6 +351,60 @@ def _models(
     return fitted, descriptors, offset, cal_record
 
 
+def _recover_models(
+    root: Path,
+    plan: dict[str, Any],
+    sources: list[dict[str, Any]],
+) -> list[tuple[dict[str, Any], dict[str, Any], float, dict[str, Any]]]:
+    recovery = plan["fit_recovery"]
+    previous = Path(recovery["root"])
+    old = _plan(previous, recovery["fit_plan_id"])
+    require(_fit_design(old) == _fit_design(plan), "feedback_recovery_fit_mismatch")
+    with closing(ReadOnlyAnalysisStore(previous / DB)) as store:
+        frozen = store.get("failure_feedback_frozen_models", recovery["frozen_id"])
+        cal_records = [
+            store.get("failure_feedback_calibrator", k) for k in frozen["calibrator_ids"]
+        ]
+    require(frozen["plan_id"] == recovery["fit_plan_id"], "feedback_recovery_owner")
+    directory = root / "models"
+    directory.mkdir(mode=0o700)
+    fits = []
+    for study, descriptors, calibration in zip(sources, frozen["models"], cal_records, strict=True):
+        require(
+            calibration["plan_id"] == recovery["fit_plan_id"]
+            and calibration["cohort"] == study["cohort"]
+            and calibration["model_id"] == descriptors["original"]["model_id"]
+            and calibration["training_population"]
+            == digest([s.to_dict() for s in samples(study, "train")])
+            and calibration["calibration_population"]
+            == digest([s.to_dict() for s in samples(study, "calibration")]),
+            "feedback_recovery_calibrator_binding",
+        )
+        models = {}
+        originals: dict[str, Any] = {}
+        for arm, record in descriptors.items():
+            relative = "models/" + record["experiment_id"] + ".checkpoint"
+            require(record["checkpoint"] == relative, "feedback_recovery_checkpoint_reference")
+            if relative not in originals:
+                file = previous / relative
+                originals[relative] = verified_estimator(
+                    file,
+                    record["model_id"],
+                    record["config"]["candidate"]["family"],
+                    old["code"]["versions"],
+                )
+                body = file.read_bytes()
+                require(
+                    hashlib.sha256(body).hexdigest() == record["model_id"],
+                    "feedback_recovery_checkpoint_changed",
+                )
+                _retain_checkpoint(root / relative, body)
+            models[arm] = originals[relative]
+        cal = {k: v for k, v in calibration.items() if k not in ("plan_id", "cohort")}
+        fits.append((models, descriptors, calibration["offset"], cal))
+    return fits
+
+
 def worker(root: Path, pin: str, attempt: str) -> None:
     plan = _plan(root, pin)
     with closing(ReadOnlyAnalysisStore(root / DB)) as store:
@@ -309,7 +417,12 @@ def worker(root: Path, pin: str, attempt: str) -> None:
     started = time.monotonic()
     sources = [source_owner(s) for s in plan["sources"]]
     require(sources == plan["sources"], "feedback_source_changed")
-    fits = [_models(root, pin, s, plan) for s in sources]
+    recovered = "fit_recovery" in plan
+    fits = (
+        _recover_models(root, plan, sources)
+        if recovered
+        else [_models(root, pin, s, plan) for s in sources]
+    )
     # The worker has finished both calibration fits before selecting evaluation labels.
     with closing(AnalysisStore(root / DB)) as store:
         calibrators = store.put_many(
@@ -333,7 +446,8 @@ def worker(root: Path, pin: str, attempt: str) -> None:
     ):
         test, rows, excluded = outcomes(study)
         scores: dict[str, list[float]] = {}
-        for arm, fitted in models.items():
+        for arm in ("original", "daily", "legacy"):
+            fitted = models[arm]
             cfg = descriptors[arm]["config"]
             scores[arm] = (
                 scores["original"]
@@ -386,10 +500,12 @@ def worker(root: Path, pin: str, attempt: str) -> None:
                 cases=cases,
                 decisions=decisions,
                 counters=dict(
-                    base_fits=fits_completed,
-                    calibration_fits=len(calibrators),
+                    base_fits=0 if recovered else fits_completed,
+                    recovered_base_fits=fits_completed if recovered else 0,
+                    calibration_fits=0 if recovered else len(calibrators),
+                    recovered_calibration_fits=len(calibrators) if recovered else 0,
                     evaluation_inferences=fits_completed,
-                    calibration_inferences=len(calibrators),
+                    calibration_inferences=0 if recovered else len(calibrators),
                     exact_in_run_reuse=len(total) - fits_completed,
                     historical_replay=0,
                     prior_score_reuse=0,
