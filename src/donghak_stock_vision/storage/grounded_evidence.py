@@ -14,6 +14,7 @@ from donghak_stock_vision.models import grounded_memory as policy
 from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.autonomous_research import DB, clock, terminals
 from donghak_stock_vision.storage.llm_research_agent import LLMResearchAgent
+from donghak_stock_vision.storage.memory_research_evidence import evidence, file_sha
 
 
 def catalog(
@@ -24,9 +25,6 @@ def catalog(
     *,
     _verified: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    # Local import: the session owns original verification; this is a read-only consumer.
-    from donghak_stock_vision.storage.memory_guided_research import evidence, file_sha
-
     before = file_sha(root / DB)
     plan, data, rows = evidence(root, pin, extended=True, _verified=_verified)
     scope = dict(

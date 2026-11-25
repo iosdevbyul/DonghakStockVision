@@ -20,6 +20,7 @@ from donghak_stock_vision.models import grounded_memory as policy
 from donghak_stock_vision.models import research_campaign as analysis
 from donghak_stock_vision.storage import autonomous_runner as runner
 from donghak_stock_vision.storage import memory_guided_research as owner
+from donghak_stock_vision.storage import memory_research_evidence as evidence_owner
 from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.autonomous_research import DB, worker
 from donghak_stock_vision.storage.autonomous_research import context as original_context
@@ -190,7 +191,7 @@ def test_five_arm_real_fitter_catalog_and_legacy_owners(
         replay_calls += 1
         return real_context(*args, **kwargs)
 
-    monkeypatch.setattr(owner, "context", tracked_context)
+    monkeypatch.setattr(evidence_owner, "context", tracked_context)
     owner.evidence(parent, pin, extended=True, _verified=replay)
     owner.evidence(parent, pin, extended=True, _verified=replay)
     assert replay_calls == 1
@@ -207,7 +208,7 @@ def test_five_arm_real_fitter_catalog_and_legacy_owners(
         value["owner"] = None
     with pytest.raises(ValueError, match="snapshot_changed"):
         owner.evidence(parent, pin, extended=True, _verified=replay)
-    monkeypatch.setattr(owner, "context", real_context)
+    monkeypatch.setattr(evidence_owner, "context", real_context)
 
     protected = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in (db, parent / DB)}
     req["version"] = owner.GROUNDED_VERSION
