@@ -47,6 +47,11 @@ def retained_readout(root: Path, pin: str) -> tuple[dict[str, Any], dict[str, An
     # This reader never runs the frozen implementation or changes its outputs.
     # Writers still require exact implementation identity by default.
     plan = review_context(root, pin, code_check=False)
+    return plan, readout_artifacts(root, pin, plan)
+
+
+def readout_artifacts(root: Path, pin: str, plan: dict[str, Any]) -> dict[str, Any]:
+    """Load already pinned readout artifacts from a verified selection plan."""
     with closing(ReadOnlyAnalysisStore(root / REVIEW_DB)) as store:
         assessment_pin = read_pin(Path(plan["pins_root"]) / "assessment.pin")
         assessment = store.get("selection_assessment", assessment_pin)
@@ -70,7 +75,7 @@ def retained_readout(root: Path, pin: str) -> tuple[dict[str, Any], dict[str, An
             and s["protected_final_test_read"] is False,
             "evidence_readout_scope",
         )
-    return plan, dict(assessment=assessment, sources=sources)
+    return dict(assessment=assessment, sources=sources)
 
 
 def _inventory(
