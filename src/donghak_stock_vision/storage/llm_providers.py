@@ -183,6 +183,26 @@ class OllamaProvider:
                     if k in response
                 },
             )
+            # Bytes alone cannot guarantee token headroom. Use only provider-reported
+            # input counts, retain unknown when unavailable, and reserve one safety token.
+            prompt_tokens = response.get("prompt_eval_count")
+            headroom = (
+                c.context_window - prompt_tokens
+                if type(prompt_tokens) is int and prompt_tokens >= 0
+                else None
+            )
+            self.metadata.update(
+                context_headroom_tokens=headroom,
+                requested_output_tokens=c.max_output_tokens,
+                context_safety_tokens=1,
+                context_reservation_fits=headroom >= c.max_output_tokens + 1
+                if headroom is not None
+                else None,
+            )
+            require(
+                headroom is None or headroom >= c.max_output_tokens + 1,
+                "llm_context_headroom_insufficient",
+            )
             return str(response["response"])
         finally:
             stopped = time.monotonic()

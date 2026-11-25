@@ -151,8 +151,8 @@ inferences and 30 dispatches, with the original 900-second step limit and a
 4,096 MiB campaign disk bound. The first three dispatches are calibration; they
 do not authorize extra time/calls. The full schedule is fixed before results.
 Missing slots remain unavailable, including when the first window cannot reach
-the minimum four evaluations per group. These limits are a proposal until the
-operator explicitly approves the new long-running study.
+the minimum four evaluations per group. These limits were separately approved for the first window. Future windows
+require their own explicit approval and must not reset an existing deadline.
 
 The existing runner's twelve-candidate host projection remains unchanged. The
 frozen catalog is broader than any one prompt: a read-only first-round audit
@@ -175,3 +175,59 @@ manually produced session outcomes make the full cost unavailable.
 owner's unchanged baseline-gain/worst-BA/overfit conditions; these are not the
 matched campaign improvement decision or independent performance approval. Zero
 passes yield a null cost per pass.
+
+For measured RSS/CPU, consumers must use the nullable campaign `costs` fields.
+The inherited integer session counters retain their legacy zero placeholder for
+missing samples; that compatibility value is not a measured zero RSS. Provider
+measurements and failed-call diagnostics retain unavailable values as null.
+
+Existing read-only HTTP consumers use:
+
+```http
+GET /api/v1/research/lab/reports?offset=0&limit=25
+Host: localhost
+Origin: http://localhost
+
+GET /api/v1/research/lab/reports/<campaignId>
+Host: localhost
+Origin: http://localhost
+```
+
+The list identifies the campaign report; the detail is the strict v3 publication
+with per-cell analysis, `costs`, and `session.arms.<arm>.grounded` diagnostics.
+The existing independently approved index and loopback/client/origin restrictions are required. A private report
+file or a successful CLI run does not authorize API publication by itself.
+
+After separate execution approval, the existing CLI sequence is:
+
+```sh
+dsv memory-research campaign-start --root "$CAMPAIGN_ROOT" \
+  --campaign-pin-file "$PIN_ROOT/campaign.pin" --execution-approved \
+  --report "$CAMPAIGN_ROOT/start.json"
+dsv memory-research campaign-run --root "$CAMPAIGN_ROOT" \
+  --campaign-pin-file "$PIN_ROOT/campaign.pin" --steps 3 \
+  --report "$CAMPAIGN_ROOT/calibration.json"
+# Inspect resource/failure observations before continuing within the same window.
+dsv memory-research campaign-run --root "$CAMPAIGN_ROOT" \
+  --campaign-pin-file "$PIN_ROOT/campaign.pin" --steps 27 \
+  --report "$CAMPAIGN_ROOT/window.json"
+dsv memory-research campaign-recover --root "$CAMPAIGN_ROOT" \
+  --campaign-pin-file "$PIN_ROOT/campaign.pin" \
+  --report "$CAMPAIGN_ROOT/recovered.json"
+dsv memory-research campaign-publish --root "$CAMPAIGN_ROOT" \
+  --campaign-pin-file "$PIN_ROOT/campaign.pin" \
+  --report "$CAMPAIGN_ROOT/publication.json"
+```
+
+Use fresh output filenames; commands refuse overwrites. Recovery is only needed
+after interruption. These examples do not authorize starting a window, changing
+its limits, adding a second window or activating a scheduler.
+
+The completed first measurement window is documented in
+[the Phase D execution record](gemma-evidence-grounded-study.md). Its original
+code and immutable outputs are retained separately. Following observed full-
+context failures, the provider now checks reported input token counts against
+the configured output reservation plus one safety token. An insufficient known
+reservation fails with `llm_context_headroom_insufficient`; missing counts remain
+unknown. This post-response guard does not prevent the cost of that attempt and
+does not estimate tokens, increase caps or rewrite historical failure records.

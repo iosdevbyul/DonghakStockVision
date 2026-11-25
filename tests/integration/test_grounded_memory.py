@@ -406,3 +406,57 @@ def test_transport_timeout_retains_measured_cost_and_releases_only_owned_model(
         assert policy.failure_class("llm_transport_failed") == "Resource Unavailable"
     finally:
         provider.close()
+
+
+@pytest.mark.parametrize("prompt_tokens,accepted", [(1000, True), (3967, True), (4015, False)])
+def test_reported_token_headroom_fails_closed_without_increasing_limits(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    prompt_tokens: int,
+    accepted: bool,
+) -> None:
+    from dataclasses import replace
+
+    import httpx
+    from tests.integration.test_model_management import LocalTransport, config
+
+    from donghak_stock_vision.storage.ai_model_management import contract_probe
+    from donghak_stock_vision.storage.llm_providers import OllamaProvider
+    from donghak_stock_vision.storage.llm_research_agent import LLMResearchAgent
+
+    backend = LocalTransport()
+
+    def response(request: httpx.Request) -> httpx.Response:
+        result = backend(request)
+        body = json.loads(request.content) if request.content else {}
+        if "prompt" in body:
+            value = result.json() | dict(prompt_eval_count=prompt_tokens, eval_count=80)
+            return httpx.Response(200, json=value)
+        return result
+
+    monkeypatch.setattr(
+        "donghak_stock_vision.storage.llm_providers.probe",
+        lambda: healthy() | dict(physical_memory_mb=16384),
+    )
+    monkeypatch.setattr(
+        "donghak_stock_vision.storage.llm_providers.process_resources",
+        lambda: dict(verified=True, rss_kb=100000, cpu_percent=10.0, pids=[]),
+    )
+    monkeypatch.setattr(
+        "donghak_stock_vision.storage.gemma_research.process_resources",
+        lambda: dict(verified=True, rss_kb=0, cpu_percent=0.0, pids=[]),
+    )
+    provider = OllamaProvider(
+        replace(config(), max_output_tokens=128), httpx.MockTransport(response)
+    )
+    agent = LLMResearchAgent(tmp_path, provider)
+    if accepted:
+        assert agent.propose(contract_probe())
+    else:
+        with pytest.raises(ValueError, match="llm_context_headroom_insufficient"):
+            agent.propose(contract_probe())
+        assert policy.failure_class(agent.audit["reason"]) == "Resource Unavailable"
+    assert provider.unloaded and backend.loaded is None
+    assert provider.metadata["timings"]["prompt_eval_count"] == prompt_tokens
+    assert provider.metadata["context_reservation_fits"] is accepted
+    assert provider.config.max_output_tokens == 128 and provider.config.timeout == 240
