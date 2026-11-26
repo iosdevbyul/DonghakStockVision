@@ -318,6 +318,8 @@ def _trial(
     cache: dict[str, dict[str, Any]],
     parent: str | None,
     reason: str,
+    *,
+    timings: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     began = time.monotonic()
     train_pin = digest([s.to_dict() for s in train])
@@ -336,16 +338,25 @@ def _trial(
     try:
         model, artifact = _fit(root, plan, config, train, train_pin, cache, experiment)
         model_ready = True
+        fit_finished = time.monotonic()
         result.update(artifact, fit_seconds=time.monotonic() - began)
         test, observation, _ = development
         require({s.label for s in test} == {0, 1}, "predictive_research_development_classes")
         values = _predict(config, model, test)
+        train_scores = _predict(config, model, train)
+        predictions_finished = time.monotonic()
         rows = _scored(observation, {"model": values}, config["goal"]["threshold"])
         summary = design.summary(rows, "model")
         control_scores = direction_baselines(test, train)
         labels = [r["label"] for r in rows]
         train_labels = [int(s.label) for s in train if s.label is not None]
-        train_ba = metrics(train_labels, _predict(config, model, train))["balanced_accuracy"]
+        train_ba = metrics(train_labels, train_scores)["balanced_accuracy"]
+        if timings is not None:
+            timings.update(
+                fit_seconds=fit_finished - began,
+                model_inference_seconds=predictions_finished - fit_finished,
+                evaluation_seconds=time.monotonic() - predictions_finished,
+            )
         result.update(
             state="completed",
             summary=summary,

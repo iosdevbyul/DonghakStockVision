@@ -94,10 +94,11 @@ def launch(
     selection_review: bool = False,
     failure_feedback: bool = False,
     predictive_research: bool = False,
+    autonomous_strategy: bool = False,
 ) -> dict[str, Any]:
     require(
-        sum((selection_review, failure_feedback, predictive_research)) <= 1
-        and not ((failure_feedback or predictive_research) and gate),
+        sum((selection_review, failure_feedback, predictive_research, autonomous_strategy)) <= 1
+        and not ((failure_feedback or predictive_research or autonomous_strategy) and gate),
         "autonomous_worker_action_conflict",
     )
     logs = root / "logs"
@@ -114,7 +115,7 @@ def launch(
         env[name] = "1"
     env["LOKY_MAX_CPU_COUNT"] = "1"
     env.pop("KRX_API_KEY", None)
-    if selection_review or failure_feedback or predictive_research:
+    if selection_review or failure_feedback or predictive_research or autonomous_strategy:
         for name in (
             "OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
@@ -134,6 +135,8 @@ def launch(
         if failure_feedback
         else "predictive-research-worker"
         if predictive_research
+        else "autonomous-strategy-worker"
+        if autonomous_strategy
         else "worker",
         "--root",
         str(root),
