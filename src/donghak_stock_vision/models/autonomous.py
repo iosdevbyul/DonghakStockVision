@@ -34,12 +34,20 @@ def masked(rows: list[Sample], name: str) -> list[Sample]:
     ]
 
 
+def direction_baselines(rows: list[Sample], training: list[Sample]) -> dict[str, list[float]]:
+    prior = sum(s.label == 1 for s in training) / len(training)
+    return {
+        "training_prior": [prior] * len(rows),
+        "training_majority": [float(prior >= 0.5)] * len(rows),
+        "momentum": [sigmoid(s.values[2] / s.values[4]) for s in rows],
+    }
+
+
 def measure(
     rows: list[Sample], scores: list[float], training: list[Sample], returns: dict[str, float]
 ) -> dict[str, Any]:
     require(bool(rows) and {s.label for s in rows} == {0, 1}, "autonomous_metric_population")
     labels = [int(s.label) for s in rows if s.label is not None]
-    prior = sum(s.label == 1 for s in training) / len(training)
     result = metrics(labels, scores)
     bins = evaluate_metrics(labels, scores)["calibration_bins"]
     result["calibration_bins"] = bins
@@ -48,12 +56,7 @@ def measure(
         for b in bins
         if b["count"]
     )
-    baseline_scores = {
-        "training_prior": [prior] * len(rows),
-        "training_majority": [float(prior >= 0.5)] * len(rows),
-        "momentum": [sigmoid(s.values[2] / s.values[4]) for s in rows],
-    }
-    comparison = {k: metrics(labels, v) for k, v in baseline_scores.items()}
+    comparison = {k: metrics(labels, v) for k, v in direction_baselines(rows, training).items()}
     # Research-only overlapping event means, not an executable portfolio return.
     net = [
         (returns[digest(s.to_dict())] - 0.002) if p >= 0.5 else 0.0
