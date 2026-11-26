@@ -45,6 +45,10 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             "predictive-research-run",
             "predictive-research-report",
             "predictive-research-worker",
+            "autonomous-strategy-register",
+            "autonomous-strategy-run",
+            "autonomous-strategy-report",
+            "autonomous-strategy-worker",
         ),
     )
     p.add_argument("--selection-policy", choices=("predeclared", "robust"), default="predeclared")
@@ -73,6 +77,15 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
 
 
 def run_command(args: argparse.Namespace) -> int:
+    if args.action == "autonomous-strategy-worker":
+        from donghak_stock_vision.storage.autonomous_strategy import worker as strategy_worker
+
+        require(
+            args.plan is not None and args.attempt is not None and not args.gate,
+            "strategy_worker_reference",
+        )
+        worker_entry(args.root, args.plan, args.attempt, consumer=strategy_worker)
+        return 0
     if args.action == "predictive-research-worker":
         from donghak_stock_vision.storage.predictive_research import worker as research_worker
 
@@ -108,6 +121,35 @@ def run_command(args: argparse.Namespace) -> int:
         not args.gate and args.plan is None and args.attempt is None,
         "autonomous_worker_only_arguments",
     )
+    if args.action.startswith("autonomous-strategy-"):
+        from donghak_stock_vision.storage import autonomous_strategy
+
+        if args.action == "autonomous-strategy-register":
+            require(
+                args.request is not None
+                and args.request_pin_file is not None
+                and args.pins_root is not None,
+                "strategy_registration_references",
+            )
+            value = document(str(args.request))
+            require(digest(value) == read_pin(args.request_pin_file), "strategy_request_pin")
+            autonomous_strategy.register(value, args.root, args.pins_root)
+            strategy_state = dict(state="REGISTERED")
+        else:
+            require(args.plan_pin_file is not None, "strategy_plan_pin_required")
+            strategy_pin = read_pin(args.plan_pin_file)
+            if args.action == "autonomous-strategy-run":
+                strategy_state = autonomous_strategy.run(args.root, strategy_pin)
+            else:
+                require(
+                    args.report is not None and args.report.parent == args.root,
+                    "strategy_report_destination",
+                )
+                strategy = autonomous_strategy.report(args.root, strategy_pin)
+                write_new(args.report, strategy.payload_json)
+                strategy_state = dict(state="RETAINED", result_id=strategy.to_dict()["result_id"])
+        print(json.dumps(strategy_state))
+        return 1 if strategy_state["state"] == "BLOCKED" else 0
     if args.action.startswith("predictive-research-"):
         from donghak_stock_vision.storage import predictive_research
 
