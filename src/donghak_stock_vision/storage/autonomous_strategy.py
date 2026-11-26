@@ -63,7 +63,7 @@ def _prior(root: Path, plan_id: str) -> tuple[dict[str, Any], list[dict[str, Any
 
 def register(request: dict[str, Any], root: Path, pins: Path) -> str:
     fields(
-        request,
+        {key: value for key, value in request.items() if key != "recovery"},
         "version r3_root r3_plan_pin_file phase_d_publication phase_d_hash_file local_model_digest",
     )
     require(request["version"] == "autonomous_strategy_request_v1", "strategy_request_version")
@@ -159,6 +159,8 @@ def register(request: dict[str, Any], root: Path, pins: Path) -> str:
         },
         **r3.FLAGS,
     )
+    if "recovery" in request:
+        plan["recovery"] = _recovery_binding(root, plan, request["recovery"])
     root.mkdir(mode=0o700)
     pins.mkdir(mode=0o700)
     fd = os.open(root / DB, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -189,6 +191,57 @@ def _plan(root: Path, pin: str) -> dict[str, Any]:
         "strategy_plan_binding",
     )
     return plan
+
+
+def _recovery_binding(root: Path, plan: dict[str, Any], request: Any) -> dict[str, Any]:
+    reference = fields(request, "root plan_pin_file")
+    prior = Path(reference["root"])
+    require(prior != root and prior.parent == root.parent, "strategy_recovery_scope")
+    pin = read_pin(Path(reference["plan_pin_file"]))
+    previous = _plan(prior, pin)
+    design_fields = set(plan) - {"registered_at", "request", "code"}
+    require(
+        set(previous) == set(plan)
+        and all(previous[key] == plan[key] for key in design_fields)
+        and previous["request"] == {k: v for k, v in plan["request"].items() if k != "recovery"}
+        and previous["code"]["versions"] == plan["code"]["versions"],
+        "strategy_recovery_design_changed",
+    )
+    database_hash = _file_sha256(prior / DB)
+    with closing(ReadOnlyAnalysisStore(prior / DB)) as store:
+        ((attempt_id, attempt),) = store.all("autonomous_strategy_attempt")
+        ((audit_id, audit),) = store.all("autonomous_strategy_resource_audit")
+        gemma = store.get("autonomous_strategy_gemma", attempt["gemma_id"])
+        require(
+            attempt["plan_id"] == pin
+            and audit["attempt"] == attempt_id
+            and audit["returncode"] != 0
+            and gemma["status"] in ("REJECTED", "UNAVAILABLE")
+            and not store.all("strategy_shortlist")
+            and not store.all("autonomous_strategy_result"),
+            "strategy_recovery_unfinished_worker_required",
+        )
+    require(_file_sha256(prior / DB) == database_hash, "strategy_recovery_source_changed")
+    return dict(
+        root=str(prior),
+        plan_id=pin,
+        code=previous["code"],
+        database_hash=database_hash,
+        gemma_id=attempt["gemma_id"],
+        resource_audit_id=audit_id,
+        resource_audit=audit,
+    )
+
+
+def _recovery_root(plan: dict[str, Any]) -> Path:
+    reference = plan["recovery"]
+    prior = Path(reference["root"])
+    private_root(prior)
+    require(
+        _file_sha256(prior / DB) == reference["database_hash"],
+        "strategy_recovery_source_changed",
+    )
+    return prior
 
 
 def _source(plan: dict[str, Any]) -> tuple[Path, dict[str, Any], list[dict[str, Any]]]:
@@ -233,11 +286,9 @@ def _memory(
 
 def _seeds(trials: list[dict[str, Any]], plan: dict[str, Any], h: int) -> list[dict[str, Any]]:
     baseline = r3._control(trials, h)
-    other = next(t for t in trials if t["experiment_id"] == plan["retained_r3_challengers"][str(h)])
-    if (
-        any(other["experiment_id"] == t["experiment_id"] for t in [baseline])
-        or other["config"]["training_size"] != 16
-    ):
+    challenger = plan["retained_r3_challengers"][str(h)]
+    other = next((t for t in trials if t["experiment_id"] == challenger), None)
+    if other is None or other["experiment_id"] == baseline["experiment_id"]:
         other = next(
             t
             for t in trials
@@ -425,6 +476,7 @@ def _explore(
                 state=trial["state"],
                 parent_experiment=parent,
                 cache=cached,
+                recovered_plan=trial.get("recovered_plan"),
                 selection_seconds=selected_at - selection_started,
                 execution_seconds=finished - selected_at,
                 total_elapsed_seconds=finished - began + inference,
@@ -509,6 +561,53 @@ def _copy_model(root: Path, prior: Path, trial: dict[str, Any]) -> None:
     )
 
 
+def _recovered_trials(
+    root: Path, plan: dict[str, Any], train: Any, development: Any
+) -> dict[str, dict[str, Any]]:
+    if "recovery" not in plan:
+        return {}
+    prior = _recovery_root(plan)
+    recovery = plan["recovery"]
+    recovered = {}
+    with (
+        closing(ReadOnlyAnalysisStore(prior / DB)) as reader,
+        closing(AnalysisStore(root / DB)) as writer,
+    ):
+        for trial_id, trial in reader.all("predictive_research_trial"):
+            config = trial["config"]
+            h = config["goal"]["horizon"]
+            train_id = digest([sample.to_dict() for sample in train[h][16]])
+            key = digest(config)
+            require(
+                any(option["config"] == config for option in plan["candidate_pools"][str(h)])
+                and trial["experiment_id"]
+                == digest(dict(plan_id=recovery["plan_id"], config=config, train=train_id))
+                and trial["training_population"] == train_id
+                and trial["reason"] == "autonomous_strategy_trial"
+                and trial["feedback_id"] == plan["r2_feedback_id"]
+                and trial["state"] == "completed"
+                and trial["cache_source"] is None
+                and key not in recovered
+                and trial["evaluation_population"]
+                == digest([sample.to_dict() for sample in development[h][0]]),
+                "strategy_recovered_trial_binding",
+            )
+            rows = reader.get("predictive_research_rows", trial["rows_id"])
+            require(rows["experiment_id"] == trial["experiment_id"], "strategy_trial_rows_binding")
+            _copy_model(root, prior, trial)
+            require(
+                writer.put_many(
+                    [("predictive_research_rows", rows), ("predictive_research_trial", trial)]
+                )
+                == [trial["rows_id"], trial_id],
+                "strategy_recovered_artifact_identity",
+            )
+            recovered[key] = _blocks(reader, trial, plan["groups"]) | dict(
+                recovered_plan=recovery["plan_id"], recovered_trial_id=trial_id
+            )
+    return recovered
+
+
 def worker(root: Path, pin: str, attempt: str) -> None:
     began = time.monotonic()
     plan = _plan(root, pin)
@@ -524,7 +623,7 @@ def worker(root: Path, pin: str, attempt: str) -> None:
     dev = outcome_panels(verified[1], "calibration", source["development_tickers"], policy.HORIZONS)
     train = {h: r3._train(source, h) for h in policy.HORIZONS}
     arms: dict[str, Any] = {}
-    evaluated: dict[str, dict[str, Any]] = {}
+    evaluated = _recovered_trials(root, plan, train, dev)
     for h in policy.HORIZONS:
         memory = _memory(prior, plan, trials, h)
         initial = _seeds(memory, plan, h)
@@ -652,7 +751,11 @@ def run(root: Path, pin: str) -> dict[str, Any]:
         with closing(AnalysisStore(root / DB)) as store:
             require(not store.all("autonomous_strategy_reservation"), "strategy_already_reserved")
             store.put("autonomous_strategy_reservation", dict(plan_id=pin, started_at=clock()))
-        gemma = _gemma(root, plan)
+        if "recovery" in plan:
+            with closing(ReadOnlyAnalysisStore(_recovery_root(plan) / DB)) as previous:
+                gemma = previous.get("autonomous_strategy_gemma", plan["recovery"]["gemma_id"])
+        else:
+            gemma = _gemma(root, plan)
         resource = process_resources()
         health = resource_reason(root, probe())
         with closing(AnalysisStore(root / DB)) as store:
