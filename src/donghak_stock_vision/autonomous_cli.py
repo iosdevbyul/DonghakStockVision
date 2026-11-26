@@ -37,6 +37,10 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             "selection-worker",
             "evidence-audit",
             "prediction-audit",
+            "failure-feedback-register",
+            "failure-feedback-run",
+            "failure-feedback-report",
+            "failure-feedback-worker",
         ),
     )
     p.add_argument("--selection-policy", choices=("predeclared", "robust"), default="predeclared")
@@ -65,6 +69,15 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
 
 
 def run_command(args: argparse.Namespace) -> int:
+    if args.action == "failure-feedback-worker":
+        from donghak_stock_vision.storage.failure_feedback import worker
+
+        require(
+            args.plan is not None and args.attempt is not None and not args.gate,
+            "feedback_worker_reference",
+        )
+        worker_entry(args.root, args.plan, args.attempt, consumer=worker)
+        return 0
     if args.action == "selection-worker":
         from donghak_stock_vision.storage.selection_review import assess_worker
 
@@ -82,6 +95,35 @@ def run_command(args: argparse.Namespace) -> int:
         not args.gate and args.plan is None and args.attempt is None,
         "autonomous_worker_only_arguments",
     )
+    if args.action.startswith("failure-feedback-"):
+        from donghak_stock_vision.storage import failure_feedback
+
+        if args.action == "failure-feedback-register":
+            require(
+                args.request is not None
+                and args.request_pin_file is not None
+                and args.pins_root is not None,
+                "feedback_registration_references",
+            )
+            request = document(str(args.request))
+            require(digest(request) == read_pin(args.request_pin_file), "feedback_request_pin")
+            failure_feedback.register(request, args.root, args.pins_root)
+            feedback_state = dict(state="REGISTERED")
+        else:
+            require(args.plan_pin_file is not None, "feedback_plan_pin_required")
+            pin = read_pin(args.plan_pin_file)
+            if args.action == "failure-feedback-run":
+                feedback_state = failure_feedback.run(args.root, pin)
+            else:
+                require(
+                    args.report is not None and args.report.parent == args.root,
+                    "feedback_report_destination",
+                )
+                view = failure_feedback.report(args.root, pin)
+                write_new(args.report, view.payload_json)
+                feedback_state = dict(state="RETAINED", feedback_id=view.to_dict()["feedback_id"])
+        print(json.dumps(feedback_state))
+        return 1 if feedback_state["state"] == "BLOCKED" else 0
     if args.action == "prediction-audit":
         from donghak_stock_vision.storage.prediction_audit import audit
 
