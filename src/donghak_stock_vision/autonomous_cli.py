@@ -41,6 +41,10 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             "failure-feedback-run",
             "failure-feedback-report",
             "failure-feedback-worker",
+            "predictive-research-register",
+            "predictive-research-run",
+            "predictive-research-report",
+            "predictive-research-worker",
         ),
     )
     p.add_argument("--selection-policy", choices=("predeclared", "robust"), default="predeclared")
@@ -69,6 +73,15 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
 
 
 def run_command(args: argparse.Namespace) -> int:
+    if args.action == "predictive-research-worker":
+        from donghak_stock_vision.storage.predictive_research import worker as research_worker
+
+        require(
+            args.plan is not None and args.attempt is not None and not args.gate,
+            "predictive_research_worker_reference",
+        )
+        worker_entry(args.root, args.plan, args.attempt, consumer=research_worker)
+        return 0
     if args.action == "failure-feedback-worker":
         from donghak_stock_vision.storage.failure_feedback import worker
 
@@ -95,6 +108,38 @@ def run_command(args: argparse.Namespace) -> int:
         not args.gate and args.plan is None and args.attempt is None,
         "autonomous_worker_only_arguments",
     )
+    if args.action.startswith("predictive-research-"):
+        from donghak_stock_vision.storage import predictive_research
+
+        if args.action == "predictive-research-register":
+            require(
+                args.request is not None
+                and args.request_pin_file is not None
+                and args.pins_root is not None,
+                "predictive_research_registration_references",
+            )
+            request = document(str(args.request))
+            require(
+                digest(request) == read_pin(args.request_pin_file),
+                "predictive_research_request_pin",
+            )
+            predictive_research.register(request, args.root, args.pins_root)
+            research_state = dict(state="REGISTERED")
+        else:
+            require(args.plan_pin_file is not None, "predictive_research_plan_pin_required")
+            research_pin = read_pin(args.plan_pin_file)
+            if args.action == "predictive-research-run":
+                research_state = predictive_research.run(args.root, research_pin)
+            else:
+                require(
+                    args.report is not None and args.report.parent == args.root,
+                    "predictive_research_report_destination",
+                )
+                view = predictive_research.report(args.root, research_pin)
+                write_new(args.report, view.payload_json)
+                research_state = dict(state="RETAINED", result_id=view.to_dict()["result_id"])
+        print(json.dumps(research_state))
+        return 1 if research_state["state"] == "BLOCKED" else 0
     if args.action.startswith("failure-feedback-"):
         from donghak_stock_vision.storage import failure_feedback
 

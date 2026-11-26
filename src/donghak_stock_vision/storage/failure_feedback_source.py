@@ -93,21 +93,43 @@ def source_owner(study: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def samples(study: dict[str, Any], split: str) -> list[Sample]:
+def samples(
+    study: dict[str, Any], split: str, *, horizon: int = 5, tickers: list[str] | None = None
+) -> list[Sample]:
     span = RANGES[split]
     held = set(study["heldout_tickers"])
-    tickers = sorted(held if split == "evaluation" else set(study["tickers"]) - held)
+    if tickers is None:
+        tickers = sorted(held if split == "evaluation" else set(study["tickers"]) - held)
+    require(bool(tickers) and set(tickers) <= set(study["tickers"]), "feedback_ticker_scope")
+    research_v2.contract(horizon)
     with closing(ReadOnlyAnalysisStore(Path(study["root"]) / DB)) as reader:
+        owner = reader.connection.execute(
+            "SELECT json_extract(payload, ?) FROM analysis_artifacts "
+            "WHERE kind='autonomous_dataset' AND id=?",
+            (f'$.goals."{horizon}".contract', study["dataset_id"]),
+        ).fetchone()
+        require(
+            owner is not None
+            and owner[0] is not None
+            and json.loads(owner[0]) == research_v2.contract(horizon),
+            "feedback_horizon_binding",
+        )
         records = reader.connection.execute(
             """SELECT s.value FROM analysis_artifacts a,
-            json_each(a.payload,'$.goals."5".samples') s
+            json_each(a.payload,?) s
             WHERE a.kind='autonomous_dataset' AND a.id=?
             AND json_extract(s.value,'$.trading_date')>=?
             AND json_extract(s.value,'$.label_end')<=?
             AND json_extract(s.value,'$.ticker') IN ("""
             + ",".join("?" for _ in tickers)
             + ") ORDER BY CAST(s.key AS INTEGER) LIMIT 20001",
-            (study["dataset_id"], span["start"], span["end"], *tickers),
+            (
+                f'$.goals."{horizon}".samples',
+                study["dataset_id"],
+                span["start"],
+                span["end"],
+                *tickers,
+            ),
         ).fetchall()
     require(0 < len(records) <= 20000, "feedback_sample_bound")
     rows = [Sample.from_dict(json.loads(payload)) for (payload,) in records]
@@ -116,7 +138,7 @@ def samples(study: dict[str, Any], split: str) -> list[Sample]:
         and all(
             s.label_status == "labeled"
             and s.label in (0, 1)
-            and len(s.label_sessions) == 5
+            and len(s.label_sessions) == horizon
             and s.label_end is not None
             and s.label_sessions[-1] == s.label_end
             and span["start"] <= s.trading_date.isoformat() < s.label_end.isoformat() <= span["end"]
@@ -128,10 +150,16 @@ def samples(study: dict[str, Any], split: str) -> list[Sample]:
     return rows
 
 
-def _snapshot(study: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+def _snapshot(
+    study: dict[str, Any], split: str, tickers: list[str]
+) -> tuple[dict[str, Any], list[str]]:
     path = Path(study["root"]) / DB
-    span = RANGES["evaluation_context"]
-    tickers = study["heldout_tickers"]
+    selected = RANGES[split]
+    span = (
+        RANGES["evaluation_context"]
+        if split == "evaluation"
+        else {"start": RANGES["train"]["start"], "end": selected["end"]}
+    )
     with closing(ReadOnlyAnalysisStore(path)) as reader:
         metadata = reader.connection.execute(
             "SELECT json_extract(payload,'$.quality'), json_extract(payload,'$.session_basis'), "
@@ -147,7 +175,7 @@ def _snapshot(study: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
             FROM analysis_artifacts a,json_each(a.payload,'$.rows') t,json_each(t.value) b
             WHERE a.kind='autonomous_snapshot' AND a.id=? AND day BETWEEN ? AND ?
             ORDER BY day LIMIT 501""",
-            (study["snapshot_id"], RANGES["evaluation"]["start"], span["end"]),
+            (study["snapshot_id"], selected["start"], span["end"]),
         ).fetchall()
         rows: dict[str, list[dict[str, Any]]] = {t: [] for t in tickers}
         for ticker, payload in reader.connection.execute(
@@ -185,16 +213,46 @@ def _snapshot(study: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
 def outcomes(
     study: dict[str, Any],
 ) -> tuple[list[Sample], list[dict[str, Any]], list[dict[str, Any]]]:
-    retained = samples(study, "evaluation")
-    snapshot, days = _snapshot(study)
-    excluded: dict[tuple[str, str], str] = {}
-    rebuilt, returns, _ = research_v2.build(
-        snapshot,
-        5,
-        feature_cache=research_v2.prepare_features(snapshot),
-        label_start=date.fromisoformat(RANGES["evaluation"]["start"]),
-        excluded_inputs=excluded,
-    )
+    return outcome_panels(study, "evaluation", study["heldout_tickers"], (5,))[5]
+
+
+def outcome_panels(
+    study: dict[str, Any],
+    split: str,
+    tickers: list[str],
+    horizons: tuple[int, ...],
+) -> dict[int, tuple[list[Sample], list[dict[str, Any]], list[dict[str, Any]]]]:
+    require(split in ("calibration", "evaluation"), "feedback_outcome_scope")
+    if split == "evaluation":
+        require(set(tickers) == set(study["heldout_tickers"]), "feedback_evaluation_tickers")
+    snapshot, days = _snapshot(study, split, tickers)
+    cache = research_v2.prepare_features(snapshot)
+    panels = {}
+    for horizon in horizons:
+        retained = samples(study, split, horizon=horizon, tickers=tickers)
+        excluded: dict[tuple[str, str], str] = {}
+        rebuilt, returns, _ = research_v2.build(
+            snapshot,
+            horizon,
+            feature_cache=cache,
+            label_start=date.fromisoformat(RANGES[split]["start"]),
+            excluded_inputs=excluded,
+        )
+        panels[horizon] = _bind_outcomes(
+            snapshot, days, tickers, retained, rebuilt, returns, excluded
+        )
+    return panels
+
+
+def _bind_outcomes(
+    snapshot: dict[str, Any],
+    days: list[str],
+    tickers: list[str],
+    retained: list[Sample],
+    rebuilt: list[Sample],
+    returns: dict[str, float],
+    excluded: dict[tuple[str, str], str],
+) -> tuple[list[Sample], list[dict[str, Any]], list[dict[str, Any]]]:
     require(
         [s.to_dict() for s in rebuilt] == [s.to_dict() for s in retained],
         "feedback_retained_population_mismatch",
@@ -232,7 +290,7 @@ def outcomes(
         evaluated.add((sample.ticker, day))
     ledger = []
     for day in days:
-        for ticker in sorted(study["heldout_tickers"]):
+        for ticker in sorted(tickers):
             key = ticker, day
             if key in evaluated:
                 continue
