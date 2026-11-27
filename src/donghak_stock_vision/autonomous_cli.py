@@ -7,6 +7,7 @@ import json
 from contextlib import closing
 from pathlib import Path
 
+from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.models.autonomous import execute
@@ -49,6 +50,11 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
             "autonomous-strategy-run",
             "autonomous-strategy-report",
             "autonomous-strategy-worker",
+            "supervised-register",
+            "supervised-run",
+            "supervised-stop",
+            "supervised-status",
+            "supervised-worker",
         ),
     )
     p.add_argument("--selection-policy", choices=("predeclared", "robust"), default="predeclared")
@@ -74,9 +80,79 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
     p.add_argument("--steps", type=int, default=1)
     p.add_argument("--report", type=Path)
     p.add_argument("--output", type=Path)
+    p.add_argument("--checkpoint-only", action="store_true")
+    p.add_argument("--window")
 
 
 def run_command(args: argparse.Namespace) -> int:
+    if args.action.startswith("supervised-"):
+        from donghak_stock_vision.storage import supervised_research
+
+        if args.action == "supervised-worker":
+            require(
+                args.plan is not None and args.attempt is not None and not args.gate,
+                "supervised_worker_reference",
+            )
+            worker_entry(args.root, args.plan, args.attempt, consumer=supervised_research.worker)
+            return 0
+        require(
+            args.plan is None and args.attempt is None and not args.gate,
+            "supervised_worker_only_arguments",
+        )
+        if args.action == "supervised-register":
+            require(
+                args.request is not None
+                and args.request_pin_file is not None
+                and args.pins_root is not None,
+                "supervised_registration_references",
+            )
+            spec = document(str(args.request))
+            require(digest(spec) == read_pin(args.request_pin_file), "supervised_request_pin")
+            supervised_research.register(spec, args.root, args.pins_root)
+            supervised_state = dict(state="REGISTERED")
+        else:
+            require(args.plan_pin_file is not None, "supervised_plan_pin_required")
+            pin = read_pin(args.plan_pin_file)
+            if args.action == "supervised-run":
+                supervised_state = supervised_research.run(
+                    args.root, pin, args.steps, checkpoint_only=args.checkpoint_only
+                )
+            elif args.action == "supervised-stop":
+                require(args.window is not None, "supervised_window_required")
+                supervised_state = dict(
+                    window=supervised_research.stop(args.root, pin, args.window)
+                )
+            else:
+                supervised_view = supervised_research.status(args.root, pin)
+                if args.report is not None:
+                    require(args.report.parent == args.root, "supervised_report_destination")
+                    write_new(args.report, FrozenJSON.freeze(supervised_view).payload_json)
+                current = supervised_view["historical"]
+                supervised_state = {
+                    k: current[k]
+                    for k in (
+                        "active_window",
+                        "completed",
+                        "fits",
+                        "evaluated",
+                        "exact_checkpoint_reuse",
+                        "failures",
+                        "remaining_seconds",
+                        "next_horizon",
+                    )
+                } | dict(prospective=supervised_view["prospective"]["status"])
+        print(json.dumps(supervised_state))
+        return int(
+            args.action == "supervised-run"
+            and supervised_state["reason"]
+            not in (
+                "requested_steps_complete",
+                "operator_stop",
+                "checkpoint_pause",
+                "candidate_budget_exhausted",
+                "time_budget_exhausted",
+            )
+        )
     if args.action == "autonomous-strategy-worker":
         from donghak_stock_vision.storage.autonomous_strategy import worker as strategy_worker
 

@@ -95,10 +95,26 @@ def launch(
     failure_feedback: bool = False,
     predictive_research: bool = False,
     autonomous_strategy: bool = False,
+    supervised_research: bool = False,
+    timeout_seconds: float | None = None,
 ) -> dict[str, Any]:
+    timeout = LIMITS["timeout_seconds"] if timeout_seconds is None else timeout_seconds
     require(
-        sum((selection_review, failure_feedback, predictive_research, autonomous_strategy)) <= 1
-        and not ((failure_feedback or predictive_research or autonomous_strategy) and gate),
+        sum(
+            (
+                selection_review,
+                failure_feedback,
+                predictive_research,
+                autonomous_strategy,
+                supervised_research,
+            )
+        )
+        <= 1
+        and not (
+            (failure_feedback or predictive_research or autonomous_strategy or supervised_research)
+            and gate
+        )
+        and 0 < timeout <= LIMITS["timeout_seconds"],
         "autonomous_worker_action_conflict",
     )
     logs = root / "logs"
@@ -115,7 +131,13 @@ def launch(
         env[name] = "1"
     env["LOKY_MAX_CPU_COUNT"] = "1"
     env.pop("KRX_API_KEY", None)
-    if selection_review or failure_feedback or predictive_research or autonomous_strategy:
+    if (
+        selection_review
+        or failure_feedback
+        or predictive_research
+        or autonomous_strategy
+        or supervised_research
+    ):
         for name in (
             "OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
@@ -137,6 +159,8 @@ def launch(
         if predictive_research
         else "autonomous-strategy-worker"
         if autonomous_strategy
+        else "supervised-worker"
+        if supervised_research
         else "worker",
         "--root",
         str(root),
@@ -163,7 +187,7 @@ def launch(
         )
         try:
             while child.poll() is None:
-                if time.monotonic() - began > LIMITS["timeout_seconds"]:
+                if time.monotonic() - began > timeout:
                     reason = "worker_timeout"
                     break
                 output = _command(["/bin/ps", "-o", "rss=", "-p", str(child.pid)])
