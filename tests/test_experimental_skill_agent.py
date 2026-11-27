@@ -51,3 +51,36 @@ def test_duplicate_rejected() -> None:
 
     with pytest.raises(ValueError, match="duplicate"):
         select_with_skills(view(), generate)
+
+
+def test_invalid_choice_corrected_within_budget() -> None:
+    events: list[dict[str, Any]] = []
+    answers = iter(
+        [
+            '{"action":"experiment","index":9,"reason":"bad"}',
+            '{"action":"dataset","index":0,"reason":"inspect"}',
+            '{"action":"experiment","index":0,"reason":"valid"}',
+        ]
+    )
+
+    def generate(prompt: str, schema: dict[str, Any]) -> str:
+        if events and len(events) == 2:
+            assert "skill_candidate_index" in prompt
+        return next(answers)
+
+    selected, trace = select_with_skills(view(), generate, events=events)
+    assert selected["experimentId"] == "allowed"
+    assert [e["state"] for e in events] == ["rejected", "observed", "selected"]
+    assert len(trace) == 1
+
+
+def test_rejected_trace_retained() -> None:
+    events: list[dict[str, Any]] = []
+
+    def generate(prompt: str, schema: dict[str, Any]) -> str:
+        return '{"action":"dataset","index":0,"reason":"repeat"}'
+
+    with pytest.raises(ValueError, match="duplicate"):
+        select_with_skills(view(), generate, events=events)
+    assert [e["state"] for e in events] == ["observed", "rejected", "rejected"]
+    assert "result" in events[0]

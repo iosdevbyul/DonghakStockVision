@@ -19,3 +19,14 @@ not independent confirmation. Model release is required before training.
 The comparison reports internal AP, worst balanced accuracy, completed
 experiments, and inference/training costs. No final test or promotion.
 Actual real-data results require the local pinned KRX source and Ollama.
+
+## Bounded correction and audit
+
+Each selection has at most three provider generations, including malformed or
+invalid proposals. The final generation must select a host-approved candidate.
+Provider/resource failures stop immediately rather than retrying. Private audits
+retain bounded responses, valid/invalid action events, observations and error
+messages. Provider inference counts and peak RSS use provider metadata; the
+legacy inference_seconds field remains total proposal wall time. The new field
+provider_inference_seconds is actual provider inference time. Never publish
+private tool events. New sessions only; do not resume or overwrite old arms.

@@ -35,11 +35,19 @@ def compare(root: Path, pin: str) -> dict[str, Any]:
         raise ValueError("skill_confirmation_guard")
     allowed = frozenset(c["experiment_id"] for c in frozen["candidates"])
     baseline = arm_root(root, "gemma_memory")
+    for arm in frozen["arms"]:
+        with closing(ReadOnlyAnalysisStore(arm_root(root, arm) / DB)) as store:
+            if terminals(store) or store.all("llm_proposal") or store.all("autonomous_attempt"):
+                raise ValueError("skill_requires_unused_arms")
     for _ in range(budget):
         with closing(ReadOnlyAnalysisStore(baseline / DB)) as store:
-            if len(terminals(store)) >= budget:
+            before = len(terminals(store))
+            if before >= budget:
                 break
-        run(root, pin, "gemma_memory")
+        baseline_result = run(root, pin, "gemma_memory")
+        baseline_counts = baseline_result["arms"]["gemma_memory"]
+        if baseline_counts["completed"] + baseline_counts["failed"] <= before:
+            break
     config = ModelConfig(**frozen["request"]["model"])
     with lock(root, ".session.lock"):
         for _ in range(budget):
@@ -82,9 +90,17 @@ def compare(root: Path, pin: str) -> dict[str, Any]:
             if result["pause_reason"]:
                 break
     value = report(root, pin)
+    with closing(ReadOnlyAnalysisStore(target / DB)) as store:
+        audits = [v for _, v in store.all("experimental_skill_proposal")]
+    skills = value["arms"]["gemma_blind"] | dict(
+        memory_enabled=True,
+        research_mode="skills",
+        provider_inference_seconds=sum(a["metadata"]["inference_seconds"] for a in audits),
+        tool_events=[a["events"] for a in audits],
+    )
     return {
         "baseline": value["arms"]["gemma_memory"],
-        "experimental_skills": value["arms"]["gemma_blind"],
+        "experimental_skills": skills,
         "dataset_id": frozen["dataset_id"],
         "independent_generalization": "NOT_ESTABLISHED",
         "performance_approved": False,

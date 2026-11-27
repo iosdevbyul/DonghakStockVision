@@ -15,7 +15,10 @@ from donghak_stock_vision.storage.autonomous_research import DB, clock
 
 
 def select_with_skills(
-    view: dict[str, Any], generate: Callable[[str, dict[str, Any]], str]
+    view: dict[str, Any],
+    generate: Callable[[str, dict[str, Any]], str],
+    *,
+    events: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     registry = build_view_skills(view, budget=2)
     candidates = view["candidates"]
@@ -25,6 +28,7 @@ def select_with_skills(
         raise ValueError("skill_candidate_bound")
     # Short aliases are host-owned; the model never constructs configuration IDs.
     options = ["experiment", *registry.catalog(), "dataset", "evaluation"]
+    audit = [] if events is None else events
     summary = {
         "goal": view["goal"]["label_version"],
         "candidates": [
@@ -43,12 +47,20 @@ def select_with_skills(
     }
     trace: list[dict[str, Any]] = []
     used: set[tuple[str, int]] = set()
+    correction = ""
     for step in range(3):
+        sizes = {"experiment": len(ids), "memory": len(histories)}
+        valid = {
+            name: [i for i in range(sizes.get(name, 1)) if (name, i) not in used]
+            for name in options
+            if step < 2 or name == "experiment"
+        }
+        valid = {name: indices for name, indices in valid.items() if indices}
         schema = {
             "type": "object",
             "properties": {
-                "action": {"type": "string", "enum": options if step < 2 else ["experiment"]},
-                "index": {"type": "integer", "minimum": 0, "maximum": 35},
+                "action": {"type": "string", "enum": list(valid)},
+                "index": {"type": "integer", "enum": sorted({i for v in valid.values() for i in v})},
                 "reason": {"type": "string", "maxLength": 120},
             },
             "required": ["action", "index", "reason"],
@@ -59,37 +71,67 @@ def select_with_skills(
             "memory uses history index; experiment uses candidate index; "
             "other tools use index 0. Internal evidence only; no causal or trading claims. "
             "Do not repeat tools. JSON only.\n"
-            + json.dumps({"view": summary, "observations": trace}, separators=(",", ":"))
+            + json.dumps(
+                {
+                    "view": summary,
+                    "observations": trace,
+                    "valid_indices": valid,
+                    "previous_error": correction,
+                },
+                separators=(",", ":"),
+            )
         )
         if len(prompt.encode()) > 10000:
             raise ValueError("skill_prompt_bound")
+        event: dict[str, Any] = {"step": step + 1, "state": "generating"}
+        audit.append(event)
         raw = generate(prompt, schema)
-        if len(raw) > 2048:
-            raise ValueError("skill_response_bound")
-        choice = decode_gemma_proposal(raw)
-        if set(choice) != {"action", "index", "reason"}:
-            raise ValueError("skill_action_fields")
-        action, index, reason = choice["action"], choice["index"], choice["reason"]
-        if (
-            type(action) is not str
-            or action not in options
-            or type(index) is not int
-            or not 0 <= index <= 35
-            or type(reason) is not str
-            or not 0 < len(reason) <= 120
-        ):
-            raise ValueError("skill_action_value")
-        if action == "experiment":
-            if index >= len(ids):
+        event.update(state="received", response=raw[:2048])
+        try:
+            if len(raw) > 2048:
+                raise ValueError("skill_response_bound")
+            choice = decode_gemma_proposal(raw)
+            if set(choice) != {"action", "index", "reason"}:
+                raise ValueError("skill_action_fields")
+            action, index, reason = choice["action"], choice["index"], choice["reason"]
+            if (
+                type(action) is not str
+                or action not in options
+                or type(index) is not int
+                or not 0 <= index <= 35
+                or type(reason) is not str
+                or not 0 < len(reason) <= 120
+            ):
+                raise ValueError("skill_action_value")
+            if (action, index) in used:
+                raise ValueError("skill_tool_budget_or_duplicate")
+            if action == "experiment" and index >= len(ids):
                 raise ValueError("skill_candidate_index")
+            if action == "memory" and index >= len(histories):
+                raise ValueError("skill_history_index")
+            if index not in valid.get(action, []):
+                raise ValueError("skill_action_not_available")
+        except ValueError as error:
+            correction = str(error)[:200]
+            event.update(state="rejected", reason=correction)
+            if step == 2:
+                raise
+            continue
+        event.update(action=action, index=index, reason=reason)
+        if action == "experiment":
+            event["state"] = "selected"
             return {
                 "experimentId": ids[index],
                 "parentExperimentId": None,
                 "hypothesis": reason,
+                "evidence": [
+                    {"experimentId": histories[t["index"]], "metric": "mean_ap"}
+                    for t in trace
+                    if t["action"] == "memory" and "mean_ap" in t["result"]
+                ],
             }, trace
-        if step == 2 or (action, index) in used:
-            raise ValueError("skill_tool_budget_or_duplicate")
         used.add((action, index))
+        event["state"] = "invoking"
         if action == "memory":
             if index >= len(histories):
                 raise ValueError("skill_history_index")
@@ -117,7 +159,10 @@ def select_with_skills(
                 result = {"candidates": summary["candidates"]}
             else:
                 result = dict(registry.invoke("diagnosis", {}))
-        trace.append({"action": action, "index": index, "result": result})
+        observation_record = {"action": action, "index": index, "result": result}
+        trace.append(observation_record)
+        event.update(state="observed", result=result)
+        correction = ""
     raise ValueError("skill_no_experiment")
 
 
@@ -130,6 +175,7 @@ class SkillAgent:
 
     def propose(self, view: dict[str, Any]) -> str:
         calls: list[dict[str, Any]] = []
+        events: list[dict[str, Any]] = []
         began = time.monotonic()
         self.audit = {"state": "rejected", "started_at": clock()}
 
@@ -144,22 +190,31 @@ class SkillAgent:
                 return response
             finally:
                 self.unloaded = provider.unloaded
-                provider.close()
-                calls.append(dict(provider.metadata))
+                try:
+                    provider.close()
+                finally:
+                    calls.append(dict(provider.metadata))
 
         try:
-            proposal, trace = select_with_skills(view, generate)
+            proposal, trace = select_with_skills(view, generate, events=events)
             self.audit.update(state="accepted", proposal=proposal, trace=trace)
             return str(proposal["experimentId"])
         except Exception as error:
-            self.audit["reason"] = type(error).__name__
+            self.audit.update(reason=str(error)[:200], error_type=type(error).__name__)
             raise ValueError("skill_proposal_rejected") from error
         finally:
             self.audit.update(
                 unloaded=self.unloaded,
                 calls=calls,
+                events=events,
                 wall_seconds=time.monotonic() - began,
-                metadata={"inference_calls": len(calls)},
+                metadata={
+                    "inference_calls": sum(c.get("inference_calls", 0) for c in calls),
+                    "maximum_rss_kb": max(
+                        (c.get("maximum_rss_kb") or 0 for c in calls), default=0
+                    ),
+                    "inference_seconds": sum(c.get("inference_seconds") or 0 for c in calls),
+                },
             )
             with closing(AnalysisStore(self.root / DB)) as store:
                 self.audit["request_id"] = store.put("experimental_skill_proposal", self.audit)
