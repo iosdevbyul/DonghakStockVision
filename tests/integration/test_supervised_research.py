@@ -19,7 +19,7 @@ def test_exact_prepared_checkpoint_is_loaded_without_refitting(
     pin, population = digest("plan"), digest([])
     cfg = dict(candidate={"family": "random_forest"})
     experiment = digest(dict(plan_id=pin, config=cfg, train=population))
-    prepared = dict(
+    prepared: dict[str, Any] = dict(
         checkpoint=f"models/{experiment}.checkpoint",
         model_id=digest("checkpoint"),
         training_population=population,
@@ -110,7 +110,7 @@ def test_closed_window_can_seed_another_pinned_plan(tmp_path: Path) -> None:
     original.mkdir(mode=0o700)
     archive = original / DB
     with closing(AnalysisStore(archive)) as s:
-        plan = dict(
+        plan: dict[str, Any] = dict(
             version="supervised_research_plan_v1",
             bounds=LIMITS,
             max_worker_seconds=60,
