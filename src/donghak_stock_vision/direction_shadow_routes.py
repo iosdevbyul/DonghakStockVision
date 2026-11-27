@@ -44,6 +44,23 @@ class Metrics(Strict):
     confusion_matrix: Matrix
 
 
+class RetainedEvidence(Strict):
+    baseTradingDate: str
+    outcomeTradingDate: str
+    baseClose: Annotated[int, Field(gt=0)] | None
+    targetClose: Annotated[int, Field(gt=0)] | None
+    actualReturn: float | None
+    correct: bool | None
+    momentumScore: Annotated[float, Field(ge=0, le=1)]
+    outcomeReason: (
+        Literal[
+            "incomplete_sources_or_time_guard", "neutral_cost_band", "verified_original_outcome"
+        ]
+        | None
+    )
+    independentlyQualified: Literal[False]
+
+
 class Prediction(Strict):
     predictionId: Id
     inputCohort: Annotated[int, Field(ge=0, le=1000)]
@@ -71,6 +88,7 @@ class Prediction(Strict):
     actualLabel: Literal[0, 1] | None
     mode: Mode
     sourceQuality: Quality
+    r5Evidence: RetainedEvidence | None = None
 
     @model_validator(mode="after")
     def binding(self) -> "Prediction":
@@ -98,6 +116,8 @@ class Prediction(Strict):
             or self.featureVersion != "causal_daily_closed_observed_periods_v2"
         ):
             raise ValueError("direction_contract_projection")
+        if "r5Evidence" in self.model_fields_set:
+            self._bind_retained()
         date.fromisoformat(self.inputTradingDate)
         for d in self.outcomeSessions:
             date.fromisoformat(d)
@@ -105,11 +125,49 @@ class Prediction(Strict):
             raise ValueError("direction_public_clock")
         return self
 
+    def _bind_retained(self) -> None:
+        from datetime import date
+
+        from donghak_stock_vision.models.research_v2 import direction_label
+
+        extra = self.r5Evidence
+        if (
+            extra is None
+            or self.predictionType != "future_close_direction"
+            or not self.inputTradingDate < extra.baseTradingDate < self.outcomeSessions[0]
+            or extra.outcomeTradingDate != self.outcomeSessions[-1]
+        ):
+            raise ValueError("direction_r5_prediction_binding")
+        date.fromisoformat(extra.baseTradingDate)
+        if self.state == "pending":
+            if any(
+                v is not None
+                for v in (extra.baseClose, extra.targetClose, extra.actualReturn, extra.correct)
+            ) or extra.outcomeReason not in (None, "incomplete_sources_or_time_guard"):
+                raise ValueError("direction_r5_pending_binding")
+            return
+        base, target = extra.baseClose, extra.targetClose
+        if base is None or target is None or extra.actualReturn != (target - base) / base:
+            raise ValueError("direction_r5_price_binding")
+        label = direction_label(base, target)
+        if (
+            self.actualLabel != label
+            or extra.correct != (self.predictedClass == label if label is not None else None)
+            or extra.outcomeReason
+            != ("neutral_cost_band" if label is None else "verified_original_outcome")
+        ):
+            raise ValueError("direction_r5_result_binding")
+
 
 class Relative(Strict):
     balanced_accuracy: float | None
     pr_auc_ap: float | None
     brier_score: float | None
+
+
+class RetainedBaselines(Strict):
+    training_majority: Metrics
+    momentum: Metrics
 
 
 class Model(Strict):
@@ -154,6 +212,7 @@ class Model(Strict):
     performanceApproved: Literal[False]
     pitQualified: Literal[False]
     independentPredictivePower: Literal[False]
+    r5Baselines: RetainedBaselines | None = None
 
 
 class Comparison(Strict):
@@ -219,10 +278,10 @@ class DirectionPublication:
                 "featureVersion",
             )
             rebuilt = summarize(
-                [p.model_dump() for p in value.predictions],
+                [p.model_dump(exclude_unset=True) for p in value.predictions],
                 [{k: m.model_dump()[k] for k in keys} for m in value.models],
             )
-            if rebuilt != value.model_dump():
+            if rebuilt != value.model_dump(exclude_unset=True):
                 raise ValueError("direction_publication_reconstruction")
             return value
         except (ValueError, OSError, TypeError) as error:
@@ -287,7 +346,7 @@ def router(reader: DirectionPublication, authorize: Callable[[str], Principal | 
         if horizon is not None and horizon not in (1, 5, 20):
             raise HTTPException(422, detail={"code": "direction_horizon_unsupported"})
         rows = [
-            p.model_dump()
+            p.model_dump(exclude_unset=True)
             for p in read().predictions
             if (modelId is None or p.modelId == modelId)
             and (horizon is None or p.horizon == horizon)
@@ -301,7 +360,7 @@ def router(reader: DirectionPublication, authorize: Callable[[str], Principal | 
         offset: Annotated[int, Query(ge=0, le=100000)] = 0,
         limit: Annotated[int, Query(ge=1, le=100)] = 25,
     ) -> dict[str, Any]:
-        return page([m.model_dump() for m in read().models], offset, limit)
+        return page([m.model_dump(exclude_unset=True) for m in read().models], offset, limit)
 
     @routes.get("/comparisons", dependencies=[Depends(guard)])
     def comparisons(

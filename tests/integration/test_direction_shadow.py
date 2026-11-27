@@ -232,6 +232,12 @@ def test_deadline_missing_session_model_pin_and_cross_contract(
     monkeypatch.setattr(owner, "probe", healthy)
     with pytest.raises(ValueError, match="deadline"):
         owner.record(d, journal, GENESIS, intents, pins, at=mature)
+    with monkeypatch.context() as clock:
+        times = iter((at, mature))
+        clock.setattr(owner, "_at", lambda _: next(times))
+        with pytest.raises(ValueError, match="deadline"):
+            owner.record(d, journal, GENESIS, intents, pins)
+    assert not journal.exists() and not intents.exists()
     altered = copy.deepcopy(d)
     altered["registration_pin_file"] = str(tmp_path / "wrong.pin")
     write_new(Path(altered["registration_pin_file"]), "f" * 64)
@@ -528,3 +534,126 @@ def test_legacy_projection_preserves_event_semantics_and_private_evidence(
     reader = DirectionPublication(path, sha(path))
     assert len(reader.read().predictions) == 5 and journal.read_bytes() == before
     assert "/private/" not in json.dumps(view) and "input_source_pin" not in json.dumps(view)
+
+
+def test_r5_retained_legacy_reference_verifies_original_bindings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from donghak_stock_vision.storage import predictive_research as r3
+    from donghak_stock_vision.storage.analysis import AnalysisStore
+
+    root = tmp_path / "r3"
+    root.mkdir(mode=0o700)
+    (root / "models").mkdir(mode=0o700)
+    cfg = r3._candidate_configuration(5, 16, r3.RF, "v2_legacy")
+    plan = dict(
+        registered_at="2000-01-01T00:00:00+00:00",
+        windows=r3.RANGES,
+        sources=[
+            dict(
+                original_final_test=dict(start="2024-07-01", end="2025-06-30"),
+                source_pin=digest("origin"),
+                dataset_id=digest("dataset"),
+            )
+        ],
+        code=dict(versions={}),
+    )
+    monkeypatch.setattr(r3, "_plan", lambda *args: plan)
+    plan_id, training = digest(plan), digest("training")
+    eid = digest(dict(plan_id=plan_id, config=cfg, train=training))
+    checkpoint = root / "models" / f"{eid}.checkpoint"
+    checkpoint.write_bytes(b"model")
+    trial = dict(
+        config=cfg,
+        experiment_id=eid,
+        training_counts=dict(rows=1000, positive=400, negative=600, tickers=16),
+        training_population=training,
+        state="completed",
+        checkpoint=str(checkpoint.relative_to(root)),
+        model_id=sha(checkpoint),
+        cache_source=digest("R2 original"),
+    )
+    with closing(AnalysisStore(root / DB)) as s:
+        s.put("predictive_research_trial", trial)
+        shortlist = s.put(
+            "predictive_research_shortlist",
+            dict(
+                frozen_at=datetime.now(UTC).isoformat(),
+                plan_id=plan_id,
+                selection={"5": dict(trials=dict(legacy_control=trial))},
+            ),
+        )
+        result = s.put("predictive_research_result", dict(plan_id=plan_id, shortlist_id=shortlist))
+    pin_file = tmp_path / "plan.pin"
+    write_new(pin_file, plan_id)
+    ref = dict(
+        root=str(root),
+        plan_pin_file=str(pin_file),
+        experiment_id=eid,
+        result_id=result,
+        database_sha256=sha(root / DB),
+    )
+    model = owner.model_reference(ref, datetime.now(UTC), load_checkpoint=False)
+    assert model["baseline"] == 0.4
+    assert model["lineage"]["training_population"] == training
+    assert model["lineage"]["cache_source"] == trial["cache_source"]
+    assert model["sha256"] == trial["model_id"]
+    with pytest.raises(ValueError, match="legacy_required"):
+        owner.model_reference(ref | dict(experiment_id=digest("challenger")), datetime.now(UTC))
+    checkpoint.write_bytes(b"changed")
+    with pytest.raises(ValueError, match="pin_mismatch"):
+        owner.model_reference(ref, datetime.now(UTC), load_checkpoint=False)
+
+
+def test_r5_prices_and_paired_baselines_reconstruct_in_publication(tmp_path: Path) -> None:
+    from donghak_stock_vision.data.direction_shadow import contract
+    from donghak_stock_vision.direction_shadow_routes import DirectionPublication
+    from donghak_stock_vision.models.direction_evaluation import publication
+
+    model = dict(experiment_id=digest("legacy"), sha256=digest("checkpoint"), lineage={})
+    registry = dict(models={"1": model}, source_kind="local_provider_capture")
+    prediction = dict(
+        prediction_id=digest("forecast"),
+        input_source_pin=digest("source"),
+        model=model,
+        horizon=1,
+        ticker="000001",
+        input_trading_date="2026-11-25",
+        generated_at="2026-11-26T10:00:00+00:00",
+        base_session="2026-11-26",
+        outcome_sessions=["2026-11-27"],
+        contract=contract(1),
+        feature_version="causal_daily_closed_observed_periods_v2",
+        features=[0.0, 0.0, -0.1, 0.0, 0.1],
+        score=0.8,
+        baseline_score=0.4,
+        predicted_class=1,
+        mode="research_forward_candidate",
+        source_kind="local_provider_capture",
+    )
+    realized = dict(
+        prediction_id=prediction["prediction_id"],
+        state="evaluated",
+        actual_label=1,
+        future=dict(bars=[dict(close=1000), dict(close=1100)]),
+        correct=True,
+        reason="verified_original_outcome",
+    )
+    release = publication(
+        registry,
+        [dict(kind="prediction", payload=prediction), dict(kind="outcome", payload=realized)],
+    )
+    path = tmp_path / "release.json"
+    write_new(path, json.dumps(release))
+    snap = DirectionPublication(path, sha(path)).read()
+    assert snap.model_dump(exclude_unset=True) == release
+    evidence = snap.predictions[0].r5Evidence
+    assert evidence is not None and evidence.actualReturn == 0.1 and evidence.correct is True
+    baselines = snap.models[0].r5Baselines
+    assert baselines is not None and baselines.training_majority.accuracy == 0
+    assert baselines.momentum.accuracy == 0
+    assert snap.models[0].qualifiedAnchors == 0
+    release["predictions"][0]["r5Evidence"]["targetClose"] = 900
+    path.write_text(json.dumps(release))
+    with pytest.raises(ValueError, match="publication_unavailable"):
+        DirectionPublication(path, sha(path))
