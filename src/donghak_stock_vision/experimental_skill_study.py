@@ -1,4 +1,5 @@
 """Finite paired development study; explicitly prepared private session only."""
+
 import argparse
 import json
 from contextlib import closing
@@ -39,6 +40,7 @@ def compare(root: Path, pin: str) -> dict[str, Any]:
             if len(terminals(store)) >= budget:
                 break
         run(root, pin, "gemma_memory")
+    config = ModelConfig(**frozen["request"]["model"])
     with lock(root, ".session.lock"):
         for _ in range(budget):
             with closing(ReadOnlyAnalysisStore(target / DB)) as store:
@@ -46,12 +48,12 @@ def compare(root: Path, pin: str) -> dict[str, Any]:
                 count = len(store.all("llm_proposal"))
             if len(done) >= budget or count >= budget:
                 break
-            config = ModelConfig(**frozen["request"]["model"])
             agent = SkillAgent(target, lambda: OllamaProvider(config))
 
             def project(view: dict[str, Any]) -> dict[str, Any]:
                 history = [
-                    h for h in frozen["memory"] + view["history"]
+                    h
+                    for h in frozen["memory"] + view["history"]
                     if h["config"]["goal"]["horizon"] == frozen["request"]["horizon"]
                     and h["config"]["stock_policy"] == frozen["request"]["stock_policy"]
                 ]
@@ -65,9 +67,14 @@ def compare(root: Path, pin: str) -> dict[str, Any]:
                 }
 
             result = run_worker(
-                target, frozen["plan_id"], 1, agent="managed",
-                agent_factory=lambda r, p: agent, view_transform=project,
-                strict_agent=True, allowed_experiments=allowed,
+                target,
+                frozen["plan_id"],
+                1,
+                agent="managed",
+                agent_factory=lambda r, p, current=agent: current,
+                view_transform=project,
+                strict_agent=True,
+                allowed_experiments=allowed,
             ).to_dict()
             if result["pause_reason"]:
                 break

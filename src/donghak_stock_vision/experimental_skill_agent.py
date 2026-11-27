@@ -1,4 +1,5 @@
 """Opt-in structured tool selection through the existing local provider."""
+
 import json
 import time
 from collections.abc import Callable
@@ -27,8 +28,12 @@ def select_with_skills(
     summary = {
         "goal": view["goal"]["label_version"],
         "candidates": [
-            [i, c["config"]["candidate"]["family"], c["config"]["mask"],
-             c["config"]["candidate"]["value"]]
+            [
+                i,
+                c["config"]["candidate"]["family"],
+                c["config"]["mask"],
+                c["config"]["candidate"]["value"],
+            ]
             for i, c in enumerate(candidates)
         ],
         "history": [
@@ -66,9 +71,12 @@ def select_with_skills(
             raise ValueError("skill_action_fields")
         action, index, reason = choice["action"], choice["index"], choice["reason"]
         if (
-            type(action) is not str or action not in options
-            or type(index) is not int or not 0 <= index <= 35
-            or type(reason) is not str or not 0 < len(reason) <= 120
+            type(action) is not str
+            or action not in options
+            or type(index) is not int
+            or not 0 <= index <= 35
+            or type(reason) is not str
+            or not 0 < len(reason) <= 120
         ):
             raise ValueError("skill_action_value")
         if action == "experiment":
@@ -86,11 +94,17 @@ def select_with_skills(
             if index >= len(histories):
                 raise ValueError("skill_history_index")
             observation = registry.invoke("memory", {"experiment_id": histories[index]})
-            result = {
-                k: observation[k] for k in (
-                    "state", "mean_ap", "overfit_gap", "baseline_ap_gain",
-                    "worst_balanced_accuracy", "failure_reason",
-                ) if k in observation
+            result: dict[str, Any] = {
+                k: observation[k]
+                for k in (
+                    "state",
+                    "mean_ap",
+                    "overfit_gap",
+                    "baseline_ap_gain",
+                    "worst_balanced_accuracy",
+                    "failure_reason",
+                )
+                if k in observation
             }
         else:
             if index != 0:
@@ -142,7 +156,9 @@ class SkillAgent:
             raise ValueError("skill_proposal_rejected") from error
         finally:
             self.audit.update(
-                unloaded=self.unloaded, calls=calls, wall_seconds=time.monotonic() - began,
+                unloaded=self.unloaded,
+                calls=calls,
+                wall_seconds=time.monotonic() - began,
                 metadata={"inference_calls": len(calls)},
             )
             with closing(AnalysisStore(self.root / DB)) as store:

@@ -33,12 +33,14 @@ def build_view_skills(view: dict[str, Any], budget: int = 4) -> SkillRegistry:
         for row in history:
             if row["state"] != "completed":
                 continue
-            rows.append({
-                "experiment_id": row["experiment_id"],
-                "overfit_gap": row["overfit_gap"],
-                "baseline_ap_gain": row["baseline_ap_gain"],
-                "worst_balanced_accuracy": row["worst_balanced_accuracy"],
-            })
+            rows.append(
+                {
+                    "experiment_id": row["experiment_id"],
+                    "overfit_gap": row["overfit_gap"],
+                    "baseline_ap_gain": row["baseline_ap_gain"],
+                    "worst_balanced_accuracy": row["worst_balanced_accuracy"],
+                }
+            )
         return {"observations": rows}
 
     def candidates(arguments: Payload) -> Payload:

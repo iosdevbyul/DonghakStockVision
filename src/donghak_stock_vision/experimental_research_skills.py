@@ -1,11 +1,11 @@
 """Isolated, opt-in research tool dispatch; no production integration."""
+
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TypeAlias
 
-Payload: TypeAlias = Mapping[str, object]
-Handler: TypeAlias = Callable[[Payload], Payload]
+type Payload = Mapping[str, object]
+type Handler = Callable[[Payload], Payload]
 
 
 @dataclass(frozen=True)

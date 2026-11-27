@@ -12,18 +12,22 @@ def view() -> dict[str, Any]:
         "goal": {"label_version": "H1"},
         "dataset_version": "test",
         "history": [],
-        "candidates": [{
-            "experiment_id": "allowed",
-            "config": {"candidate": {"family": "linear", "value": 1}, "mask": "all"},
-        }],
+        "candidates": [
+            {
+                "experiment_id": "allowed",
+                "config": {"candidate": {"family": "linear", "value": 1}, "mask": "all"},
+            }
+        ],
     }
 
 
 def test_tool_then_experiment() -> None:
-    responses = iter([
-        {"action": "dataset", "index": 0, "reason": "inspect scope"},
-        {"action": "experiment", "index": 0, "reason": "test candidate"},
-    ])
+    responses = iter(
+        [
+            {"action": "dataset", "index": 0, "reason": "inspect scope"},
+            {"action": "experiment", "index": 0, "reason": "test candidate"},
+        ]
+    )
 
     def generate(prompt: str, schema: dict[str, Any]) -> str:
         return json.dumps(next(responses))
