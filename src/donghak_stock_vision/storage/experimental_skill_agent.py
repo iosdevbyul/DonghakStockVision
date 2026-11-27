@@ -14,8 +14,6 @@ from donghak_stock_vision.models.research_agent import decode_gemma_proposal
 from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.autonomous_research import DB, clock
 
-
-
 METRICS = ("mean_ap", "baseline_ap_gain", "worst_balanced_accuracy", "overfit_gap")
 CHANGES = ("family", "mask", "value")
 
@@ -64,9 +62,7 @@ def grounded_hypothesis(
     }
 
 
-def hypothesis_feedback(
-    proposal: dict[str, Any], history: list[dict[str, Any]]
-) -> dict[str, Any]:
+def hypothesis_feedback(proposal: dict[str, Any], history: list[dict[str, Any]]) -> dict[str, Any]:
     row = next((h for h in history if h["experiment_id"] == proposal["experimentId"]), None)
     metric = proposal["evidence"][0]["metric"]
     observed = None if row is None else row.get(metric)
@@ -209,10 +205,14 @@ def select_with_skills(
                 raise ValueError("skill_history_index")
             if index not in valid.get(action, []):
                 raise ValueError("skill_action_not_available")
-            if grounded and action != "experiment" and (
-                choice["evidenceIndex"] != -1
-                or choice["metric"] != "none"
-                or choice["change"] != "none"
+            if (
+                grounded
+                and action != "experiment"
+                and (
+                    choice["evidenceIndex"] != -1
+                    or choice["metric"] != "none"
+                    or choice["change"] != "none"
+                )
             ):
                 raise ValueError("skill_tool_hypothesis_fields")
             if grounded and action == "experiment":
@@ -306,10 +306,10 @@ class SkillAgent:
                     calls.append(dict(provider.metadata))
 
         try:
-            with closing(ReadOnlyAnalysisStore(self.root / DB)) as store:
+            with closing(ReadOnlyAnalysisStore(self.root / DB)) as read_store:
                 previous = [
                     a["proposal"]
-                    for _, a in store.all("experimental_skill_proposal")
+                    for _, a in read_store.all("experimental_skill_proposal")
                     if a["state"] == "accepted" and "referenceValue" in a["proposal"]
                 ]
             feedback = [hypothesis_feedback(p, view["history"]) for p in previous]
