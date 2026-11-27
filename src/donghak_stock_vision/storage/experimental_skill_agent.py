@@ -211,9 +211,7 @@ class SkillAgent:
                 wall_seconds=time.monotonic() - began,
                 metadata={
                     "inference_calls": sum(c.get("inference_calls", 0) for c in calls),
-                    "maximum_rss_kb": max(
-                        (c.get("maximum_rss_kb") or 0 for c in calls), default=0
-                    ),
+                    "maximum_rss_kb": max((c.get("maximum_rss_kb") or 0 for c in calls), default=0),
                     "inference_seconds": sum(c.get("inference_seconds") or 0 for c in calls),
                 },
             )
