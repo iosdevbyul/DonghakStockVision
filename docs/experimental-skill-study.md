@@ -10,7 +10,7 @@ Do not use ordinary memory-guided reports to interpret that slot.
 
 Run from this branch with the existing Python environment:
 
-    python -m donghak_stock_vision.experimental_skill_study --request REQUEST.json --root /absolute/skill-experiment-01 --pins /absolute/new-pins
+    python -m donghak_stock_vision.experimental_skill_study_cli --request REQUEST.json --root /absolute/skill-experiment-01 --pins /absolute/new-pins
 
 The host validates candidate indices, enforces an inference budget of three
 per selection and delegates actual training to the existing bounded runner.

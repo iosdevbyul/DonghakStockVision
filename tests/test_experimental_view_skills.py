@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from donghak_stock_vision.experimental_view_skills import build_view_skills
+from donghak_stock_vision.models.experimental_view_skills import build_view_skills
 
 
 def sample_view() -> dict[str, Any]:

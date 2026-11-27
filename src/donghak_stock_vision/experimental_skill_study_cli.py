@@ -6,11 +6,11 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
-from donghak_stock_vision.experimental_skill_agent import SkillAgent
 from donghak_stock_vision.models.llm_provider import ModelConfig
 from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.autonomous_research import DB, context, terminals
 from donghak_stock_vision.storage.autonomous_runner import run as run_worker
+from donghak_stock_vision.storage.experimental_skill_agent import SkillAgent
 from donghak_stock_vision.storage.llm_providers import OllamaProvider
 from donghak_stock_vision.storage.memory_guided_research import (
     VERSION,

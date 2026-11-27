@@ -7,7 +7,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
-from donghak_stock_vision.experimental_view_skills import build_view_skills
+from donghak_stock_vision.models.experimental_view_skills import build_view_skills
 from donghak_stock_vision.models.llm_provider import LLMProvider
 from donghak_stock_vision.models.research_agent import decode_gemma_proposal
 from donghak_stock_vision.storage.analysis import AnalysisStore

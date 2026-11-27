@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from donghak_stock_vision.experimental_skill_agent import select_with_skills
+from donghak_stock_vision.storage.experimental_skill_agent import select_with_skills
 
 
 def view() -> dict[str, Any]:

@@ -2,7 +2,7 @@ from collections.abc import Mapping
 
 import pytest
 
-from donghak_stock_vision.experimental_research_skills import ResearchSkill, SkillRegistry
+from donghak_stock_vision.models.experimental_research_skills import ResearchSkill, SkillRegistry
 
 
 def echo(arguments: Mapping[str, object]) -> Mapping[str, object]:

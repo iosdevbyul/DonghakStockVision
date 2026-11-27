@@ -3,7 +3,7 @@
 from copy import deepcopy
 from typing import Any
 
-from donghak_stock_vision.experimental_research_skills import (
+from donghak_stock_vision.models.experimental_research_skills import (
     Payload,
     ResearchSkill,
     SkillRegistry,
