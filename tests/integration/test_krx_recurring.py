@@ -23,8 +23,10 @@ from tests.integration.test_operational_capture import snapshot
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.cli import main
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan, FullMarketScope
+from donghak_stock_vision.forward_capture_cli import _capture_exit_code
 from donghak_stock_vision.storage.forward_capture import (
     DB,
+    _project,
     capture_status,
     run_capture,
     verify_capture,
@@ -532,3 +534,38 @@ def test_wrong_credential_and_private_archive_preview(tmp_path: Path) -> None:
     root.mkdir(mode=0o755)
     doc = preview(plan, "a", ref, None, AT, True, credential=KEY, capture_root=root).to_dict()
     assert "private_recurring_capture_root_required" in doc["blockers"]
+
+
+@pytest.mark.parametrize(
+    ("rows", "status", "expected"), [(940, 200, 0), (0, 200, 1), (940, 500, 1)]
+)
+def test_full_market_capture_exit_code(
+    tmp_path: Path, rows: int, status: int, expected: int
+) -> None:
+    plan, auth = fixture(tmp_path)
+    root = tmp_path / "capture"
+    capture = execute(root, plan, auth, count=rows, status=status)
+    assert capture.to_dict()["ingestion"] == []
+    verified = verify_capture(root, plan, "a", capture.identifier)
+    assert _capture_exit_code(plan, verified) == expected
+
+
+def test_full_market_incomplete_archive_cannot_be_reported_as_success(tmp_path: Path) -> None:
+    plan, auth = fixture(tmp_path)
+    root = tmp_path / "capture"
+    pin = None
+
+    def interrupt(*args: Any, **kwargs: Any) -> FrozenJSON:
+        nonlocal pin
+        candidate = _project(*args, **kwargs)
+        pin = candidate.identifier
+        raise KeyboardInterrupt
+
+    with (
+        patch("donghak_stock_vision.storage.forward_capture._project", side_effect=interrupt),
+        pytest.raises(KeyboardInterrupt),
+    ):
+        execute(root, plan, auth)
+    assert pin is not None
+    with pytest.raises(ValueError, match="capture_incomplete_or_missing"):
+        verify_capture(root, plan, "a", pin)

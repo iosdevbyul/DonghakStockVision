@@ -18,7 +18,11 @@ from donghak_stock_vision.backtest.historical_readiness import HistoricalReadSco
 from donghak_stock_vision.cli import main
 from donghak_stock_vision.data.forward_capture import ForwardCapturePlan
 from donghak_stock_vision.data.research_split import ResearchDateRange
-from donghak_stock_vision.forward_capture_cli import fixture_transport, offline_plan
+from donghak_stock_vision.forward_capture_cli import (
+    _capture_exit_code,
+    fixture_transport,
+    offline_plan,
+)
 from donghak_stock_vision.storage.capture_evidence_sink import (
     export_capture_receipt,
     verify_exported_capture_receipt,
@@ -595,6 +599,8 @@ def test_stale_ingestion_failure_preserves_original_record(tmp_path: Path) -> No
             tmp_path, plan, "stale", client, clock=lambda: NOW, sleep=lambda seconds: None
         )
     assert second.to_dict()["ingestion"] == [["failed", 0, "ValueError"]]
+    assert _capture_exit_code(plan, first) == 0
+    assert _capture_exit_code(plan, second) == 1
     assert verify_capture(tmp_path, plan, "a", first.identifier) == first
     with closing(sqlite3.connect(tmp_path / DB)) as connection:
         assert (

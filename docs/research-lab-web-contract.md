@@ -1,6 +1,8 @@
 # Donghak AI Research Lab — approved multi-study read API
 
-This is the **complete backend publication contract** for TrisMarketLens. It reuses
+This is the existing multi-study publication contract for TrisMarketLens. See the
+[R7 integration guide](research-lab-visibility.md) for the authenticated R1–R6 evidence views.
+This publication reuses
 the existing immutable autonomous study/experiment artifacts and
 `multi_stock_research_report_v1` reports. It does **not** create new training
 runs, select or promote an operational model, open Final Test, start Ollama,

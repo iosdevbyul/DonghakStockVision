@@ -11,11 +11,14 @@ import re
 from collections import defaultdict
 from contextlib import closing
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.research_studies import PinnedStudyReader
+
+if TYPE_CHECKING:
+    from donghak_stock_vision.storage.research_lab_views import Visibility
 
 VERSION = "research_lab_publication_index_v1"
 HEX = re.compile(r"^[a-f0-9]{64}$")
@@ -33,6 +36,8 @@ METRICS = (
 )
 MAX_REPORT = 8 * 1024 * 1024
 MAX_INDEX = 64 * 1024
+VISIBILITY_INDEX = "research_lab_publication_index_v4"
+MAX_VISIBILITY = 64 * 1024 * 1024
 
 
 class ResearchLabError(ValueError):
@@ -132,9 +137,37 @@ class ResearchLabPublication:
         index = approved_json(raw)
         ensure(
             index.get("version")
-            in (VERSION, "research_lab_publication_index_v2", "research_lab_publication_index_v3"),
+            in (
+                VERSION,
+                "research_lab_publication_index_v2",
+                "research_lab_publication_index_v3",
+                VISIBILITY_INDEX,
+            ),
             "unsupported_publication_version",
         )
+        self.visibility: Visibility | None = None
+        if index["version"] == VISIBILITY_INDEX:
+            from donghak_stock_vision.storage.research_lab_views import (
+                Visibility as VisibilitySchema,
+            )
+
+            ensure(root.resolve() == root, "invalid_visibility_root")
+            ensure(set(index) == {"version", "entries", "visibility"}, "invalid_visibility_index")
+            view = index["visibility"]
+            ensure(
+                type(view) is dict
+                and set(view) == {"name", "sha256"}
+                and isinstance(view["sha256"], str)
+                and bool(HEX.fullmatch(view["sha256"]))
+                and view["name"] == "visibility.json",
+                "invalid_visibility_reference",
+            )
+            data = approved_file(root, view["name"], MAX_VISIBILITY)
+            ensure(hashlib.sha256(data).hexdigest() == view["sha256"], "visibility_pin_mismatch")
+            try:
+                self.visibility = VisibilitySchema.model_validate_json(data)
+            except ValueError as error:
+                raise ResearchLabError("invalid_visibility_publication") from error
         entries = index.get("entries")
         if (
             not isinstance(entries, list)

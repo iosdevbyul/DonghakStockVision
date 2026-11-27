@@ -60,6 +60,9 @@ def parser() -> argparse.ArgumentParser:
         "--research-lab-root", type=Path, help="approved six-study publication directory"
     )
     result.add_argument("--research-lab-index-sha256", help="independently approved index SHA-256")
+    result.add_argument(
+        "--research-lab-read-token-env", help="approved R7 reader token environment variable"
+    )
     result.add_argument("--direction-publication", type=Path)
     result.add_argument("--direction-publication-sha256")
     result.add_argument("--direction-read-token-env")
@@ -237,6 +240,9 @@ def main(argv: list[str] | None = None) -> None:
     if bool(args.research_lab_root) != bool(args.research_lab_index_sha256):
         parser().error("research lab root and independently approved SHA are required together")
     lab_reader = None
+    lab_authorize = None
+    if args.research_lab_read_token_env and not args.research_lab_root:
+        parser().error("research lab credential requires a publication")
     if args.research_lab_root is not None:
         if args.host not in {"127.0.0.1", "::1"}:
             parser().error("research lab requires a loopback bind")
@@ -252,6 +258,26 @@ def main(argv: list[str] | None = None) -> None:
             )
         except (ResearchLabError, StudyReadError, OSError, KeyError, ValueError, TypeError):
             raise SystemExit("research lab publication unavailable or invalid") from None
+        if lab_reader.visibility is not None:
+            if not args.research_lab_read_token_env:
+                parser().error(
+                    "R7 research lab requires an approved read token environment variable"
+                )
+            from donghak_stock_vision.ai_model_routes import Principal, ScopedBearerAuthority
+
+            try:
+                lab_authorize = ScopedBearerAuthority(
+                    [
+                        (
+                            os.environ.get(args.research_lab_read_token_env, ""),
+                            Principal("research-reader", frozenset({"research:read"})),
+                        )
+                    ]
+                )
+            except ValueError:
+                raise SystemExit("research lab approved credential unavailable") from None
+        elif args.research_lab_read_token_env:
+            parser().error("the research lab credential requires an R7 publication")
     portfolio_reader = None
     if bool(args.portfolio_publications) != bool(args.portfolio_index_sha256):
         parser().error(
@@ -349,6 +375,7 @@ def main(argv: list[str] | None = None) -> None:
         direction_reader=direction_reader,
         direction_authorize=direction_authorize,
         lab_reader=lab_reader,
+        lab_authorize=lab_authorize,
         ohlcv_reader=ohlcv_reader,
         operational_reader=operational_reader,
         analysis_reader=analysis_reader,
