@@ -41,3 +41,9 @@ The host defines the direction of improvement by metric, not by model prose.
 The next proposal sees prior hypotheses and observed internal metric deltas.
 This is hypothesis feedback, not causal proof or LLM weight training. Multiple
 configuration changes remain visible. Unmeasured outcomes are not successes.
+
+Grounded mode uses separate memory and hypothesis schemas. A model-selected
+memory is the fixed reference for that proposal; the model selects the candidate
+and measured metric next. No evidence sentinel or second reference index is
+needed. All configuration changes are recorded, with multiple changes marked
+explicitly. The three-generation cap includes corrections.

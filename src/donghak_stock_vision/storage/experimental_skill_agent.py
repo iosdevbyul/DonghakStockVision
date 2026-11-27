@@ -84,6 +84,136 @@ def hypothesis_feedback(proposal: dict[str, Any], history: list[dict[str, Any]])
     }
 
 
+def select_grounded(
+    view: dict[str, Any],
+    generate: Callable[[str, dict[str, Any]], str],
+    events: list[dict[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    registry = build_view_skills(view, budget=1)
+    history = view["history"]
+    candidates = view["candidates"]
+    eligible = {
+        i: row
+        for i, row in enumerate(history)
+        if row["state"] == "completed"
+        and any(type(row.get(metric)) in (int, float) for metric in METRICS)
+        and any(configuration(row) != configuration(c) for c in candidates)
+    }
+    if not eligible:
+        raise ValueError("skill_no_eligible_memory")
+    trace: list[dict[str, Any]] = []
+    correction = ""
+    for step in range(3):
+        valid: dict[int, dict[str, Any]] = {}
+        reference: dict[str, Any] = {}
+        metrics: list[str] = []
+        properties: dict[str, Any]
+        payload: dict[str, Any]
+        if not trace:
+            stage = "memory"
+            properties = {
+                "index": {"type": "integer", "enum": list(eligible)},
+                "reason": {"type": "string", "maxLength": 120},
+            }
+            payload = {
+                "task": "Select a past experiment to investigate. Return its index and reason.",
+                "history": [
+                    [i, configuration(row), {m: row.get(m) for m in METRICS}]
+                    for i, row in eligible.items()
+                ],
+            }
+        else:
+            stage = "hypothesis"
+            reference = history[trace[0]["index"]]
+            valid = {
+                i: c
+                for i, c in enumerate(candidates)
+                if configuration(c) != configuration(reference)
+            }
+            metrics = [
+                m
+                for m in METRICS
+                if type(reference.get(m)) in (int, float) and math.isfinite(reference[m])
+            ]
+            properties = {
+                "index": {"type": "integer", "enum": list(valid)},
+                "metric": {"type": "string", "enum": metrics},
+                "reason": {"type": "string", "maxLength": 120},
+            }
+            payload = {
+                "task": (
+                    "Select a candidate and metric to improve versus the observed memory. "
+                    "Explain why its configuration may improve that metric. "
+                    "Lower overfit_gap is better; higher other metrics are better."
+                ),
+                "memory": trace[0]["result"],
+                "candidates": [[i, configuration(c)] for i, c in valid.items()],
+            }
+        schema = {
+            "type": "object",
+            "properties": properties,
+            "required": list(properties),
+            "additionalProperties": False,
+        }
+        payload.update(
+            goal=view["goal"]["label_version"],
+            feedback=view.get("skill_feedback", []),
+            previous_error=correction,
+        )
+        prompt = json.dumps(payload, separators=(",", ":"))
+        if len(prompt.encode()) > 10000:
+            raise ValueError("skill_prompt_bound")
+        event: dict[str, Any] = {"step": step + 1, "stage": stage, "state": "generating"}
+        events.append(event)
+        raw = generate(prompt, schema)
+        event.update(state="received", response=raw[:2048])
+        try:
+            if len(raw) > 2048:
+                raise ValueError("skill_response_bound")
+            choice = decode_gemma_proposal(raw)
+            if set(choice) != set(properties):
+                raise ValueError("skill_action_fields")
+            index, reason = choice["index"], choice["reason"]
+            if type(index) is not int or type(reason) is not str or not 0 < len(reason) <= 120:
+                raise ValueError("skill_action_value")
+            if stage == "memory":
+                if index not in eligible:
+                    raise ValueError("skill_history_index")
+            else:
+                if index not in valid or choice["metric"] not in metrics:
+                    raise ValueError("skill_hypothesis_choice")
+                before = configuration(reference)
+                after = configuration(valid[index])
+                changed = [key for key in CHANGES if before[key] != after[key]]
+                # The reference was explicitly chosen by the model in the memory stage.
+                proposal = grounded_hypothesis(
+                    choice | {"evidenceIndex": 0, "change": changed[0]},
+                    valid[index],
+                    trace,
+                    history,
+                )
+                proposal["focusChange"] = changed[0] if len(changed) == 1 else "multiple"
+                event.update(state="selected", action="experiment", index=index)
+                event["hypothesis"] = proposal
+                return proposal, trace
+        except ValueError as error:
+            correction = str(error)[:200]
+            event.update(state="rejected", reason=correction)
+            if step == 2:
+                raise
+            continue
+        if step == 2:
+            raise ValueError("skill_no_hypothesis_budget")
+        observation = registry.invoke("memory", {"experiment_id": history[index]["experiment_id"]})
+        result: dict[str, Any] = {m: observation[m] for m in METRICS if m in observation}
+        result["configuration"] = configuration(history[index])
+        record = {"action": "memory", "index": index, "result": result}
+        trace.append(record)
+        event.update(state="observed", reason=reason, **record)
+        correction = ""
+    raise ValueError("skill_no_experiment")
+
+
 def select_with_skills(
     view: dict[str, Any],
     generate: Callable[[str, dict[str, Any]], str],
@@ -91,6 +221,8 @@ def select_with_skills(
     events: list[dict[str, Any]] | None = None,
     grounded: bool = False,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    if grounded:
+        return select_grounded(view, generate, [] if events is None else events)
     registry = build_view_skills(view, budget=2)
     candidates = view["candidates"]
     ids = [c["experiment_id"] for c in candidates]
@@ -127,10 +259,6 @@ def select_with_skills(
             if step < 2 or name == "experiment"
         }
         valid = {name: indices for name, indices in valid.items() if indices}
-        if grounded and not any(t["action"] == "memory" for t in trace):
-            valid.pop("experiment", None)
-            if step >= 1:
-                valid = {"memory": valid["memory"]} if "memory" in valid else {}
         if not valid:
             raise ValueError("skill_no_grounded_action")
         valid_indices = sorted({i for v in valid.values() for i in v})
@@ -144,33 +272,17 @@ def select_with_skills(
             "required": ["action", "index", "reason"],
             "additionalProperties": False,
         }
-        if grounded:
-            schema["properties"].update(
-                evidenceIndex={"type": "integer", "enum": [-1, *range(len(trace))]},
-                metric={"type": "string", "enum": ["none", *METRICS]},
-                change={"type": "string", "enum": ["none", *CHANGES]},
-            )
-            schema["required"] += ["evidenceIndex", "metric", "change"]
         prompt = (
             "Choose a research tool or experiment. Indices are zero-based. "
             "memory uses history index; experiment uses candidate index; "
             "other tools use index 0. Internal evidence only; no causal or trading claims. "
             "Do not repeat tools. JSON only.\n"
-            + (
-                "For tools use evidenceIndex -1, metric/change none. For experiment, cite "
-                "one observed memory by zero-based observation index, choose its measured "
-                "metric to improve and a changed family/mask/value. Explain the hypothesis. "
-                "Use prior feedback to avoid unsupported changes. "
-                if grounded
-                else ""
-            )
             + json.dumps(
                 {
                     "view": summary,
                     "observations": trace,
                     "valid_indices": valid,
                     "previous_error": correction,
-                    "feedback": view.get("skill_feedback", []) if grounded else [],
                 },
                 separators=(",", ":"),
             )
@@ -205,20 +317,6 @@ def select_with_skills(
                 raise ValueError("skill_history_index")
             if index not in valid.get(action, []):
                 raise ValueError("skill_action_not_available")
-            if (
-                grounded
-                and action != "experiment"
-                and (
-                    choice["evidenceIndex"] != -1
-                    or choice["metric"] != "none"
-                    or choice["change"] != "none"
-                )
-            ):
-                raise ValueError("skill_tool_hypothesis_fields")
-            if grounded and action == "experiment":
-                proposal = grounded_hypothesis(choice, candidates[index], trace, view["history"])
-                event.update(state="selected", action=action, index=index, hypothesis=proposal)
-                return proposal, trace
         except ValueError as error:
             correction = str(error)[:200]
             event.update(state="rejected", reason=correction)
@@ -267,8 +365,6 @@ def select_with_skills(
                 result = {"candidates": summary["candidates"]}
             else:
                 result = dict(registry.invoke("diagnosis", {}))
-        if grounded and action == "memory":
-            result["configuration"] = configuration(view["history"][index])
         observation_record = {"action": action, "index": index, "result": result}
         trace.append(observation_record)
         event.update(state="observed", result=result)

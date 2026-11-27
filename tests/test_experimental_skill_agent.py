@@ -101,26 +101,13 @@ def test_grounded_selection_and_feedback() -> None:
     ]
     responses = iter(
         [
-            dict(
-                action="memory",
-                index=0,
-                reason="inspect",
-                evidenceIndex=-1,
-                metric="none",
-                change="none",
-            ),
-            dict(
-                action="experiment",
-                index=0,
-                reason="test linear",
-                evidenceIndex=0,
-                metric="mean_ap",
-                change="family",
-            ),
+            dict(index=0, reason="inspect"),
+            dict(index=0, reason="test linear", metric="mean_ap"),
         ]
     )
 
     def generate(prompt: str, schema: dict[str, Any]) -> str:
+        assert "evidenceIndex" not in schema["properties"]
         return json.dumps(next(responses))
 
     selected, _ = select_with_skills(current, generate, grounded=True)
@@ -130,3 +117,30 @@ def test_grounded_selection_and_feedback() -> None:
     assert result["outcome"] == "supported"
     assert result["causal"] is False
     assert hypothesis_feedback(selected, [])["outcome"] == "unmeasured"
+
+
+def test_grounded_stage_rejects_old_sentinel_and_recovers() -> None:
+    current = view()
+    current["history"] = [
+        {
+            "experiment_id": "prior",
+            "state": "completed",
+            "config": {"candidate": {"family": "forest", "value": 1}, "mask": "all"},
+            "mean_ap": 0.4,
+        }
+    ]
+    events: list[dict[str, Any]] = []
+    responses = iter(
+        [
+            dict(index=0, reason="inspect"),
+            dict(index=0, reason="invalid", metric="mean_ap", evidenceIndex=-1),
+            dict(index=0, reason="test linear", metric="mean_ap"),
+        ]
+    )
+
+    def generate(prompt: str, schema: dict[str, Any]) -> str:
+        return json.dumps(next(responses))
+
+    selected, _ = select_with_skills(current, generate, grounded=True, events=events)
+    assert selected["evidence"] == [{"experimentId": "prior", "metric": "mean_ap"}]
+    assert [e["state"] for e in events] == ["observed", "rejected", "selected"]
