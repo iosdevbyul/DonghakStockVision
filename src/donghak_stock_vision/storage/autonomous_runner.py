@@ -96,8 +96,9 @@ def launch(
     predictive_research: bool = False,
     autonomous_strategy: bool = False,
     supervised_research: bool = False,
-    timeout_seconds: float = LIMITS["timeout_seconds"],
+    timeout_seconds: float | None = None,
 ) -> dict[str, Any]:
+    timeout = LIMITS["timeout_seconds"] if timeout_seconds is None else timeout_seconds
     require(
         sum(
             (
@@ -113,7 +114,7 @@ def launch(
             (failure_feedback or predictive_research or autonomous_strategy or supervised_research)
             and gate
         )
-        and 0 < timeout_seconds <= LIMITS["timeout_seconds"],
+        and 0 < timeout <= LIMITS["timeout_seconds"],
         "autonomous_worker_action_conflict",
     )
     logs = root / "logs"
@@ -186,7 +187,7 @@ def launch(
         )
         try:
             while child.poll() is None:
-                if time.monotonic() - began > timeout_seconds:
+                if time.monotonic() - began > timeout:
                     reason = "worker_timeout"
                     break
                 output = _command(["/bin/ps", "-o", "rss=", "-p", str(child.pid)])
