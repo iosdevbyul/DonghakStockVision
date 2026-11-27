@@ -541,6 +541,7 @@ def test_r5_retained_legacy_reference_verifies_original_bindings(
 ) -> None:
     from donghak_stock_vision.storage import predictive_research as r3
     from donghak_stock_vision.storage.analysis import AnalysisStore
+    from donghak_stock_vision.storage.failure_feedback_source import RANGES
 
     root = tmp_path / "r3"
     root.mkdir(mode=0o700)
@@ -548,7 +549,7 @@ def test_r5_retained_legacy_reference_verifies_original_bindings(
     cfg = r3._candidate_configuration(5, 16, r3.RF, "v2_legacy")
     plan = dict(
         registered_at="2000-01-01T00:00:00+00:00",
-        windows=r3.RANGES,
+        windows=RANGES,
         sources=[
             dict(
                 original_final_test=dict(start="2024-07-01", end="2025-06-30"),
