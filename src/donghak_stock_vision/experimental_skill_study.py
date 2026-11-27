@@ -60,9 +60,7 @@ def compare(root: Path, pin: str) -> dict[str, Any]:
                 unique = {h["experiment_id"]: h for h in history}
                 return view | {
                     "history": list(unique.values())[-36:],
-                    "candidates": [
-                        c for c in view["candidates"] if c["experiment_id"] in allowed
-                    ],
+                    "candidates": [c for c in view["candidates"] if c["experiment_id"] in allowed],
                     "leader": None,
                 }
 
