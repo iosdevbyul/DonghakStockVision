@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from donghak_stock_vision.backtest.data import FrozenJSON
-from donghak_stock_vision.backtest.validation import fields, require
+from donghak_stock_vision.backtest.validation import fields, require, sha
 from donghak_stock_vision.data.direction_shadow import VERSION, contract, event, identifier
 from donghak_stock_vision.data.learning import Sample, digest, timestamp
 from donghak_stock_vision.data.research_calendar import ResearchCalendarPolicy
@@ -42,6 +42,94 @@ def _at(value: datetime | None) -> datetime:
     return timestamp(value or datetime.now(UTC))
 
 
+def _retained_model(
+    ref: dict[str, Any],
+    root: Path,
+    pin: str,
+    at: datetime,
+    load_checkpoint: bool,
+) -> dict[str, Any]:
+    from donghak_stock_vision.storage import predictive_research as owner
+
+    _quiescent(root / DB, sha(ref["database_sha256"]))
+    plan = owner._plan(root, pin)
+    experiment_id = sha(ref["experiment_id"])
+    result_id = sha(ref["result_id"])
+    with closing(ReadOnlyAnalysisStore(root / DB)) as store:
+        link = store.connection.execute(
+            "SELECT json_extract(payload,'$.plan_id'),json_extract(payload,'$.shortlist_id') "
+            "FROM analysis_artifacts WHERE kind='predictive_research_result' AND id=?",
+            (result_id,),
+        ).fetchone()
+        require(link is not None and link[0] == pin, "direction_retained_result_binding")
+        shortlist = store.get("predictive_research_shortlist", link[1])
+        require(shortlist["plan_id"] == pin, "direction_retained_shortlist_binding")
+        matched = [
+            t["trials"]["legacy_control"]
+            for t in shortlist["selection"].values()
+            if t["trials"]["legacy_control"]["experiment_id"] == experiment_id
+        ]
+        require(len(matched) == 1, "direction_retained_legacy_required")
+        trial_id = digest(matched[0])
+        trial = store.get("predictive_research_trial", trial_id)
+        created = store.created_at("predictive_research_trial", trial_id)
+        require(
+            timestamp(plan["registered_at"]) <= created <= timestamp(shortlist["frozen_at"]) <= at,
+            "direction_retained_model_clock",
+        )
+    cfg = trial["config"]
+    h = cfg["goal"]["horizon"]
+    train = trial["training_counts"]
+    train_pin = sha(trial["training_population"])
+    model_id = sha(trial["model_id"])
+    checkpoint = root / "models" / (experiment_id + ".checkpoint")
+    protected = plan["sources"][0]["original_final_test"]
+    require(
+        trial["state"] == "completed"
+        and cfg == owner._candidate_configuration(h, 16, owner.RF, "v2_legacy")
+        and cfg["goal"] == trained_contract(h)
+        and experiment_id == digest(dict(plan_id=pin, config=cfg, train=train_pin))
+        and trial["checkpoint"] == str(checkpoint.relative_to(root))
+        and checkpoint.resolve() == checkpoint
+        and train["tickers"] == 16
+        and min(train["positive"], train["negative"]) > 0
+        and train["positive"] + train["negative"] == train["rows"]
+        and all(source["original_final_test"] == protected for source in plan["sources"]),
+        "direction_retained_trial_binding",
+    )
+    _quiescent(checkpoint, model_id)
+    if load_checkpoint:
+        verified_estimator(
+            checkpoint, model_id, cfg["candidate"]["family"], plan["code"]["versions"]
+        )
+    _quiescent(root / DB, ref["database_sha256"])
+    return dict(
+        reference=ref,
+        experiment_id=experiment_id,
+        sha256=model_id,
+        created_at=created.isoformat(),
+        config=cfg,
+        versions=plan["code"]["versions"],
+        checkpoint=str(checkpoint),
+        fit_end=plan["windows"]["train"]["end"],
+        protected=protected,
+        baseline=train["positive"] / train["rows"],
+        lineage=dict(
+            plan_id=pin,
+            result_id=result_id,
+            trial_id=trial_id,
+            source_pin=plan["sources"][0]["source_pin"],
+            dataset_id=plan["sources"][0]["dataset_id"],
+            training_population=train_pin,
+            training_window=plan["windows"]["train"],
+            exposed_through=plan["windows"]["evaluation"]["end"],
+            cache_source=trial["cache_source"],
+            descriptive_only=h == 20,
+            baselines=["training_prior", "training_majority", "momentum"],
+        ),
+    )
+
+
 def model_reference(
     ref: dict[str, Any],
     at: datetime,
@@ -49,9 +137,15 @@ def model_reference(
     load_checkpoint: bool = True,
     context_cache: dict[tuple[str, str], tuple[dict[str, Any], dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
-    fields(ref, "root plan_pin_file experiment_id")
+    retained = "result_id" in ref
+    fields(
+        ref,
+        "root plan_pin_file experiment_id" + (" result_id database_sha256" if retained else ""),
+    )
     root = Path(ref["root"])
     pin = read_pin(Path(ref["plan_pin_file"]))
+    if retained:
+        return _retained_model(ref, root, pin, at, load_checkpoint)
     if context_cache is None:
         plan, data = context(root, pin, code_check=False)
     else:
@@ -159,9 +253,10 @@ def registration(path: Path, pin_file: Path) -> FrozenJSON:
     )
     require(set(d["models"]) == {"1", "5", "20"}, "direction_all_horizons_required")
     cache: dict[tuple[str, str], tuple[dict[str, Any], dict[str, Any]]] = {}
-    for m in d["models"].values():
+    for h, m in d["models"].items():
         require(
-            model_reference(
+            h == str(m["config"]["goal"]["horizon"])
+            and model_reference(
                 m["reference"],
                 timestamp(d["registered_at"]),
                 load_checkpoint=False,
@@ -197,6 +292,11 @@ def _request(d: dict[str, Any], reg: dict[str, Any]) -> None:
         all(m["protected"] == access.final_test.to_dict() for m in reg["models"].values()),
         "direction_protected_owner",
     )
+    if any("lineage" in m for m in reg["models"].values()):
+        require(
+            start >= date(2026, 10, 1) and date.fromisoformat(d["context_window"]["end"]) < start,
+            "direction_retained_operational_context_required",
+        )
 
 
 def _schedule(d: dict[str, Any], h: int) -> tuple[str, list[str], dict[str, str]]:
@@ -308,13 +408,8 @@ def _feature(d: dict[str, Any], bars: list[DailyBar], at: datetime) -> tuple[flo
     return vector(bars, snapshot, at)
 
 
-def _score(
-    m: dict[str, Any], ticker: str, day: str, values: tuple[float, ...], at: datetime
-) -> float:
-    model = verified_estimator(
-        Path(m["checkpoint"]), m["sha256"], m["config"]["candidate"]["family"], m["versions"]
-    )
-    sample = Sample(
+def _sample(ticker: str, day: str, values: tuple[float, ...], at: datetime) -> Sample:
+    return Sample(
         ticker,
         date.fromisoformat(day),
         at,
@@ -327,9 +422,81 @@ def _score(
         "pending",
         digest(values),
     )
+
+
+def _score(
+    m: dict[str, Any], ticker: str, day: str, values: tuple[float, ...], at: datetime
+) -> float:
+    model = verified_estimator(
+        Path(m["checkpoint"]), m["sha256"], m["config"]["candidate"]["family"], m["versions"]
+    )
+    sample = _sample(ticker, day, values, at)
     return predict_candidate(
         Candidate(**m["config"]["candidate"]), model, masked([sample], m["config"]["mask"])
     )[0]
+
+
+def _cutoff(first: str) -> datetime:
+    return datetime.combine(date.fromisoformat(first), time(), SEOUL)
+
+
+def preflight(d: dict[str, Any], *, at: datetime | None = None) -> dict[str, Any]:
+    """Check a pending manual window without inference or journal writes."""
+    now = _at(at)
+    pinned = registration(Path(d["registration"]), Path(d["registration_pin_file"]))
+    reg = pinned.to_dict()
+    _request(d, reg)
+    require(now >= timestamp(reg["registered_at"]), "direction_before_registration")
+    horizons = {}
+    for h, model in reg["models"].items():
+        checks: dict[str, Any] = dict(
+            experiment_id=model["experiment_id"],
+            model_id=model["sha256"],
+            base_session=None,
+            target_session=None,
+            cutoff=None,
+            blocked_by=[],
+        )
+        reasons = checks["blocked_by"]
+        horizons[h] = checks
+        try:
+            base, future, _ = _schedule(d, int(h))
+        except ValueError as error:
+            reasons.append(str(error))
+            continue
+        cutoff = _cutoff(future[0])
+        checks.update(base_session=base, target_session=future[-1], cutoff=cutoff.isoformat())
+        if now >= cutoff:
+            reasons.append("direction_deadline_passed")
+        if model["fit_end"] >= d["input_trading_date"]:
+            reasons.append("direction_model_future_fit")
+    ready = (
+        reg["source_kind"] == "local_provider_capture" and d["mode"] == "research_forward_candidate"
+    )
+    source_issue = None
+    if not ready:
+        source_issue = "direction_not_real_forward_request"
+    elif not any(v["blocked_by"] for v in horizons.values()):
+        try:
+            rows, _ = _inputs(d, reg, now)
+            for bars in rows.values():
+                _feature(d, bars, now)
+        except ValueError as error:
+            source_issue = str(error)
+    return dict(
+        registration_id=pinned.identifier,
+        input_trading_date=d["input_trading_date"],
+        checked_at=now.isoformat(),
+        horizons=horizons,
+        source_issue=source_issue,
+        source_checked=ready and not any(v["blocked_by"] for v in horizons.values()),
+        status="BLOCKED"
+        if source_issue or any(v["blocked_by"] for v in horizons.values())
+        else "READY",
+        pit_qualified=False,
+        performance_approved=False,
+        execution_authorized=False,
+    )
 
 
 def _entries(journal: Path, head: str, reg: FrozenJSON) -> list[dict[str, Any]]:
@@ -384,7 +551,7 @@ def record(
     require(resource_reason(journal.parent, probe()) is None, "direction_resources_unavailable")
     for h in r["models"]:
         base, future, _ = _schedule(d, int(h))
-        cutoff = datetime.combine(date.fromisoformat(future[0]), time(), SEOUL)
+        cutoff = _cutoff(future[0])
         keys = [
             identifier(
                 "prediction",
@@ -446,6 +613,12 @@ def record(
                         calendars=d["calendars"],
                     ),
                 )
+                score = _score(m, ticker, d["input_trading_date"], values, now)
+                recorded_at = _at(at)
+                require(
+                    d["mode"] == "historical_replay" or recorded_at < _cutoff(future[0]),
+                    "direction_deadline_passed",
+                )
                 payload = dict(
                     prediction_id=key,
                     slot_id=slot,
@@ -463,7 +636,7 @@ def record(
                     )
                     .astimezone(UTC)
                     .isoformat(),
-                    generated_at=now.isoformat(),
+                    generated_at=recorded_at.isoformat(),
                     model=m,
                     features=list(values),
                     feature_hash=digest(values),
@@ -472,20 +645,19 @@ def record(
                     input_source_pin=digest(source),
                     source_kind=r["source_kind"],
                     mode=d["mode"],
-                    score=_score(m, ticker, d["input_trading_date"], values, now),
-                    predicted_class=0,
+                    score=score,
+                    predicted_class=int(score >= 0.5),
                     threshold=0.5,
                     actual_outcome=None,
                     baseline_score=m["baseline"],
                 )
-                payload["predicted_class"] = int(payload["score"] >= 0.5)
                 result = _persist(
                     journal,
                     head,
-                    event("prediction", payload, now.isoformat()),
+                    event("prediction", payload, recorded_at.isoformat()),
                     intents,
                     pins,
-                    resume_at=now,
+                    resume_at=recorded_at,
                 ).to_dict()
                 head = result["head_pin"]
                 new += 1
@@ -728,6 +900,139 @@ def report(d: dict[str, Any], journal: Path, head: str) -> dict[str, Any]:
 
     reg, entries = verify(d, journal, head)
     return publication(reg.to_dict(), entries)
+
+
+def audit(d: dict[str, Any], journal: Path, head: str) -> dict[str, Any]:
+    """Private verified evidence for analysis, with original source and journal lineage."""
+    from donghak_stock_vision.models.direction_evaluation import publication, retained_evidence
+    from donghak_stock_vision.models.failure_feedback import readout
+    from donghak_stock_vision.models.stock_generalization import regime
+
+    reg, entries = verify(d, journal, head)
+    r = reg.to_dict()
+    release = publication(r, entries)
+    latest = {e["payload"]["prediction_id"]: e for e in entries if e["kind"] == "outcome"}
+    rows = []
+    for e in entries:
+        p = e["payload"]
+        if e["kind"] != "prediction" or "lineage" not in p["model"]:
+            continue
+        outcome = latest.get(p["prediction_id"], {})
+        o = outcome.get("payload", {})
+        source = retained_evidence(p, o)
+        label = o.get("actual_label")
+        predicted = p["predicted_class"]
+        groups = regime(
+            _sample(
+                p["ticker"],
+                p["input_trading_date"],
+                tuple(p["features"]),
+                timestamp(p["generated_at"]),
+            )
+        )
+        rows.append(
+            dict(
+                forecast_id=p["prediction_id"],
+                forecast_hash=digest(e),
+                outcome_id=outcome.get("event_id"),
+                registration_id=reg.identifier,
+                experiment_id=p["model"]["experiment_id"],
+                model_id=p["model"]["sha256"],
+                ticker=p["ticker"],
+                horizon=p["horizon"],
+                mode=p["mode"],
+                source_kind=p["source_kind"],
+                generated_at=p["generated_at"],
+                latest_input_available_at=max(b["collected_at"] for b in p["input_source"]["bars"]),
+                input_source_pin=p["input_source_pin"],
+                input_date=p["input_trading_date"],
+                base_date=p["base_session"],
+                target_date=p["outcome_sessions"][-1],
+                state=o.get("state", "pending"),
+                observation_window=source,
+                outcome_sources=o.get("future"),
+                checked_at=o.get("checked_at"),
+                label=label,
+                predicted_class=predicted,
+                error_type=("false_positive" if predicted else "false_negative")
+                if label is not None and label != predicted
+                else None,
+                scores=dict(
+                    model=p["score"],
+                    training_prior=p["baseline_score"],
+                    training_majority=float(p["baseline_score"] >= 0.5),
+                    momentum=source["momentumScore"],
+                ),
+                regimes=groups,
+                contract=p["contract"],
+                independent_use_eligible=False,
+            )
+        )
+    diagnostics = []
+    for m in release["models"]:
+        h = m["horizon"]
+        if "lineage" not in r["models"][str(h)]:
+            continue
+        group = [
+            row
+            for row in rows
+            if (row["experiment_id"], row["horizon"], row["mode"], row["source_kind"])
+            == (m["modelId"], h, m["mode"], m["sourceQuality"])
+        ]
+        paired = {
+            (row["ticker"], row["input_date"], row["target_date"]): row
+            for row in group
+            if row["state"] == "evaluated"
+        }
+        evaluated = list(paired.values())
+        minimum = r["contracts"][str(h)]["evaluation"]["minimum_calendar_anchors"]
+        remaining = minimum - m["qualifiedAnchors"]
+        panels: dict[str, dict[str, list[dict[str, Any]]]] = dict(ticker={}, month={}, regime={})
+        for row in evaluated:
+            panels["ticker"].setdefault(row["ticker"], []).append(row)
+            panels["month"].setdefault(row["input_date"][:7], []).append(row)
+            for key in row["regimes"]:
+                panels["regime"].setdefault(key, []).append(row)
+        diagnostics.append(
+            dict(
+                horizon=h,
+                mode=m["mode"],
+                total=len(group),
+                evaluated=m["evaluated"],
+                duplicate_evaluations=m["duplicateEvaluationRows"],
+                pending=m["pending"],
+                neutral=sum(row["state"] == "unavailable" for row in group),
+                local_nonoverlapping_anchors=m["independentAnchors"],
+                independently_qualified_anchors=m["qualifiedAnchors"],
+                remaining_independent_anchors=remaining,
+                theoretical_sessions=dict(
+                    outcome_intervals_only=remaining * h + (2 if remaining else 0),
+                    disjoint_input_to_target=remaining * (h + 2),
+                ),
+                missing_local_positive_rows=m["missingPositive"],
+                missing_local_negative_rows=m["missingNegative"],
+                metrics={
+                    key: readout(evaluated, key)
+                    for key in ("model", "training_prior", "training_majority", "momentum")
+                },
+                breakdown={
+                    kind: {key: readout(panel, "model") for key, panel in groups.items()}
+                    for kind, groups in panels.items()
+                },
+                blockers=m["blockers"],
+            )
+        )
+    return dict(
+        version="direction_shadow_audit_v1",
+        registration_id=reg.identifier,
+        head_pin=head,
+        models=r["models"],
+        diagnostics=diagnostics,
+        forecasts=rows,
+        independent_memory_eligible=0,
+        pit_qualified=False,
+        performance_approved=False,
+    )
 
 
 def publish_streams(d: dict[str, Any]) -> dict[str, Any]:

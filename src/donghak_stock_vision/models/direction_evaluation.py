@@ -8,6 +8,7 @@ from donghak_stock_vision.data.direction_shadow import contract
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.models.diagnostics import metrics
 from donghak_stock_vision.models.evaluation_evidence import calendar_evidence
+from donghak_stock_vision.models.linear import sigmoid
 
 METRICS = (
     "n",
@@ -73,8 +74,14 @@ def summarize(
             if key in distinct:
                 require(
                     all(
-                        p[k] == distinct[key][k]
-                        for k in ("score", "baselineScore", "actualLabel", "inputCohort")
+                        p.get(k) == distinct[key].get(k)
+                        for k in (
+                            "score",
+                            "baselineScore",
+                            "actualLabel",
+                            "inputCohort",
+                            "r5Evidence",
+                        )
                     ),
                     "direction_conflicting_duplicate_population",
                 )
@@ -100,6 +107,17 @@ def summarize(
         labels = [p["actualLabel"] for p in ev]
         diagnostic = measure(labels, [p["score"] for p in ev])
         baseline = measure(labels, [p["baselineScore"] for p in ev])
+        supplementary = [p for p in ev if "r5Evidence" in p]
+        if any("r5Evidence" in p for p in ps):
+            require(len(supplementary) == len(ev), "direction_r5_mixed_population")
+            identity = identity | dict(
+                r5Baselines=dict(
+                    training_majority=measure(
+                        labels, [float(p["baselineScore"] >= 0.5) for p in ev]
+                    ),
+                    momentum=measure(labels, [p["r5Evidence"]["momentumScore"] for p in ev]),
+                )
+            )
         groups.append(
             identity
             | dict(
@@ -208,6 +226,22 @@ def summarize(
     )
 
 
+def retained_evidence(p: dict[str, Any], outcome: dict[str, Any]) -> dict[str, Any]:
+    future = outcome.get("future")
+    base, target = (future["bars"][i]["close"] for i in (0, -1)) if future else (None, None)
+    return dict(
+        baseTradingDate=p["base_session"],
+        outcomeTradingDate=p["outcome_sessions"][-1],
+        baseClose=base,
+        targetClose=target,
+        actualReturn=(target - base) / base if base is not None else None,
+        correct=outcome.get("correct"),
+        momentumScore=sigmoid(p["features"][2] / p["features"][4]),
+        outcomeReason=outcome.get("reason"),
+        independentlyQualified=False,
+    )
+
+
 def publication(reg: dict[str, Any], entries: list[dict[str, Any]]) -> dict[str, Any]:
     latest = {
         e["payload"]["prediction_id"]: e["payload"] for e in entries if e["kind"] == "outcome"
@@ -247,6 +281,7 @@ def publication(reg: dict[str, Any], entries: list[dict[str, Any]]) -> dict[str,
                 mode=p["mode"],
                 sourceQuality=p["source_kind"],
             )
+            | (dict(r5Evidence=retained_evidence(p, o)) if "lineage" in p["model"] else {})
         )
     ids = []
     for h, m in reg["models"].items():

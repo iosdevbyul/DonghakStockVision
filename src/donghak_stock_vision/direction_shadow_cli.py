@@ -19,7 +19,17 @@ from donghak_stock_vision.storage.real_market_dataset import document
 def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     p = sub.add_parser("direction-shadow")
     p.add_argument(
-        "action", choices=("register", "record", "resolve", "report", "recover", "publish")
+        "action",
+        choices=(
+            "register",
+            "preflight",
+            "record",
+            "resolve",
+            "report",
+            "audit",
+            "recover",
+            "publish",
+        ),
     )
     p.add_argument("--request", type=Path, required=True)
     p.add_argument("--request-pin-file", type=Path, required=True)
@@ -53,14 +63,17 @@ def run(args: argparse.Namespace) -> int:
             result = owner.publish_streams(d)
         elif args.action == "register":
             result = owner.register(d).to_dict()
+        elif args.action == "preflight":
+            result = owner.preflight(d)
         else:
             require(
                 args.journal is not None and args.head_pin_file is not None,
                 "direction_journal_reference",
             )
             head = read_pin(args.head_pin_file)
-            if args.action == "report":
-                result = owner.report(d, args.journal, head)
+            if args.action in ("report", "audit"):
+                reader = owner.report if args.action == "report" else owner.audit
+                result = reader(d, args.journal, head)
             elif args.action == "recover":
                 require(
                     args.intent is not None and args.intent_pin_file is not None,
@@ -92,7 +105,9 @@ def run(args: argparse.Namespace) -> int:
             json.dumps(
                 dict(
                     action=args.action,
-                    status="REGISTERED" if args.action == "register" else "COMPLETE",
+                    status=result.get(
+                        "status", "REGISTERED" if args.action == "register" else "COMPLETE"
+                    ),
                     new_predictions=result.get("new_predictions", 0),
                     new_evaluations=result.get("evaluated_this_run", 0),
                     network_requests=0,
@@ -101,7 +116,7 @@ def run(args: argparse.Namespace) -> int:
                 )
             )
         )
-        return 0
+        return 1 if result.get("status") == "BLOCKED" else 0
     except (ValueError, OSError, KeyError) as error:
         reason = (
             str(error)
