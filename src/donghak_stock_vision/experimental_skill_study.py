@@ -50,6 +50,11 @@ def compare(root: Path, pin: str) -> dict[str, Any]:
                 break
             agent = SkillAgent(target, lambda: OllamaProvider(config))
 
+            def agent_factory(
+                _root: Path, _plan: dict[str, Any], current: SkillAgent = agent
+            ) -> SkillAgent:
+                return current
+
             def project(view: dict[str, Any]) -> dict[str, Any]:
                 history = [
                     h
@@ -69,7 +74,7 @@ def compare(root: Path, pin: str) -> dict[str, Any]:
                 frozen["plan_id"],
                 1,
                 agent="managed",
-                agent_factory=lambda r, p, current=agent: current,
+                agent_factory=agent_factory,
                 view_transform=project,
                 strict_agent=True,
                 allowed_experiments=allowed,
