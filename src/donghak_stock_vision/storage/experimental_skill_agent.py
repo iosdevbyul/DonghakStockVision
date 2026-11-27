@@ -56,11 +56,12 @@ def select_with_skills(
             if step < 2 or name == "experiment"
         }
         valid = {name: indices for name, indices in valid.items() if indices}
+        valid_indices = sorted({i for v in valid.values() for i in v})
         schema = {
             "type": "object",
             "properties": {
                 "action": {"type": "string", "enum": list(valid)},
-                "index": {"type": "integer", "enum": sorted({i for v in valid.values() for i in v})},
+                "index": {"type": "integer", "enum": valid_indices},
                 "reason": {"type": "string", "maxLength": 120},
             },
             "required": ["action", "index", "reason"],
