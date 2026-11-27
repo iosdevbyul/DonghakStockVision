@@ -4,6 +4,7 @@ import hashlib
 import os
 import time
 import uuid
+from collections.abc import Callable
 from contextlib import closing
 from pathlib import Path
 from typing import Any
@@ -320,6 +321,8 @@ def _trial(
     reason: str,
     *,
     timings: dict[str, float] | None = None,
+    prepared: dict[str, Any] | None = None,
+    checkpoint_ready: Callable[[dict[str, Any]], bool] | None = None,
 ) -> dict[str, Any]:
     began = time.monotonic()
     train_pin = digest([s.to_dict() for s in train])
@@ -336,10 +339,31 @@ def _trial(
     )
     model_ready = False
     try:
-        model, artifact = _fit(root, plan, config, train, train_pin, cache, experiment)
+        if prepared is None:
+            model, artifact = _fit(root, plan, config, train, train_pin, cache, experiment)
+            fit_seconds = time.monotonic() - began
+        else:
+            require(
+                prepared["checkpoint"] == f"models/{experiment}.checkpoint"
+                and prepared["evaluation_population"]
+                == digest([item.to_dict() for item in development[0]])
+                and prepared["training_population"] == train_pin
+                and prepared["config"] == config,
+                "predictive_research_prepared_binding",
+            )
+            artifact = {k: prepared[k] for k in ("checkpoint", "model_id", "cache_source")}
+            model = verified_estimator(
+                root / artifact["checkpoint"],
+                artifact["model_id"],
+                config["candidate"]["family"],
+                plan["code"]["versions"],
+            )
+            fit_seconds = prepared["fit_seconds"]
         model_ready = True
         fit_finished = time.monotonic()
-        result.update(artifact, fit_seconds=time.monotonic() - began)
+        result.update(artifact, fit_seconds=fit_seconds)
+        if checkpoint_ready is not None and checkpoint_ready(result):
+            return result | dict(state="checkpointed", wall_seconds=time.monotonic() - began)
         test, observation, _ = development
         require({s.label for s in test} == {0, 1}, "predictive_research_development_classes")
         values = _predict(config, model, test)
