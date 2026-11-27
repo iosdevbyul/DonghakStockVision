@@ -10,11 +10,12 @@ from donghak_stock_vision.models.llm_provider import ModelConfig
 from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.autonomous_research import DB, context, terminals
 from donghak_stock_vision.storage.autonomous_runner import run as run_worker
-from donghak_stock_vision.storage.experimental_skill_agent import SkillAgent
+from donghak_stock_vision.storage.experimental_skill_agent import SkillAgent, hypothesis_feedback
 from donghak_stock_vision.storage.llm_providers import OllamaProvider
 from donghak_stock_vision.storage.memory_guided_research import (
     VERSION,
     arm_root,
+    evidence,
     load,
     prepare,
     report,
@@ -92,11 +93,16 @@ def compare(root: Path, pin: str) -> dict[str, Any]:
     value = report(root, pin)
     with closing(ReadOnlyAnalysisStore(target / DB)) as store:
         audits = [v for _, v in store.all("experimental_skill_proposal")]
+    _, _, outcomes = evidence(target, frozen["plan_id"])
+    hypotheses = [a["proposal"] for a in audits if a["state"] == "accepted"]
     skills = value["arms"]["gemma_blind"] | dict(
         memory_enabled=True,
         research_mode="skills",
         provider_inference_seconds=sum(a["metadata"]["inference_seconds"] for a in audits),
         tool_events=[a["events"] for a in audits],
+        hypotheses=hypotheses,
+        hypothesis_feedback=[hypothesis_feedback(p, outcomes) for p in hypotheses],
+        prior_feedback=[a.get("prior_feedback", []) for a in audits],
     )
     return {
         "baseline": value["arms"]["gemma_memory"],

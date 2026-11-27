@@ -1,6 +1,7 @@
 """Opt-in structured tool selection through the existing local provider."""
 
 import json
+import math
 import time
 from collections.abc import Callable
 from contextlib import closing
@@ -10,8 +11,81 @@ from typing import Any
 from donghak_stock_vision.models.experimental_view_skills import build_view_skills
 from donghak_stock_vision.models.llm_provider import LLMProvider
 from donghak_stock_vision.models.research_agent import decode_gemma_proposal
-from donghak_stock_vision.storage.analysis import AnalysisStore
+from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.autonomous_research import DB, clock
+
+
+
+METRICS = ("mean_ap", "baseline_ap_gain", "worst_balanced_accuracy", "overfit_gap")
+CHANGES = ("family", "mask", "value")
+
+
+def configuration(row: dict[str, Any]) -> dict[str, Any]:
+    cfg = row["config"]
+    return dict(
+        family=cfg["candidate"]["family"], mask=cfg["mask"], value=cfg["candidate"]["value"]
+    )
+
+
+def grounded_hypothesis(
+    choice: dict[str, Any],
+    candidate: dict[str, Any],
+    trace: list[dict[str, Any]],
+    history: list[dict[str, Any]],
+) -> dict[str, Any]:
+    index = choice["evidenceIndex"]
+    metric = choice["metric"]
+    change = choice["change"]
+    if type(index) is not int or index < 0 or index >= len(trace):
+        raise ValueError("skill_evidence_index")
+    observation = trace[index]
+    if observation["action"] != "memory":
+        raise ValueError("skill_evidence_not_memory")
+    row = history[observation["index"]]
+    if metric not in METRICS or change not in CHANGES:
+        raise ValueError("skill_hypothesis_fields")
+    value = observation["result"].get(metric)
+    if type(value) not in (int, float) or not math.isfinite(value):
+        raise ValueError("skill_evidence_metric")
+    before, after = configuration(row), configuration(candidate)
+    changed = [key for key in CHANGES if before[key] != after[key]]
+    if change not in changed:
+        raise ValueError("skill_hypothesis_change")
+    return {
+        "experimentId": candidate["experiment_id"],
+        "parentExperimentId": None,
+        "hypothesis": choice["reason"],
+        "evidence": [{"experimentId": row["experiment_id"], "metric": metric}],
+        "referenceValue": value,
+        "expectedDirection": "decrease" if metric == "overfit_gap" else "increase",
+        "focusChange": change,
+        "changes": {key: [before[key], after[key]] for key in changed},
+        "causal": False,
+    }
+
+
+def hypothesis_feedback(
+    proposal: dict[str, Any], history: list[dict[str, Any]]
+) -> dict[str, Any]:
+    row = next((h for h in history if h["experiment_id"] == proposal["experimentId"]), None)
+    metric = proposal["evidence"][0]["metric"]
+    observed = None if row is None else row.get(metric)
+    delta = None if observed is None else observed - proposal["referenceValue"]
+    return {
+        "experimentId": proposal["experimentId"],
+        "metric": metric,
+        "referenceValue": proposal["referenceValue"],
+        "expectedDirection": proposal["expectedDirection"],
+        "observedValue": observed,
+        "delta": delta,
+        "outcome": "unmeasured"
+        if delta is None
+        else "supported"
+        if (delta < 0 if proposal["expectedDirection"] == "decrease" else delta > 0)
+        else "not_supported",
+        "focusChange": proposal["focusChange"],
+        "causal": False,
+    }
 
 
 def select_with_skills(
@@ -19,6 +93,7 @@ def select_with_skills(
     generate: Callable[[str, dict[str, Any]], str],
     *,
     events: list[dict[str, Any]] | None = None,
+    grounded: bool = False,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     registry = build_view_skills(view, budget=2)
     candidates = view["candidates"]
@@ -56,8 +131,14 @@ def select_with_skills(
             if step < 2 or name == "experiment"
         }
         valid = {name: indices for name, indices in valid.items() if indices}
+        if grounded and not any(t["action"] == "memory" for t in trace):
+            valid.pop("experiment", None)
+            if step >= 1:
+                valid = {"memory": valid["memory"]} if "memory" in valid else {}
+        if not valid:
+            raise ValueError("skill_no_grounded_action")
         valid_indices = sorted({i for v in valid.values() for i in v})
-        schema = {
+        schema: dict[str, Any] = {
             "type": "object",
             "properties": {
                 "action": {"type": "string", "enum": list(valid)},
@@ -67,17 +148,33 @@ def select_with_skills(
             "required": ["action", "index", "reason"],
             "additionalProperties": False,
         }
+        if grounded:
+            schema["properties"].update(
+                evidenceIndex={"type": "integer", "enum": [-1, *range(len(trace))]},
+                metric={"type": "string", "enum": ["none", *METRICS]},
+                change={"type": "string", "enum": ["none", *CHANGES]},
+            )
+            schema["required"] += ["evidenceIndex", "metric", "change"]
         prompt = (
             "Choose a research tool or experiment. Indices are zero-based. "
             "memory uses history index; experiment uses candidate index; "
             "other tools use index 0. Internal evidence only; no causal or trading claims. "
             "Do not repeat tools. JSON only.\n"
+            + (
+                "For tools use evidenceIndex -1, metric/change none. For experiment, cite "
+                "one observed memory by zero-based observation index, choose its measured "
+                "metric to improve and a changed family/mask/value. Explain the hypothesis. "
+                "Use prior feedback to avoid unsupported changes. "
+                if grounded
+                else ""
+            )
             + json.dumps(
                 {
                     "view": summary,
                     "observations": trace,
                     "valid_indices": valid,
                     "previous_error": correction,
+                    "feedback": view.get("skill_feedback", []) if grounded else [],
                 },
                 separators=(",", ":"),
             )
@@ -92,7 +189,7 @@ def select_with_skills(
             if len(raw) > 2048:
                 raise ValueError("skill_response_bound")
             choice = decode_gemma_proposal(raw)
-            if set(choice) != {"action", "index", "reason"}:
+            if set(choice) != set(schema["required"]):
                 raise ValueError("skill_action_fields")
             action, index, reason = choice["action"], choice["index"], choice["reason"]
             if (
@@ -112,6 +209,16 @@ def select_with_skills(
                 raise ValueError("skill_history_index")
             if index not in valid.get(action, []):
                 raise ValueError("skill_action_not_available")
+            if grounded and action != "experiment" and (
+                choice["evidenceIndex"] != -1
+                or choice["metric"] != "none"
+                or choice["change"] != "none"
+            ):
+                raise ValueError("skill_tool_hypothesis_fields")
+            if grounded and action == "experiment":
+                proposal = grounded_hypothesis(choice, candidates[index], trace, view["history"])
+                event.update(state="selected", action=action, index=index, hypothesis=proposal)
+                return proposal, trace
         except ValueError as error:
             correction = str(error)[:200]
             event.update(state="rejected", reason=correction)
@@ -160,6 +267,8 @@ def select_with_skills(
                 result = {"candidates": summary["candidates"]}
             else:
                 result = dict(registry.invoke("diagnosis", {}))
+        if grounded and action == "memory":
+            result["configuration"] = configuration(view["history"][index])
         observation_record = {"action": action, "index": index, "result": result}
         trace.append(observation_record)
         event.update(state="observed", result=result)
@@ -197,7 +306,16 @@ class SkillAgent:
                     calls.append(dict(provider.metadata))
 
         try:
-            proposal, trace = select_with_skills(view, generate, events=events)
+            with closing(ReadOnlyAnalysisStore(self.root / DB)) as store:
+                previous = [
+                    a["proposal"]
+                    for _, a in store.all("experimental_skill_proposal")
+                    if a["state"] == "accepted" and "referenceValue" in a["proposal"]
+                ]
+            feedback = [hypothesis_feedback(p, view["history"]) for p in previous]
+            view = view | {"skill_feedback": feedback[-4:]}
+            self.audit["prior_feedback"] = feedback[-4:]
+            proposal, trace = select_with_skills(view, generate, events=events, grounded=True)
             self.audit.update(state="accepted", proposal=proposal, trace=trace)
             return str(proposal["experimentId"])
         except Exception as error:

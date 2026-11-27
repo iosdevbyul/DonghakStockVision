@@ -30,3 +30,14 @@ messages. Provider inference counts and peak RSS use provider metadata; the
 legacy inference_seconds field remains total proposal wall time. The new field
 provider_inference_seconds is actual provider inference time. Never publish
 private tool events. New sessions only; do not resume or overwrite old arms.
+
+## Grounded hypotheses
+
+The active agent requires a memory observation before selecting a candidate.
+The model selects the observation alias, measured metric, and a configuration
+change. The host verifies the metric and changed field and binds the exact
+reference ID/value; it no longer counts every memory read as a citation.
+The host defines the direction of improvement by metric, not by model prose.
+The next proposal sees prior hypotheses and observed internal metric deltas.
+This is hypothesis feedback, not causal proof or LLM weight training. Multiple
+configuration changes remain visible. Unmeasured outcomes are not successes.
