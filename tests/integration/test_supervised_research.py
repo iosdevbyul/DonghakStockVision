@@ -100,3 +100,41 @@ def test_missing_supervisor_audit_counts_as_failure_and_retries_its_unfinished_s
     seconds, failures = owner._usage(state)
     assert state["closures"][window]["reason"] == "supervisor_interrupted"
     assert seconds >= 22 and failures == 1
+
+
+def test_closed_window_can_seed_another_pinned_plan(tmp_path: Path) -> None:
+    from donghak_stock_vision.storage.autonomous_research import LIMITS
+    from donghak_stock_vision.storage.krx_backfill import write_new
+
+    original = tmp_path / "prior"
+    original.mkdir(mode=0o700)
+    archive = original / DB
+    with closing(AnalysisStore(archive)) as s:
+        plan = dict(
+            version="supervised_research_plan_v1",
+            bounds=LIMITS,
+            max_worker_seconds=60,
+            request=dict(schedule=[1, 5], max_seconds=60, max_failures=2),
+            r4_hash=digest("R4"),
+            **predictive_research.FLAGS,
+        )
+        pin = s.put("supervised_plan", plan)
+        key = s.put(
+            "supervised_decision",
+            dict(index=0, candidate={"experiment_id": digest("used")}),
+        )
+        original_trial = dict(experiment_id=digest("trial"), state="completed")
+        s.put("supervised_completed", dict(decision=key, trial=original_trial))
+        window = s.put("supervised_window", dict(plan_id=pin))
+    archive.chmod(0o600)
+    pin_path = tmp_path / "plan.pin"
+    write_new(pin_path, pin)
+    ref = dict(root=str(original), plan_pin_file=str(pin_path))
+    child = tmp_path / "child"
+    with pytest.raises(ValueError, match="supervised_parent_not_closed"):
+        owner._inherit(child, ref, plan["r4_hash"])
+    with closing(AnalysisStore(archive)) as s:
+        s.put("supervised_close", dict(window=window))
+    inherited = owner._inherit(child, ref, plan["r4_hash"])
+    assert inherited["plan_id"] == pin and inherited["candidate_ids"] == [digest("used")]
+    assert inherited["trials"] == [original_trial]

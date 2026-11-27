@@ -42,21 +42,57 @@ def _owners(
     return original, source, trials, prior, str(result[0][0])
 
 
-def register(request: dict[str, Any], root: Path, pins: Path) -> str:
-    fields(
-        request,
-        "version r4_root r4_plan_pin_file r5_request r5_request_pin_file "
-        "schedule max_seconds max_failures",
-    )
-    require(
-        request["version"] == "supervised_research_request_v1"
-        and type(request["schedule"]) is list
+def _valid_limits(request: dict[str, Any]) -> bool:
+    return bool(
+        type(request["schedule"]) is list
         and 2 <= len(request["schedule"]) <= 20
         and all(type(h) is int and h in policy.HORIZONS for h in request["schedule"])
         and type(request["max_seconds"]) is int
         and 1 <= request["max_seconds"] <= LIMITS["timeout_seconds"]
         and type(request["max_failures"]) is int
         and 1 <= request["max_failures"] <= LIMITS["maximum_attempts"]
+    )
+
+
+def _inherit(root: Path, inherited: dict[str, Any], source_hash: str) -> dict[str, Any]:
+    fields(inherited, "root plan_pin_file")
+    parent = Path(inherited["root"])
+    require(parent != root and parent.parent == root.parent, "supervised_parent_scope")
+    pin = read_pin(Path(inherited["plan_pin_file"]))
+    before = _file_sha256(parent / DB)
+    prior = _plan(parent, pin)
+    state = _ledger(parent)
+    require(
+        prior["r4_hash"] == source_hash
+        and bool(state["completed"])
+        and state["windows"].keys() == state["closures"].keys()
+        and _file_sha256(parent / DB) == before,
+        "supervised_parent_not_closed",
+    )
+    earlier = prior.get("inherited", {})
+    trials = earlier.get("trials", []) + [r["trial"] for r in state["completed"].values()]
+    seen = earlier.get("candidate_ids", []) + [
+        d["candidate"]["experiment_id"] for _, d in state["decisions"]
+    ]
+    require(len(seen) == len(set(seen)) <= 40, "supervised_parent_history_bound")
+    return dict(
+        root=str(parent),
+        plan_id=pin,
+        database_hash=before,
+        trials=trials,
+        candidate_ids=seen,
+    )
+
+
+def register(request: dict[str, Any], root: Path, pins: Path) -> str:
+    fields(
+        {key: value for key, value in request.items() if key != "previous_run"},
+        "version r4_root r4_plan_pin_file r5_request r5_request_pin_file "
+        "schedule max_seconds max_failures",
+    )
+    require(
+        request["version"] == "supervised_research_request_v1"
+        and _valid_limits(request)
         and root.parent == Path(request["r4_root"]).parent
         and all(p.is_absolute() and p.resolve() == p and not p.exists() for p in (root, pins))
         and not pins.is_relative_to(root)
@@ -72,7 +108,12 @@ def register(request: dict[str, Any], root: Path, pins: Path) -> str:
         and [source_owner(v) for v in source["sources"]] == source["sources"],
         "supervised_source_changed",
     )
-    studied = {digest(t["config"]) for t in prior_r3 + prior_r4}
+    inherited = (
+        _inherit(root, request["previous_run"], previous_hash) if "previous_run" in request else {}
+    )
+    studied = {digest(t["config"]) for t in prior_r3 + prior_r4} | set(
+        inherited.get("candidate_ids", [])
+    )
     pools = {
         str(h): [
             dict(config=c, experiment_id=digest(c))
@@ -93,6 +134,7 @@ def register(request: dict[str, Any], root: Path, pins: Path) -> str:
         r3_hash=original_hash,
         r4_hash=previous_hash,
         r4_result_id=result_id,
+        inherited=inherited,
         r2_feedback_id=source["feedback_id"],
         r1_origin_ids=r4._plan(
             Path(request["r4_root"]), read_pin(Path(request["r4_plan_pin_file"]))
@@ -124,6 +166,7 @@ def _plan(root: Path, pin: str) -> dict[str, Any]:
         plan["version"] == "supervised_research_plan_v1"
         and plan["bounds"] == LIMITS
         and plan["max_worker_seconds"] == 60
+        and _valid_limits(plan["request"])
         and all(plan[k] is False for k in r3.FLAGS),
         "supervised_plan_binding",
     )
@@ -170,7 +213,8 @@ def _select(
     names = sorted(plan["development_tickers"])
     groups = [names[::2], names[1::2]]
     memory = r4._memory(origin, dict(groups=groups), prior_r3, h)
-    memory.extend(t for t in prior_r4 if t["config"]["goal"]["horizon"] == h)
+    new_history = prior_r4 + plan.get("inherited", {}).get("trials", [])
+    memory.extend(t for t in new_history if t["config"]["goal"]["horizon"] == h)
     control = r3._control(memory, h)
     own = [control]
     for key, d in ledger["decisions"]:
@@ -241,6 +285,12 @@ def worker(root: Path, pin: str, attempt_id: str) -> None:
         and [source_owner(v) for v in source["sources"]] == source["sources"],
         "supervised_source_binding",
     )
+    inherited = plan.get("inherited", {})
+    if inherited:
+        require(
+            _file_sha256(Path(inherited["root"]) / DB) == inherited["database_hash"],
+            "supervised_parent_changed",
+        )
     index = attempt["index"]
     h = request["schedule"][index]
     existing = state["decisions"]
@@ -487,6 +537,7 @@ def status(root: Path, pin: str, *, forecasts: bool = True) -> dict[str, Any]:
     prospective: dict[str, Any] = dict(status="NOT_CHECKED")
     if forecasts:
         from donghak_stock_vision.storage.direction_shadow import preflight
+        from donghak_stock_vision.storage.operational_market import OperationalMarketStore
 
         try:
             request = document(spec["r5_request"])
@@ -494,6 +545,11 @@ def status(root: Path, pin: str, *, forecasts: bool = True) -> dict[str, Any]:
                 digest(request) == read_pin(Path(spec["r5_request_pin_file"])), "supervised_r5_pin"
             )
             prospective = preflight(request)
+            with closing(OperationalMarketStore(Path(request["operational"]["root"]))) as store:
+                latest = store.status().to_dict()["latest_trading_date"]
+            prospective["latest_operational_trading_date"] = latest
+            if latest != request["input_trading_date"]:
+                prospective.update(status="BLOCKED", reason="supervised_r5_new_request_required")
         except (ValueError, OSError, KeyError) as error:
             prospective = dict(status="BLOCKED", reason=str(error))
     return dict(
