@@ -70,6 +70,8 @@ def restore(
     sources: list[tuple[Path, Path]],
     frozen: dict[str, Any],
     data: dict[str, Any],
+    *,
+    session_details: list[dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     """Replay explicit private session references and recompute outcomes."""
     if len(sources) > MAX_SESSIONS or len({root for root, _ in sources}) != len(sources):
@@ -112,13 +114,21 @@ def restore(
             if scope(row, frozen["request"])
         }
         by_id = {row["experiment_id"]: row for row in outcomes}
+        observations: list[dict[str, Any]] = []
+        session_cost = 0.0
+        rejected = 0
         with closing(ReadOnlyAnalysisStore(target / DB)) as store:
             selections = {
                 v.get("request_id"): v
                 for _, v in store.all("autonomous_selection")
                 if v["state"] == "accepted"
             }
-            for key, audit in store.all("experimental_skill_proposal"):
+            audits = sorted(
+                store.all("experimental_skill_proposal"), key=lambda pair: pair[1]["started_at"]
+            )
+            for key, audit in audits:
+                session_cost += float(audit["wall_seconds"])
+                rejected += int(audit["state"] != "accepted")
                 if audit["state"] != "accepted" or key not in selections:
                     continue
                 proposal = audit["proposal"]
@@ -132,11 +142,24 @@ def restore(
                     raise ValueError("experience_reference_missing")
                 item = verified_feedback(proposal, reference, outcome)
                 feedback.setdefault(item["semanticId"], item)
+                observations.append(
+                    item | {"proposal_wall_seconds": float(audit["wall_seconds"])}
+                )
         if before != file_sha(target / DB):
             raise ValueError("experience_source_changed")
         for row in outcomes:
             if scope(row, frozen["request"]):
                 rows[row["experiment_id"]] = row
+        if session_details is not None:
+            session_details.append(
+                dict(
+                    session_pin=pin,
+                    outcomes=[row for row in outcomes if scope(row, frozen["request"])],
+                    observations=observations,
+                    proposal_wall_seconds=session_cost,
+                    rejected_proposals=rejected,
+                )
+            )
         lineage.append(
             dict(root=str(root), session_pin=pin, plan_pin=old["plan_id"], database_sha256=before)
         )

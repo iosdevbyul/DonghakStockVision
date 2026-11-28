@@ -107,3 +107,16 @@ explicit request, research parent, PIN parent, and previous session references.
 It stops on pause or exhausted budget. No daemon, final test, model promotion,
 or trading is enabled. Persistent sources must be explicitly supplied; no
 untrusted directory discovery or automatic deletion is performed.
+
+## Read-only research performance intelligence
+
+Run experimental_skill_performance_cli with repeated --previous ROOT SESSION_PIN
+arguments in chronological order. The first session supplies the frozen historical
+reference population and candidate catalog. It replays verified internal outcomes,
+reports separate AP and worst-BA leaders, counts novel configurations, and reports
+strategy observations with proposal wall time (not total training cost). Duplicate
+configurations do not advance the cumulative frontier; repeated observations remain
+visible in strategy summaries and are not independent evidence. Stagnation means two
+or more sessions with new configurations but no leader improvement above 0.002.
+The budget suggestion is advisory, bounded by the original candidate catalog and
+request budget, and never triggers training. No Ollama requests or fits are made.
