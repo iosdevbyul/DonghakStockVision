@@ -419,7 +419,7 @@ def select_grounded(
                     "quality": f.get("predictiveQuality"),
                     "tested_config": f.get("candidateConfig"),
                 }
-                for f in view.get("skill_feedback", [])
+                for f in view.get("skill_persistent", [])[-4:] + view.get("skill_feedback", [])
             ],
             previous_error=correction,
         )
