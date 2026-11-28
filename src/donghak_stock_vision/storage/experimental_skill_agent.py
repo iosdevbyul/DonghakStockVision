@@ -15,13 +15,18 @@ from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysi
 from donghak_stock_vision.storage.autonomous_research import DB, clock
 
 METRICS = ("mean_ap", "baseline_ap_gain", "worst_balanced_accuracy", "overfit_gap")
-CHANGES = ("family", "mask", "value")
+CHANGES = ("family", "mask", "value", "parameters", "seed", "name")
 
 
 def configuration(row: dict[str, Any]) -> dict[str, Any]:
     cfg = row["config"]
     return dict(
-        family=cfg["candidate"]["family"], mask=cfg["mask"], value=cfg["candidate"]["value"]
+        family=cfg["candidate"]["family"],
+        mask=cfg["mask"],
+        value=cfg["candidate"]["value"],
+        parameters=cfg["candidate"].get("parameters", {}),
+        name=cfg["candidate"].get("name"),
+        seed=cfg.get("seed"),
     )
 
 
@@ -58,6 +63,8 @@ def grounded_hypothesis(
         "referenceMetrics": {m: observation["result"].get(m) for m in METRICS},
         "referenceConfig": before,
         "candidateConfig": after,
+        "referenceFullConfig": row["config"],
+        "candidateFullConfig": candidate["config"],
         "expectedDirection": "decrease" if metric == "overfit_gap" else "increase",
         "focusChange": change,
         "changes": {key: [before[key], after[key]] for key in changed},
@@ -110,6 +117,7 @@ def hypothesis_feedback(proposal: dict[str, Any], history: list[dict[str, Any]])
         else "not_supported",
         "focusChange": proposal["focusChange"],
         "changes": changes,
+        "referenceExperimentId": proposal["evidence"][0].get("experimentId"),
         "referenceConfig": proposal.get("referenceConfig"),
         "candidateConfig": proposal.get("candidateConfig"),
         "metricDeltas": deltas,
@@ -118,14 +126,21 @@ def hypothesis_feedback(proposal: dict[str, Any], history: list[dict[str, Any]])
     }
 
 
-def transition_key(before: dict[str, Any], after: dict[str, Any]) -> str:
-    """Coarse configuration transition, not a causal or transferable rule."""
-    changes = {
-        key: [before[key], after[key]] for key in ("family", "mask") if before[key] != after[key]
-    }
-    if before["value"] != after["value"]:
-        changes["value"] = [before["value"], after["value"]]
-    return json.dumps(changes, sort_keys=True, separators=(",", ":"))
+def transition_features(before: dict[str, Any], after: dict[str, Any]) -> set[str]:
+    """Directional associations; parameter comparisons are family scoped."""
+    features = set()
+    for key in ("family", "mask"):
+        if before[key] != after[key]:
+            features.add(json.dumps([key, before[key], after[key]], sort_keys=True))
+    if before["family"] == after["family"]:
+        family = before["family"]
+        if before["value"] != after["value"]:
+            features.add(json.dumps(["value", family, before["value"], after["value"]]))
+        left, right = before.get("parameters", {}), after.get("parameters", {})
+        for key in sorted(left.keys() | right.keys()):
+            if left.get(key) != right.get(key):
+                features.add(json.dumps(["parameter", family, key, left.get(key), right.get(key)]))
+    return features
 
 
 def strategy_options(
@@ -134,47 +149,102 @@ def strategy_options(
     feedback: list[dict[str, Any]],
     *,
     adaptive: bool,
+    historical: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[int, dict[str, Any]], dict[str, Any]]:
-    """Alternate broad exploration with conservative, evidence-ranked exploitation."""
+    """Use partial transition matches, shrink sparse evidence, and retain exploration."""
     before = configuration(reference)
-    counts: dict[str, list[int]] = {}
-    for item in feedback:
+    experiences: list[tuple[set[str], int, str]] = []
+    seen: set[str] = set()
+    for item in (historical or []) + feedback:
         left, right = item.get("referenceConfig"), item.get("candidateConfig")
         quality = item.get("predictiveQuality")
         if left is None or right is None or quality not in ("improvement", "regression", "stable"):
             continue
-        key = transition_key(left, right)
-        counts.setdefault(key, [0, 0, 0])
-        counts[key][("improvement", "regression", "stable").index(quality)] += 1
-    scores: dict[int, int] = {}
+        identity = item.get("experimentId", json.dumps(item, sort_keys=True))
+        if identity in seen:
+            continue
+        seen.add(identity)
+        features = transition_features(left, right)
+        if features:
+            reward = {"improvement": 1, "regression": -1, "stable": 0}[quality]
+            experiences.append((features, reward, identity))
+    scores: dict[int, float] = {}
+    support: dict[int, list[str]] = {}
     for index, candidate in candidates.items():
-        key = transition_key(before, configuration(candidate))
-        wins, losses, _ = counts.get(key, [0, 0, 0])
-        scores[index] = wins - losses
-    measured = sum(sum(v) for v in counts.values())
+        features = transition_features(before, configuration(candidate))
+        total, weight = 0.0, 0.0
+        support[index] = []
+        for observed, reward, identity in experiences:
+            overlap = features & observed
+            if not overlap:
+                continue
+            similarity = len(overlap) / len(features | observed)
+            total += similarity * reward
+            weight += similarity
+            support[index].append(identity)
+        scores[index] = round(total / (2.0 + weight), 6)
+    measured = len(experiences)
+    own_count = sum(
+        item.get("predictiveQuality") in ("improvement", "regression", "stable")
+        for item in feedback
+    )
     mode = "control" if not adaptive else "exploration"
     chosen = candidates
-    if adaptive and measured % 2 == 1 and len(candidates) > 1:
+    if adaptive and own_count % 2 == 1 and len(candidates) > 1:
         best = max(scores.values())
         if best > min(scores.values()):
             chosen = {i: c for i, c in candidates.items() if scores[i] == best}
             mode = "exploitation"
-    elif adaptive and measured > 0 and measured % 2 == 0:
-        novel = {
-            i: c
-            for i, c in candidates.items()
-            if transition_key(before, configuration(c)) not in counts
-        }
+    elif adaptive and own_count > 0 and own_count % 2 == 0:
+        novel = {i: c for i, c in candidates.items() if not support[i]}
         if novel:
             chosen = novel
     return chosen, {
         "mode": mode,
         "measuredExperiences": measured,
+        "ownExperiences": own_count,
         "scores": [[i, score] for i, score in scores.items()],
+        "supportCounts": [[i, len(ids)] for i, ids in support.items()],
+        "supportingExperiments": [[i, ids] for i, ids in support.items()],
         "allowedIndices": list(chosen),
-        "policy": "alternating_observed_transition_v1",
+        "policy": "partial_transition_shrinkage_v2",
         "causal": False,
     }
+
+
+def historical_experiences(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Derive bounded comparisons from verified internal rows, not causal rules."""
+    completed = [h for h in history if h["state"] == "completed"]
+    results = []
+    for i, left in enumerate(completed):
+        for right in completed[i + 1 :]:
+            before, after = configuration(left), configuration(right)
+            if before["family"] != after["family"]:
+                continue
+            fields = ("mask", "value", "parameters", "seed")
+            if sum(before[k] != after[k] for k in fields) != 1:
+                continue
+            if not all(
+                type(row.get(m)) in (int, float) and math.isfinite(row[m])
+                for row in (left, right)
+                for m in METRICS
+            ):
+                continue
+            proposal = {
+                "experimentId": right["experiment_id"],
+                "evidence": [{"experimentId": left["experiment_id"], "metric": "mean_ap"}],
+                "referenceValue": left["mean_ap"],
+                "referenceMetrics": {m: left[m] for m in METRICS},
+                "referenceConfig": before,
+                "candidateConfig": after,
+                "expectedDirection": "increase",
+                "focusChange": "historical_comparison",
+            }
+            result = hypothesis_feedback(proposal, [right])
+            result["experimentId"] = left["experiment_id"] + ":" + right["experiment_id"]
+            result["source"] = "historical_matched_comparison"
+            results.append(result)
+    return results[-12:]
 
 
 def select_grounded(
@@ -212,7 +282,7 @@ def select_grounded(
             payload = {
                 "task": "Select a past experiment to investigate. Return its index and reason.",
                 "history": [
-                    [i, configuration(row), {m: row.get(m) for m in METRICS}]
+                    [i, configuration(row)["name"], {m: row.get(m) for m in METRICS}]
                     for i, row in eligible.items()
                 ],
             }
@@ -229,6 +299,7 @@ def select_grounded(
                 valid,
                 view.get("skill_feedback", []),
                 adaptive=view.get("skill_adaptive", True),
+                historical=view.get("skill_historical", []),
             )
             metrics = [
                 m
@@ -245,11 +316,15 @@ def select_grounded(
                     "Select a candidate and metric to improve versus the observed memory. "
                     "Explain why its configuration may improve that metric. "
                     "Prioritize AP and balanced accuracy. Lower overfit_gap is better; "
-                    "higher other metrics are better. Give a concise specific reason."
+                    "higher other metrics are better. Candidates have no observed results. "
+                    "Past feedback belongs only to its named experiment. "
+                    "State a prediction, not a claimed observed gain."
                 ),
                 "memory": trace[0]["result"],
-                "candidates": [[i, configuration(c)] for i, c in valid.items()],
-                "strategy": strategy,
+                "untrained_candidates": [[i, configuration(c)] for i, c in valid.items()],
+                "strategy": {
+                    k: v for k, v in strategy.items() if k != "supportingExperiments"
+                },
             }
         schema = {
             "type": "object",
@@ -259,7 +334,15 @@ def select_grounded(
         }
         payload.update(
             goal=view["goal"]["label_version"],
-            feedback=view.get("skill_feedback", []),
+            feedback=[
+                {
+                    "experimentId": f.get("experimentId"),
+                    "observed_changes": f.get("metricDeltas"),
+                    "quality": f.get("predictiveQuality"),
+                    "tested_config": f.get("candidateConfig"),
+                }
+                for f in view.get("skill_feedback", [])
+            ],
             previous_error=correction,
         )
         prompt = json.dumps(payload, separators=(",", ":"))

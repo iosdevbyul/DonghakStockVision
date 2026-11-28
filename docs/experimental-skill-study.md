@@ -67,3 +67,20 @@ the same grounded feedback. The V1 budget remains at most four per arm. A
 baseline failure does not establish performance superiority. Cross-session
 strategy carryover, independent evaluation and continuous execution are not
 implemented by this change.
+
+## Partial-transition experience
+
+The v2 policy scores directional family and mask changes and family-scoped
+parameter changes using overlap similarity and shrinkage toward zero. Each
+observation contributes once, not once per matching feature. Scores, support
+counts and source experiment IDs are audited. Full configurations are stored;
+compact candidate displays include names, parameters and seed. Candidate
+performance is unknown before execution. Free-text explanations remain unverified.
+
+Bounded historical comparisons are derived from the already PIN-verified,
+same-horizon/same-stock-policy frozen memory. They are observational associations,
+not causal estimates or independent tests. No arbitrary prior JSON is imported.
+The optional --skip-legacy-baseline avoids repeatedly spending inference on the
+legacy parent-evidence rejection. For policy comparison use two fresh sessions
+with the same request, one with --grounded-control and both with the skip flag.
+Cross-session ingestion of skill proposal feedback itself remains future work.

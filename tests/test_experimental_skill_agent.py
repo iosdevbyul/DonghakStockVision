@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 
 from donghak_stock_vision.storage.experimental_skill_agent import (
+    historical_experiences,
     hypothesis_feedback,
     select_with_skills,
     strategy_options,
@@ -216,7 +217,77 @@ def test_exploration_preserves_novel_transition() -> None:
         "predictiveQuality": "improvement",
     }
     selected, decision = strategy_options(
-        reference, {0: known, 1: novel}, [experience, experience], adaptive=True
+        reference,
+        {0: known, 1: novel},
+        [experience | {"experimentId": "a"}, experience | {"experimentId": "b"}],
+        adaptive=True,
     )
     assert list(selected) == [1]
     assert decision["mode"] == "exploration"
+
+
+def test_partial_family_transition_has_support() -> None:
+    reference = view()["candidates"][0]
+    candidate = {
+        "experiment_id": "new",
+        "config": {"candidate": {"family": "forest", "value": 7}, "mask": "other"},
+    }
+    experience = {
+        "experimentId": "old",
+        "referenceConfig": {"family": "linear", "value": 1, "mask": "weekly"},
+        "candidateConfig": {"family": "forest", "value": 3, "mask": "daily"},
+        "predictiveQuality": "improvement",
+    }
+    _, decision = strategy_options(reference, {0: candidate}, [experience], adaptive=True)
+    assert decision["scores"][0][1] > 0
+    assert decision["supportCounts"] == [[0, 1]]
+
+
+def test_parameter_only_candidate_is_visible() -> None:
+    current = view()
+    current["candidates"][0]["config"]["candidate"]["parameters"] = {"rate": 0.1}
+    current["history"] = [
+        {
+            "experiment_id": "prior",
+            "state": "completed",
+            "config": {
+                "candidate": {"family": "linear", "value": 1, "parameters": {"rate": 0.03}},
+                "mask": "all",
+            },
+            "mean_ap": 0.4,
+        }
+    ]
+    responses = iter(
+        [
+            dict(index=0, reason="inspect"),
+            dict(index=0, reason="test rate", metric="mean_ap"),
+        ]
+    )
+
+    def generate(prompt: str, schema: dict[str, Any]) -> str:
+        return json.dumps(next(responses))
+
+    selected, _ = select_with_skills(current, generate, grounded=True)
+    assert selected["changes"] == {"parameters": [{"rate": 0.03}, {"rate": 0.1}]}
+
+
+def test_historical_comparison_is_observational() -> None:
+    metrics = dict(
+        mean_ap=0.4,
+        baseline_ap_gain=0.01,
+        worst_balanced_accuracy=0.5,
+        overfit_gap=0.05,
+    )
+    rows = [
+        dict(
+            experiment_id=str(i),
+            state="completed",
+            config={"candidate": {"family": "linear", "value": i}, "mask": "all"},
+            **metrics,
+        )
+        for i in (1, 2)
+    ]
+    results = historical_experiences(rows)
+    assert len(results) == 1
+    assert results[0]["causal"] is False
+    assert results[0]["source"] == "historical_matched_comparison"
