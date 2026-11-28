@@ -21,7 +21,7 @@ MAX_SESSIONS = 12
 
 def scope(row: dict[str, Any], request: dict[str, Any]) -> bool:
     config = row["config"]
-    return (
+    return bool(
         config["goal"]["horizon"] == request["horizon"]
         and config["stock_policy"] == request["stock_policy"]
     )
