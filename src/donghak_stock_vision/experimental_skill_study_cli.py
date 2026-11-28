@@ -24,7 +24,7 @@ from donghak_stock_vision.storage.memory_guided_research import (
 from donghak_stock_vision.storage.research_resources import lock
 
 
-def compare(root: Path, pin: str) -> dict[str, Any]:
+def compare(root: Path, pin: str, *, adaptive: bool = True) -> dict[str, Any]:
     frozen = load(root, pin)
     if frozen["version"] != VERSION or not root.name.startswith("skill-experiment-"):
         raise ValueError("skill_requires_dedicated_v1_session")
@@ -57,7 +57,7 @@ def compare(root: Path, pin: str) -> dict[str, Any]:
                 count = len(store.all("llm_proposal"))
             if len(done) >= budget or count >= budget:
                 break
-            agent = SkillAgent(target, lambda: OllamaProvider(config))
+            agent = SkillAgent(target, lambda: OllamaProvider(config), adaptive=adaptive)
 
             def agent_factory(
                 _root: Path, _plan: dict[str, Any], current: SkillAgent = agent
@@ -92,20 +92,28 @@ def compare(root: Path, pin: str) -> dict[str, Any]:
                 break
     value = report(root, pin)
     with closing(ReadOnlyAnalysisStore(target / DB)) as store:
-        audits = [v for _, v in store.all("experimental_skill_proposal")]
+        audits = [
+            v
+            for _, v in sorted(
+                store.all("experimental_skill_proposal"), key=lambda pair: pair[1]["started_at"]
+            )
+        ]
     _, _, outcomes = evidence(target, frozen["plan_id"])
     hypotheses = [a["proposal"] for a in audits if a["state"] == "accepted"]
     skills = value["arms"]["gemma_blind"] | dict(
         memory_enabled=True,
-        research_mode="skills",
+        research_mode="adaptive_skills" if adaptive else "grounded_control",
+        strategy_decisions=[p["strategy"] for p in hypotheses],
         provider_inference_seconds=sum(a["metadata"]["inference_seconds"] for a in audits),
         tool_events=[a["events"] for a in audits],
         hypotheses=hypotheses,
         hypothesis_feedback=[hypothesis_feedback(p, outcomes) for p in hypotheses],
         prior_feedback=[a.get("prior_feedback", []) for a in audits],
     )
+    baseline_row = value["arms"]["gemma_memory"]
     return {
-        "baseline": value["arms"]["gemma_memory"],
+        "baseline": baseline_row,
+        "paired_budget_completed": baseline_row["completed"] == skills["completed"] == budget,
         "experimental_skills": skills,
         "dataset_id": frozen["dataset_id"],
         "independent_generalization": "NOT_ESTABLISHED",
@@ -121,6 +129,7 @@ def main() -> None:
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--pins", type=Path, required=True)
     parser.add_argument("--request", type=Path, required=True)
+    parser.add_argument("--grounded-control", action="store_true")
     args = parser.parse_args()
     if not args.root.name.startswith("skill-experiment-"):
         parser.error("root must start with skill-experiment-")
@@ -128,7 +137,7 @@ def main() -> None:
     if request["version"] != VERSION:
         parser.error("requires memory_guided_session_v1")
     pin = prepare(request, args.root, args.pins)
-    print(json.dumps(compare(args.root, pin), indent=2))
+    print(json.dumps(compare(args.root, pin, adaptive=not args.grounded_control), indent=2))
 
 
 if __name__ == "__main__":

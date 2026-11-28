@@ -47,3 +47,23 @@ memory is the fixed reference for that proposal; the model selects the candidate
 and measured metric next. No evidence sentinel or second reference index is
 needed. All configuration changes are recorded, with multiple changes marked
 explicitly. The three-generation cap includes corrections.
+
+## Adaptive strategy experiment
+
+Each grounded hypothesis now records both configurations and all four reference
+metrics. Feedback includes observed metric deltas and a separate predictive
+quality classification. A drop greater than 0.002 in any of AP, worst BA or
+baseline AP gain is a regression; improvement requires at least one increase
+above 0.002 and no such regression. These are development heuristics, not
+statistical significance or independent validation.
+
+Within a fresh session the host accumulates measured transition outcomes and
+alternates exploration and exploitation. Exploitation restricts choices only
+when an observed transition score separates available candidates; exploration
+prefers previously unseen transitions when available. Gemma still chooses the
+reference, permitted candidate and metric. Decisions and scores are audited.
+An optional --grounded-control disables candidate restriction while retaining
+the same grounded feedback. The V1 budget remains at most four per arm. A
+baseline failure does not establish performance superiority. Cross-session
+strategy carryover, independent evaluation and continuous execution are not
+implemented by this change.

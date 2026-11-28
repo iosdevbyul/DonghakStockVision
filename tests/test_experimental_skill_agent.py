@@ -6,6 +6,7 @@ import pytest
 from donghak_stock_vision.storage.experimental_skill_agent import (
     hypothesis_feedback,
     select_with_skills,
+    strategy_options,
 )
 
 
@@ -144,3 +145,78 @@ def test_grounded_stage_rejects_old_sentinel_and_recovers() -> None:
     selected, _ = select_with_skills(current, generate, grounded=True, events=events)
     assert selected["evidence"] == [{"experimentId": "prior", "metric": "mean_ap"}]
     assert [e["state"] for e in events] == ["observed", "rejected", "selected"]
+
+
+def test_predictive_regression_not_hidden_by_overfit_gain() -> None:
+    proposal = {
+        "experimentId": "allowed",
+        "evidence": [{"metric": "overfit_gap"}],
+        "referenceValue": 0.1,
+        "referenceMetrics": {
+            "mean_ap": 0.5,
+            "worst_balanced_accuracy": 0.5,
+            "baseline_ap_gain": 0.01,
+            "overfit_gap": 0.1,
+        },
+        "expectedDirection": "decrease",
+        "focusChange": "mask",
+    }
+    outcome = {
+        "experiment_id": "allowed",
+        "mean_ap": 0.48,
+        "worst_balanced_accuracy": 0.5,
+        "baseline_ap_gain": 0.01,
+        "overfit_gap": 0.05,
+    }
+    result = hypothesis_feedback(proposal, [outcome])
+    assert result["outcome"] == "supported"
+    assert result["predictiveQuality"] == "regression"
+    assert result["metricDeltas"]["mean_ap"] < 0
+
+
+def test_adaptive_strategy_avoids_observed_regression() -> None:
+    reference = view()["candidates"][0]
+    alternative = {
+        "experiment_id": "new",
+        "config": {"candidate": {"family": "linear", "value": 2}, "mask": "all"},
+    }
+    regressed = {
+        "experiment_id": "bad",
+        "config": {"candidate": {"family": "forest", "value": 1}, "mask": "all"},
+    }
+    feedback = [
+        {
+            "referenceConfig": {"family": "linear", "value": 1, "mask": "all"},
+            "candidateConfig": {"family": "forest", "value": 1, "mask": "all"},
+            "predictiveQuality": "regression",
+        }
+    ]
+    candidates = {0: regressed, 1: alternative}
+    selected, decision = strategy_options(reference, candidates, feedback, adaptive=True)
+    assert list(selected) == [1]
+    assert decision["mode"] == "exploitation"
+    selected, decision = strategy_options(reference, candidates, feedback, adaptive=False)
+    assert selected == candidates
+    assert decision["mode"] == "control"
+
+
+def test_exploration_preserves_novel_transition() -> None:
+    reference = view()["candidates"][0]
+    known = {
+        "experiment_id": "known",
+        "config": {"candidate": {"family": "forest", "value": 1}, "mask": "all"},
+    }
+    novel = {
+        "experiment_id": "novel",
+        "config": {"candidate": {"family": "linear", "value": 2}, "mask": "all"},
+    }
+    experience = {
+        "referenceConfig": {"family": "linear", "value": 1, "mask": "all"},
+        "candidateConfig": {"family": "forest", "value": 1, "mask": "all"},
+        "predictiveQuality": "improvement",
+    }
+    selected, decision = strategy_options(
+        reference, {0: known, 1: novel}, [experience, experience], adaptive=True
+    )
+    assert list(selected) == [1]
+    assert decision["mode"] == "exploration"

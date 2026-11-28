@@ -55,6 +55,9 @@ def grounded_hypothesis(
         "hypothesis": choice["reason"],
         "evidence": [{"experimentId": row["experiment_id"], "metric": metric}],
         "referenceValue": value,
+        "referenceMetrics": {m: observation["result"].get(m) for m in METRICS},
+        "referenceConfig": before,
+        "candidateConfig": after,
         "expectedDirection": "decrease" if metric == "overfit_gap" else "increase",
         "focusChange": change,
         "changes": {key: [before[key], after[key]] for key in changed},
@@ -66,7 +69,31 @@ def hypothesis_feedback(proposal: dict[str, Any], history: list[dict[str, Any]])
     row = next((h for h in history if h["experiment_id"] == proposal["experimentId"]), None)
     metric = proposal["evidence"][0]["metric"]
     observed = None if row is None else row.get(metric)
+    if type(observed) not in (int, float) or not math.isfinite(observed):
+        observed = None
     delta = None if observed is None else observed - proposal["referenceValue"]
+    changes = proposal.get("changes", {})
+    reference = proposal.get("referenceMetrics", {})
+    deltas: dict[str, float] = {}
+    if row is not None:
+        for m in METRICS:
+            before, after = reference.get(m), row.get(m)
+            if (
+                type(before) in (int, float)
+                and type(after) in (int, float)
+                and math.isfinite(before)
+                and math.isfinite(after)
+            ):
+                deltas[m] = after - before
+    primary = ("mean_ap", "worst_balanced_accuracy", "baseline_ap_gain")
+    quality = "unmeasured"
+    if all(m in deltas for m in primary):
+        if any(deltas[m] < -0.002 for m in primary):
+            quality = "regression"
+        elif any(deltas[m] > 0.002 for m in primary):
+            quality = "improvement"
+        else:
+            quality = "stable"
     return {
         "experimentId": proposal["experimentId"],
         "metric": metric,
@@ -80,6 +107,72 @@ def hypothesis_feedback(proposal: dict[str, Any], history: list[dict[str, Any]])
         if (delta < 0 if proposal["expectedDirection"] == "decrease" else delta > 0)
         else "not_supported",
         "focusChange": proposal["focusChange"],
+        "changes": changes,
+        "referenceConfig": proposal.get("referenceConfig"),
+        "candidateConfig": proposal.get("candidateConfig"),
+        "metricDeltas": deltas,
+        "predictiveQuality": quality,
+        "causal": False,
+    }
+
+
+def transition_key(before: dict[str, Any], after: dict[str, Any]) -> str:
+    """Coarse configuration transition, not a causal or transferable rule."""
+    changes = {
+        key: [before[key], after[key]]
+        for key in ("family", "mask")
+        if before[key] != after[key]
+    }
+    if before["value"] != after["value"]:
+        changes["value"] = [before["value"], after["value"]]
+    return json.dumps(changes, sort_keys=True, separators=(",", ":"))
+
+
+def strategy_options(
+    reference: dict[str, Any],
+    candidates: dict[int, dict[str, Any]],
+    feedback: list[dict[str, Any]],
+    *,
+    adaptive: bool,
+) -> tuple[dict[int, dict[str, Any]], dict[str, Any]]:
+    """Alternate broad exploration with conservative, evidence-ranked exploitation."""
+    before = configuration(reference)
+    counts: dict[str, list[int]] = {}
+    for item in feedback:
+        left, right = item.get("referenceConfig"), item.get("candidateConfig")
+        quality = item.get("predictiveQuality")
+        if left is None or right is None or quality not in ("improvement", "regression", "stable"):
+            continue
+        key = transition_key(left, right)
+        counts.setdefault(key, [0, 0, 0])
+        counts[key][("improvement", "regression", "stable").index(quality)] += 1
+    scores: dict[int, int] = {}
+    for index, candidate in candidates.items():
+        key = transition_key(before, configuration(candidate))
+        wins, losses, _ = counts.get(key, [0, 0, 0])
+        scores[index] = wins - losses
+    measured = sum(sum(v) for v in counts.values())
+    mode = "control" if not adaptive else "exploration"
+    chosen = candidates
+    if adaptive and measured % 2 == 1 and len(candidates) > 1:
+        best = max(scores.values())
+        if best > min(scores.values()):
+            chosen = {i: c for i, c in candidates.items() if scores[i] == best}
+            mode = "exploitation"
+    elif adaptive and measured > 0 and measured % 2 == 0:
+        novel = {
+            i: c
+            for i, c in candidates.items()
+            if transition_key(before, configuration(c)) not in counts
+        }
+        if novel:
+            chosen = novel
+    return chosen, {
+        "mode": mode,
+        "measuredExperiences": measured,
+        "scores": [[i, score] for i, score in scores.items()],
+        "allowedIndices": list(chosen),
+        "policy": "alternating_observed_transition_v1",
         "causal": False,
     }
 
@@ -103,6 +196,7 @@ def select_grounded(
         raise ValueError("skill_no_eligible_memory")
     trace: list[dict[str, Any]] = []
     correction = ""
+    strategy: dict[str, Any] = {}
     for step in range(3):
         valid: dict[int, dict[str, Any]] = {}
         reference: dict[str, Any] = {}
@@ -113,7 +207,7 @@ def select_grounded(
             stage = "memory"
             properties = {
                 "index": {"type": "integer", "enum": list(eligible)},
-                "reason": {"type": "string", "maxLength": 120},
+                "reason": {"type": "string", "maxLength": 240},
             }
             payload = {
                 "task": "Select a past experiment to investigate. Return its index and reason.",
@@ -130,6 +224,12 @@ def select_grounded(
                 for i, c in enumerate(candidates)
                 if configuration(c) != configuration(reference)
             }
+            valid, strategy = strategy_options(
+                reference,
+                valid,
+                view.get("skill_feedback", []),
+                adaptive=view.get("skill_adaptive", True),
+            )
             metrics = [
                 m
                 for m in METRICS
@@ -138,16 +238,18 @@ def select_grounded(
             properties = {
                 "index": {"type": "integer", "enum": list(valid)},
                 "metric": {"type": "string", "enum": metrics},
-                "reason": {"type": "string", "maxLength": 120},
+                "reason": {"type": "string", "maxLength": 240},
             }
             payload = {
                 "task": (
                     "Select a candidate and metric to improve versus the observed memory. "
                     "Explain why its configuration may improve that metric. "
-                    "Lower overfit_gap is better; higher other metrics are better."
+                    "Prioritize AP and balanced accuracy. Lower overfit_gap is better; "
+                    "higher other metrics are better. Give a concise specific reason."
                 ),
                 "memory": trace[0]["result"],
                 "candidates": [[i, configuration(c)] for i, c in valid.items()],
+                "strategy": strategy,
             }
         schema = {
             "type": "object",
@@ -174,7 +276,7 @@ def select_grounded(
             if set(choice) != set(properties):
                 raise ValueError("skill_action_fields")
             index, reason = choice["index"], choice["reason"]
-            if type(index) is not int or type(reason) is not str or not 0 < len(reason) <= 120:
+            if type(index) is not int or type(reason) is not str or not 0 < len(reason) <= 240:
                 raise ValueError("skill_action_value")
             if stage == "memory":
                 if index not in eligible:
@@ -193,6 +295,7 @@ def select_grounded(
                     history,
                 )
                 proposal["focusChange"] = changed[0] if len(changed) == 1 else "multiple"
+                proposal["strategy"] = strategy
                 event.update(state="selected", action="experiment", index=index)
                 event["hypothesis"] = proposal
                 return proposal, trace
@@ -373,8 +476,11 @@ def select_with_skills(
 
 
 class SkillAgent:
-    def __init__(self, root: Path, factory: Callable[[], LLMProvider]) -> None:
+    def __init__(
+        self, root: Path, factory: Callable[[], LLMProvider], *, adaptive: bool = True
+    ) -> None:
         self.root = root
+        self.adaptive = adaptive
         self.factory = factory
         self.audit: dict[str, Any] = {}
         self.unloaded = False
@@ -405,11 +511,14 @@ class SkillAgent:
             with closing(ReadOnlyAnalysisStore(self.root / DB)) as read_store:
                 previous = [
                     a["proposal"]
-                    for _, a in read_store.all("experimental_skill_proposal")
+                    for _, a in sorted(
+                        read_store.all("experimental_skill_proposal"),
+                        key=lambda pair: pair[1]["started_at"],
+                    )
                     if a["state"] == "accepted" and "referenceValue" in a["proposal"]
                 ]
             feedback = [hypothesis_feedback(p, view["history"]) for p in previous]
-            view = view | {"skill_feedback": feedback[-4:]}
+            view = view | {"skill_feedback": feedback[-4:], "skill_adaptive": self.adaptive}
             self.audit["prior_feedback"] = feedback[-4:]
             proposal, trace = select_with_skills(view, generate, events=events, grounded=True)
             self.audit.update(state="accepted", proposal=proposal, trace=trace)
