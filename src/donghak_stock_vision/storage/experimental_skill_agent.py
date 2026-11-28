@@ -257,8 +257,7 @@ def learned_options(
         for mode, row in stats.items()
     }
     exploit = step % 3 != 0 and (
-        stats["exploitation"]["count"] == 0
-        or rates["exploitation"] >= rates["exploration"]
+        stats["exploitation"]["count"] == 0 or rates["exploitation"] >= rates["exploration"]
     )
     if exploit and max(scores.values()) > min(scores.values()):
         ranked = sorted(candidates, key=lambda i: (-scores[i], i))
