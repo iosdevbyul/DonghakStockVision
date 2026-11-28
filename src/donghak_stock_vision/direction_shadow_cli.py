@@ -11,9 +11,11 @@ from pathlib import Path
 from donghak_stock_vision.backtest.data import FrozenJSON
 from donghak_stock_vision.backtest.validation import require
 from donghak_stock_vision.data.learning import digest
+from donghak_stock_vision.storage.direction_ensemble import source_paths
 from donghak_stock_vision.storage.evaluation_evidence import output_paths
 from donghak_stock_vision.storage.krx_backfill import read_pin, write_new
 from donghak_stock_vision.storage.real_market_dataset import document
+from donghak_stock_vision.storage.research_resources import lock
 
 
 def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -46,19 +48,26 @@ def add_commands(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> No
 def run(args: argparse.Namespace) -> int:
     from donghak_stock_vision.storage import direction_shadow as owner
 
-    require(
-        not args.report.exists() and not args.report_pin_file.exists(),
-        "direction_new_reports_required",
-    )
-    d = document(str(args.request))
-    require(digest(d) == read_pin(args.request_pin_file), "direction_request_pin")
-    protected = [Path(m["root"]) for m in d.get("models", [])]
-    if args.journal is not None:
-        protected.append(args.journal.parent)
-    if "research" in d:
-        protected.extend([Path(d["research"]["database"]).parent, Path(d["operational"]["root"])])
-    output_paths(args.report, args.report_pin_file, protected)
     try:
+        d = document(str(args.request))
+        require(digest(d) == read_pin(args.request_pin_file), "direction_request_pin")
+        ensemble = (
+            args.action == "register" and d["version"] == "direction_shadow_registration_request_v4"
+        )
+        if ensemble:
+            require(not args.report_pin_file.exists(), "direction_ensemble_already_registered")
+        require(
+            not args.report.exists() and not args.report_pin_file.exists(),
+            "direction_new_reports_required",
+        )
+        protected = [path for m in d.get("models", []) for path in source_paths(m)]
+        if args.journal is not None:
+            protected.append(args.journal.parent)
+        if "research" in d:
+            protected.extend(
+                [Path(d["research"]["database"]).parent, Path(d["operational"]["root"])]
+            )
+        output_paths(args.report, args.report_pin_file, protected)
         if args.action == "publish":
             result = owner.publish_streams(d)
         elif args.action == "register":
@@ -99,8 +108,16 @@ def run(args: argparse.Namespace) -> int:
         value = FrozenJSON.freeze(result)
         args.report.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         args.report_pin_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        write_new(args.report, value.payload_json)
-        write_new(args.report_pin_file, value.identifier)
+        if ensemble:
+            name = owner.ensemble_pin_name(result["models"])
+            require(args.report_pin_file.name == name, "direction_ensemble_pin_name")
+            with lock(args.report_pin_file.parent, "." + name + ".register.lock"):
+                require(not args.report_pin_file.exists(), "direction_ensemble_already_registered")
+                write_new(args.report, value.payload_json)
+                write_new(args.report_pin_file, value.identifier)
+        else:
+            write_new(args.report, value.payload_json)
+            write_new(args.report_pin_file, value.identifier)
         print(
             json.dumps(
                 dict(

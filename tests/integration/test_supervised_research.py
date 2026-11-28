@@ -200,8 +200,9 @@ def test_prescribed_slot_preserves_original_choice_and_evidence(
 
 
 @pytest.mark.parametrize("fail_first", [False, True])
+@pytest.mark.parametrize("approved", [1, 2])
 def test_diagnostic_approval_persists_across_run_invocations(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fail_first: bool
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fail_first: bool, approved: int
 ) -> None:
     root = tmp_path / "study"
     root.mkdir()
@@ -210,9 +211,13 @@ def test_diagnostic_approval_persists_across_run_invocations(
     pin = digest("plan")
     plan: dict[str, Any] = dict(
         code={},
-        diagnostics=[{}, {}],
+        diagnostics=[{} for _ in range(approved)],
         max_worker_seconds=60,
-        request=dict(schedule=[1, 5] * 7, max_failures=2, max_seconds=300),
+        request=dict(
+            schedule=[1] if approved == 1 else [1, 5] * 7,
+            max_failures=1 if approved == 1 else 2,
+            max_seconds=90 if approved == 1 else 300,
+        ),
     )
     monkeypatch.setattr(owner, "_plan", lambda *args: plan)
     monkeypatch.setattr(owner, "provenance", dict)
@@ -232,16 +237,16 @@ def test_diagnostic_approval_persists_across_run_invocations(
 
     monkeypatch.setattr(autonomous_runner, "launch", launch)
     with pytest.raises(ValueError, match="supervised_step_bound"):
-        owner.run(root, pin, 3)
-    first = owner.run(root, pin, 2)
+        owner.run(root, pin, approved + 1)
+    first = owner.run(root, pin, approved)
     assert first["reason"] == (
         "diagnostic_slot_failed" if fail_first else "requested_steps_complete"
     )
     second = owner.run(root, pin, 1)
     assert second["reason"] == (
-        "diagnostic_slot_failed" if fail_first else "diagnostic_approval_exhausted"
+        "diagnostic_slot_failed" if fail_first and approved > 1 else "diagnostic_approval_exhausted"
     )
-    assert launches == ([0] if fail_first else [0, 1])
+    assert launches == ([0] if fail_first else list(range(approved)))
 
 
 def test_diagnostic_recovery_requires_a_signed_checkpoint_before_evaluation() -> None:
@@ -259,3 +264,25 @@ def test_diagnostic_recovery_requires_a_signed_checkpoint_before_evaluation() ->
     state["attempts"]["first"]["checkpoint_only"] = True
     state["attempts"]["resume"] = {"index": 0, "checkpoint_only": False}
     assert owner._diagnostic_stop(plan, state, 0) == "diagnostic_attempt_requires_review"
+
+
+def test_single_matched_diagnostic_schedule_and_budget() -> None:
+    recorded = digest("weekly")
+    slot = dict(
+        horizon=1,
+        original_candidate_id=digest("former"),
+        candidate_id=digest("legacy"),
+        evidence_experiment_ids=[recorded],
+        matched_experiment_id=recorded,
+        reason="isolate the effect of Weekly",
+        hypothesis="same estimator and population",
+    )
+    req = dict(schedule=[1], max_seconds=90, max_failures=1, diagnostic_slots=[slot])
+    assert owner._valid_limits(req)
+    assert owner._diagnostic_slots(req) == [slot]
+    for invalid in (dict(max_seconds=91), dict(max_failures=2), dict(schedule=[5])):
+        assert not owner._valid_limits(req | invalid)
+    with pytest.raises(ValueError, match="supervised_diagnostic_slot_binding"):
+        owner._diagnostic_slots(
+            req | {"diagnostic_slots": [slot | dict(matched_experiment_id=digest("missing"))]}
+        )

@@ -19,6 +19,7 @@ from donghak_stock_vision.models.autonomous import masked
 from donghak_stock_vision.models.experiment import Candidate, predict_candidate
 from donghak_stock_vision.models.research_v2 import contract as trained_contract
 from donghak_stock_vision.models.research_v2 import direction_label
+from donghak_stock_vision.storage import direction_ensemble
 from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.autonomous_research import DB, context, terminals
 from donghak_stock_vision.storage.krx_backfill import read_pin
@@ -197,10 +198,30 @@ def model_reference(
     )
 
 
+def _registration_model(
+    ref: dict[str, Any],
+    at: datetime,
+    *,
+    ensembles: bool,
+    load_checkpoint: bool,
+    context_cache: dict[tuple[str, str], tuple[dict[str, Any], dict[str, Any]]],
+) -> dict[str, Any]:
+    if ensembles and ref.get("version") == direction_ensemble.VERSION:
+        return direction_ensemble.resolve(ref, at, load_checkpoint=load_checkpoint)
+    return model_reference(ref, at, load_checkpoint=load_checkpoint, context_cache=context_cache)
+
+
+def ensemble_pin_name(models: dict[str, Any]) -> str:
+    identities = [m["ensemble_id"] for m in models.values() if "ensemble_id" in m]
+    require(len(identities) == 1, "direction_ensemble_registration_count")
+    return sha(identities[0]) + ".pin"
+
+
 def register(request: dict[str, Any], *, at: datetime | None = None) -> FrozenJSON:
     fields(request, "version models tickers source_kind")
     require(
-        request["version"] == "direction_shadow_registration_request_v3"
+        request["version"]
+        in ("direction_shadow_registration_request_v3", "direction_shadow_registration_request_v4")
         and request["source_kind"] in ("local_provider_capture", "offline_fixture"),
         "direction_registration_version",
     )
@@ -212,18 +233,28 @@ def register(request: dict[str, Any], *, at: datetime | None = None) -> FrozenJS
     for ticker in request["tickers"]:
         validate_ticker(ticker)
     now = _at(at)
-    require(len(request["models"]) == 3, "direction_all_horizons_required")
+    ensembles = request["version"] == "direction_shadow_registration_request_v4"
+    require(
+        type(request["models"]) is list and len(request["models"]) == 3,
+        "direction_all_horizons_required",
+    )
     models = {}
     cache: dict[tuple[str, str], tuple[dict[str, Any], dict[str, Any]]] = {}
     for ref in request["models"]:
-        m = model_reference(ref, now, context_cache=cache)
+        m = _registration_model(
+            ref, now, ensembles=ensembles, load_checkpoint=True, context_cache=cache
+        )
         h = str(m["config"]["goal"]["horizon"])
         require(h not in models, "direction_duplicate_horizon")
         models[h] = m
     require(set(models) == {"1", "5", "20"}, "direction_all_horizons_required")
+    if ensembles:
+        ensemble_pin_name(models)
     return FrozenJSON.freeze(
         dict(
-            version="direction_shadow_registration_v3",
+            version="direction_shadow_registration_v4"
+            if ensembles
+            else "direction_shadow_registration_v3",
             registered_at=now.isoformat(),
             models=models,
             tickers=request["tickers"],
@@ -241,7 +272,8 @@ def registration(path: Path, pin_file: Path) -> FrozenJSON:
     d = value.to_dict()
     require(
         value.identifier == read_pin(pin_file)
-        and d["version"] == "direction_shadow_registration_v3",
+        and d["version"]
+        in ("direction_shadow_registration_v3", "direction_shadow_registration_v4"),
         "direction_registration_pin",
     )
     require(
@@ -252,13 +284,17 @@ def registration(path: Path, pin_file: Path) -> FrozenJSON:
         "direction_registration_contract",
     )
     require(set(d["models"]) == {"1", "5", "20"}, "direction_all_horizons_required")
+    ensembles = d["version"] == "direction_shadow_registration_v4"
+    if ensembles:
+        require(pin_file.name == ensemble_pin_name(d["models"]), "direction_ensemble_pin_name")
     cache: dict[tuple[str, str], tuple[dict[str, Any], dict[str, Any]]] = {}
     for h, m in d["models"].items():
         require(
             h == str(m["config"]["goal"]["horizon"])
-            and model_reference(
+            and _registration_model(
                 m["reference"],
                 timestamp(d["registered_at"]),
+                ensembles=ensembles,
                 load_checkpoint=False,
                 context_cache=cache,
             )
@@ -291,6 +327,14 @@ def _request(d: dict[str, Any], reg: dict[str, Any]) -> None:
     require(
         all(m["protected"] == access.final_test.to_dict() for m in reg["models"].values()),
         "direction_protected_owner",
+    )
+    require(
+        all(
+            m["lineage"]["exposed_through"] < d["input_trading_date"]
+            for m in reg["models"].values()
+            if "ensemble_id" in m
+        ),
+        "direction_ensemble_pre_exposure",
     )
     if any("lineage" in m for m in reg["models"].values()):
         require(
@@ -427,6 +471,11 @@ def _sample(ticker: str, day: str, values: tuple[float, ...], at: datetime) -> S
 def _score(
     m: dict[str, Any], ticker: str, day: str, values: tuple[float, ...], at: datetime
 ) -> float:
+    if "ensemble_id" in m:
+        return direction_ensemble.average(
+            [item["weight_bps"] for item in m["config"]["members"]],
+            [_score(part, ticker, day, values, at) for part in m["members"]],
+        )
     model = verified_estimator(
         Path(m["checkpoint"]), m["sha256"], m["config"]["candidate"]["family"], m["versions"]
     )
@@ -516,8 +565,8 @@ def _write_paths(
     d: dict[str, Any], r: dict[str, Any], journal: Path, intents: Path, pins: Path
 ) -> None:
     protected = [Path(d["operational"]["root"]), Path(d["research"]["database"]).parent]
-    protected.extend(Path(m["reference"]["root"]) for m in r["models"].values())
-    protected.extend(Path(m["reference"]["plan_pin_file"]).parent for m in r["models"].values())
+    for m in r["models"].values():
+        protected.extend(direction_ensemble.source_paths(m["reference"]))
     require(
         all(
             p.is_absolute()
