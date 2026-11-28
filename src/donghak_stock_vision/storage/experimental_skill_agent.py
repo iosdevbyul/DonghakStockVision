@@ -155,6 +155,7 @@ def strategy_options(
     historical: list[dict[str, Any]] | None = None,
     persistent: list[dict[str, Any]] | None = None,
     learned_policy: bool = False,
+    planned_mode: str | None = None,
 ) -> tuple[dict[int, dict[str, Any]], dict[str, Any]]:
     """Use partial transition matches, shrink sparse evidence, and retain exploration."""
     before = configuration(reference)
@@ -196,7 +197,17 @@ def strategy_options(
     mode = "control" if not adaptive else "exploration"
     chosen = candidates
     strategy_stats = mode_statistics((persistent or []) + feedback)
-    if adaptive and learned_policy:
+    if adaptive and planned_mode is not None:
+        if planned_mode not in ("exploration", "exploitation") or not candidates:
+            raise ValueError("skill_planned_mode")
+        mode = planned_mode
+        if mode == "exploitation":
+            ranked = sorted(candidates, key=lambda i: (-scores[i], i))
+        else:
+            ranked = sorted(candidates, key=lambda i: (len(support[i]), -scores[i], i))
+        count = min(len(ranked), max(2, (len(ranked) + 1) // 2))
+        chosen = {i: candidates[i] for i in ranked[:count]}
+    elif adaptive and learned_policy:
         chosen, mode = learned_options(candidates, scores, support, strategy_stats, own_count)
     elif adaptive and own_count % 2 == 1 and len(candidates) > 1:
         best = max(scores.values())
@@ -217,6 +228,7 @@ def strategy_options(
         "allowedIndices": list(chosen),
         "policy": "persistent_strategy_v3" if learned_policy else "partial_transition_shrinkage_v2",
         "strategyStats": strategy_stats,
+        "plannedMode": planned_mode,
         "causal": False,
     }
 
@@ -365,6 +377,7 @@ def select_grounded(
                 historical=view.get("skill_historical", []),
                 persistent=view.get("skill_persistent", []),
                 learned_policy=view.get("skill_learned_policy", False),
+                planned_mode=view.get("skill_planned_mode"),
             )
             metrics = [
                 m

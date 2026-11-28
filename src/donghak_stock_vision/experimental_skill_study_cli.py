@@ -7,11 +7,13 @@ from pathlib import Path
 from typing import Any
 
 from donghak_stock_vision.data.learning import digest
+from donghak_stock_vision.models.experimental_research_performance import performance
+from donghak_stock_vision.models.experimental_research_planner import research_plan
 from donghak_stock_vision.models.llm_provider import ModelConfig
 from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.autonomous_research import DB, context, terminals
 from donghak_stock_vision.storage.autonomous_runner import run as run_worker
-from donghak_stock_vision.storage.experimental_experience_memory import restore
+from donghak_stock_vision.storage.experimental_experience_memory import restore, scope
 from donghak_stock_vision.storage.experimental_skill_agent import (
     SkillAgent,
     historical_experiences,
@@ -58,19 +60,32 @@ def _compare(
     # The existing runner opens confirmation only after full plan exhaustion.
     if len(plan["configurations"]) <= budget:
         raise ValueError("skill_confirmation_guard")
-    prior_rows, persistent, lineage = restore(previous, frozen, data)
-    excluded = {digest(row["config"]) for row in prior_rows if row["state"] == "completed"}
+    details: list[dict[str, Any]] = []
+    prior_rows, persistent, lineage = restore(previous, frozen, data, session_details=details)
+    historical_rows = [row for row in frozen["memory"] if scope(row, frozen["request"])]
+    excluded = {
+        digest(row["config"])
+        for row in prior_rows + (historical_rows if previous and adaptive else [])
+        if row["state"] == "completed"
+    }
     allowed = frozenset(
         c["experiment_id"] for c in frozen["candidates"] if digest(c["config"]) not in excluded
     )
+    planner = None
+    if previous and adaptive:
+        summary = performance(historical_rows, details, frozen["candidates"], budget)
+        planner = research_plan(summary, min(budget, len(allowed)))
+    selection_scope = dict(sources=lineage, allowed=sorted(allowed), adaptive=adaptive)
+    if planner is not None:
+        selection_scope["planner"] = planner
     # Freeze the external lineage and actual selection scope before any inference.
     from donghak_stock_vision.storage.krx_backfill import write_new
 
     write_new(
         root / "experience-scope.json",
-        json.dumps(dict(sources=lineage, allowed=sorted(allowed), adaptive=adaptive)),
+        json.dumps(selection_scope),
     )
-    effective_budget = min(budget, len(allowed))
+    effective_budget = min(budget, len(allowed)) if planner is None else planner["total"]
     baseline = arm_root(root, "gemma_memory")
     for arm in frozen["arms"]:
         with closing(ReadOnlyAnalysisStore(arm_root(root, arm) / DB)) as store:
@@ -124,6 +139,7 @@ def _compare(
                     "skill_historical": historical,
                     "skill_persistent": persistent,
                     "skill_learned_policy": bool(previous),
+                    "skill_planned_mode": None if planner is None else planner["schedule"][count],
                 }
 
             result = run_worker(
@@ -156,9 +172,8 @@ def _compare(
         historical_experiences=historical,
         persistent_experiences=persistent,
         persistent_sources=lineage,
-        experience_scope_pin=digest(
-            dict(sources=lineage, allowed=sorted(allowed), adaptive=adaptive)
-        ),
+        experience_scope_pin=digest(selection_scope),
+        research_planner=planner,
         duplicate_configurations_excluded=len(frozen["candidates"]) - len(allowed),
         effective_training_budget=effective_budget,
         pause_reason=pause_reason,

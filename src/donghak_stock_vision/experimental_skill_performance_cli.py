@@ -7,6 +7,7 @@ from typing import Any
 
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.models.experimental_research_performance import performance
+from donghak_stock_vision.models.experimental_research_planner import research_plan
 from donghak_stock_vision.storage.autonomous_research import private_root
 from donghak_stock_vision.storage.experimental_experience_memory import restore, scope
 from donghak_stock_vision.storage.krx_backfill import read_pin
@@ -33,7 +34,9 @@ def review(sources: list[tuple[Path, Path]]) -> dict[str, Any]:
     details: list[dict[str, Any]] = []
     _, _, lineage = restore(sources, frozen, data, session_details=details)
     historical = [row for row in frozen["memory"] if scope(row, frozen["request"])]
-    return performance(historical, details, frozen["candidates"], frozen["request"]["budget"]) | {
+    summary = performance(historical, details, frozen["candidates"], frozen["request"]["budget"])
+    return summary | {
+        "research_planner": research_plan(summary, frozen["request"]["budget"]),
         "dataset_id": frozen["dataset_id"],
         "sources": lineage,
         "new_python_trainings": 0,
