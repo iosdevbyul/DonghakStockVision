@@ -322,9 +322,7 @@ def select_grounded(
                 ),
                 "memory": trace[0]["result"],
                 "untrained_candidates": [[i, configuration(c)] for i, c in valid.items()],
-                "strategy": {
-                    k: v for k, v in strategy.items() if k != "supportingExperiments"
-                },
+                "strategy": {k: v for k, v in strategy.items() if k != "supportingExperiments"},
             }
         schema = {
             "type": "object",
