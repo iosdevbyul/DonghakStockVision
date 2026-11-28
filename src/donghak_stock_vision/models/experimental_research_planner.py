@@ -28,3 +28,38 @@ def research_plan(report: dict[str, Any], budget: int) -> dict[str, Any]:
         independent_generalization="NOT_ESTABLISHED",
         execution_authorized=False,
     )
+
+
+def next_mode(
+    initial: dict[str, Any],
+    feedback: list[dict[str, Any]],
+    step: int,
+) -> dict[str, Any]:
+    """Revise the frozen schedule from completed outcomes, not untested hypotheses."""
+    if not 0 <= step < initial["total"]:
+        raise ValueError("planner_step")
+    measured = [
+        row
+        for row in feedback
+        if row.get("predictiveQuality") in ("improvement", "stable", "regression")
+    ]
+    planned = initial["schedule"][step]
+    mode, reason = planned, "initial_schedule"
+    if measured:
+        latest = measured[-1]
+        quality = latest["predictiveQuality"]
+        if quality == "regression":
+            mode, reason = "exploration", "previous_regression"
+        elif quality == "stable":
+            mode, reason = "exploration", "previous_stagnation"
+        elif step % 3 != 0:
+            mode, reason = "exploitation", "previous_improvement"
+        else:
+            mode, reason = "exploration", "mandatory_exploration"
+    return dict(
+        mode=mode,
+        original_mode=planned,
+        reason=reason,
+        step=step,
+        evidence_experiment_ids=[row["experimentId"] for row in measured],
+    )

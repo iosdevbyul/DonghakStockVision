@@ -139,7 +139,8 @@ def _compare(
                     "skill_historical": historical,
                     "skill_persistent": persistent,
                     "skill_learned_policy": bool(previous),
-                    "skill_planned_mode": None if planner is None else planner["schedule"][step],
+                    "skill_initial_plan": planner,
+                    "skill_plan_step": step,
                 }
 
             result = run_worker(
@@ -174,6 +175,7 @@ def _compare(
         persistent_sources=lineage,
         experience_scope_pin=digest(selection_scope),
         research_planner=planner,
+        adaptive_decisions=[a["adaptive_decision"] for a in audits if "adaptive_decision" in a],
         duplicate_configurations_excluded=len(frozen["candidates"]) - len(allowed),
         effective_training_budget=effective_budget,
         pause_reason=pause_reason,

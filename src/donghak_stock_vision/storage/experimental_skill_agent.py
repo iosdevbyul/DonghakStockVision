@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from donghak_stock_vision.data.learning import digest
+from donghak_stock_vision.models.experimental_research_planner import next_mode
 from donghak_stock_vision.models.experimental_view_skills import build_view_skills
 from donghak_stock_vision.models.llm_provider import LLMProvider
 from donghak_stock_vision.models.research_agent import decode_gemma_proposal
@@ -396,6 +397,7 @@ def select_grounded(
                     "Prioritize AP and balanced accuracy. Lower overfit_gap is better; "
                     "higher other metrics are better. Candidates have no observed results. "
                     "Past feedback belongs only to its named experiment. "
+                    "For failed feedback, propose a different change and explain why. "
                     "State a prediction, not a claimed observed gain."
                 ),
                 "memory": trace[0]["result"],
@@ -693,6 +695,11 @@ class SkillAgent:
             feedback = [hypothesis_feedback(p, view["history"]) for p in previous]
             view = view | {"skill_feedback": feedback[-4:], "skill_adaptive": self.adaptive}
             self.audit["prior_feedback"] = feedback[-4:]
+            initial = view.get("skill_initial_plan")
+            if initial is not None and self.adaptive:
+                decision = next_mode(initial, feedback, view["skill_plan_step"])
+                view["skill_planned_mode"] = decision["mode"]
+                self.audit["adaptive_decision"] = decision
             proposal, trace = select_with_skills(view, generate, events=events, grounded=True)
             self.audit.update(state="accepted", proposal=proposal, trace=trace)
             return str(proposal["experimentId"])
