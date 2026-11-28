@@ -8,7 +8,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
-from donghak_stock_vision.backtest.validation import fields, require, sha, text
+from donghak_stock_vision.backtest.validation import fields, require
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.models import autonomous_strategy as policy
 from donghak_stock_vision.models.service import provenance
@@ -16,47 +16,30 @@ from donghak_stock_vision.models.stock_generalization import catalog
 from donghak_stock_vision.storage import autonomous_strategy as r4
 from donghak_stock_vision.storage import predictive_research as r3
 from donghak_stock_vision.storage.analysis import AnalysisStore, ReadOnlyAnalysisStore
-from donghak_stock_vision.storage.autonomous_research import DB, LIMITS, clock, private_root
+from donghak_stock_vision.storage.autonomous_research import DB, LIMITS, clock
 from donghak_stock_vision.storage.failure_feedback_source import outcome_panels, source_owner
 from donghak_stock_vision.storage.krx_backfill import read_pin, write_new
 from donghak_stock_vision.storage.real_market_dataset import document
 from donghak_stock_vision.storage.research_resources import lock, probe, resource_reason
 from donghak_stock_vision.storage.research_studies import _file_sha256
-
-DIAGNOSTIC_POLICY = "failure_guided_diagnostic_v1"
-
-
-def _diagnostic_slots(request: dict[str, Any]) -> list[dict[str, Any]]:
-    if "diagnostic_slots" not in request:
-        return []
-    raw = request["diagnostic_slots"]
-    require(type(raw) is list, "supervised_diagnostic_schedule")
-    slots: list[dict[str, Any]] = raw
-    require(
-        len(slots) == 2
-        and request["schedule"][:2] == [1, 5]
-        and len(request["schedule"]) <= 14
-        and all(request["schedule"].count(h) <= 7 for h in policy.HORIZONS),
-        "supervised_diagnostic_schedule",
-    )
-    for horizon, item in zip((1, 5), slots, strict=True):
-        fields(
-            item,
-            "horizon original_candidate_id candidate_id evidence_experiment_ids reason hypothesis",
-        )
-        evidence = item["evidence_experiment_ids"]
-        require(
-            type(item["horizon"]) is int
-            and item["horizon"] == horizon
-            and sha(item["original_candidate_id"]) != sha(item["candidate_id"])
-            and type(evidence) is list
-            and 1 <= len(evidence) <= 12
-            and len({sha(key) for key in evidence}) == len(evidence)
-            and len(text(item["reason"])) <= 512
-            and len(text(item["hypothesis"])) <= 512,
-            "supervised_diagnostic_slot_binding",
-        )
-    return slots
+from donghak_stock_vision.storage.supervised_evidence import (
+    DIAGNOSTIC_POLICY as DIAGNOSTIC_POLICY,
+)
+from donghak_stock_vision.storage.supervised_evidence import (
+    _diagnostic_slots as _diagnostic_slots,
+)
+from donghak_stock_vision.storage.supervised_evidence import (
+    _ledger as _ledger,
+)
+from donghak_stock_vision.storage.supervised_evidence import (
+    _plan as _plan,
+)
+from donghak_stock_vision.storage.supervised_evidence import (
+    _rows as _rows,
+)
+from donghak_stock_vision.storage.supervised_evidence import (
+    _valid_limits as _valid_limits,
+)
 
 
 def _owners(
@@ -75,18 +58,6 @@ def _owners(
         require(len(result) == 1 and result[0][1] == pin, "supervised_r4_result_binding")
         prior = json.loads(result[0][2])
     return original, source, trials, prior, str(result[0][0])
-
-
-def _valid_limits(request: dict[str, Any]) -> bool:
-    return bool(
-        type(request["schedule"]) is list
-        and 2 <= len(request["schedule"]) <= 20
-        and all(type(h) is int and h in policy.HORIZONS for h in request["schedule"])
-        and type(request["max_seconds"]) is int
-        and 1 <= request["max_seconds"] <= LIMITS["timeout_seconds"]
-        and type(request["max_failures"]) is int
-        and 1 <= request["max_failures"] <= LIMITS["maximum_attempts"]
-    )
 
 
 def _inherit(root: Path, inherited: dict[str, Any], source_hash: str) -> dict[str, Any]:
@@ -233,60 +204,30 @@ def _bind_diagnostics(
             prior_r4,
         )["candidate"]["experiment_id"]
         require(original == slot["original_candidate_id"], "supervised_diagnostic_original_choice")
-        require(
-            any(c["experiment_id"] == slot["candidate_id"] for c in plan["pools"][str(h)]),
-            "supervised_diagnostic_candidate_not_available",
+        candidate = next(
+            (c for c in plan["pools"][str(h)] if c["experiment_id"] == slot["candidate_id"]),
+            None,
         )
+        require(candidate is not None, "supervised_diagnostic_candidate_not_available")
+        if matched := slot.get("matched_experiment_id"):
+            reference = next(
+                (
+                    t
+                    for t in plan["inherited"].get("trials", [])
+                    if t["experiment_id"] == matched and t["state"] == "completed"
+                ),
+                None,
+            )
+            assert candidate is not None
+            require(
+                reference is not None
+                and candidate["config"]["mask"] != reference["config"]["mask"]
+                and candidate["config"]
+                == reference["config"] | {"mask": candidate["config"]["mask"]},
+                "supervised_matched_mask_contract",
+            )
         pinned.append(slot | dict(policy=DIAGNOSTIC_POLICY, selected_at=plan["registered_at"]))
     plan["diagnostics"] = pinned
-
-
-def _plan(root: Path, pin: str) -> dict[str, Any]:
-    private_root(root)
-    with closing(ReadOnlyAnalysisStore(root / DB)) as reader:
-        plan = reader.get("supervised_plan", pin)
-    require(
-        plan["version"] == "supervised_research_plan_v1"
-        and plan["bounds"] == LIMITS
-        and plan["max_worker_seconds"] == 60
-        and _valid_limits(plan["request"])
-        and all(plan[k] is False for k in r3.FLAGS),
-        "supervised_plan_binding",
-    )
-    slots = _diagnostic_slots(plan["request"])
-    if slots or "diagnostics" in plan:
-        require(
-            bool(slots)
-            and plan.get("diagnostics")
-            == [
-                slot | dict(policy=DIAGNOSTIC_POLICY, selected_at=plan["registered_at"])
-                for slot in slots
-            ],
-            "supervised_diagnostic_plan_binding",
-        )
-    return plan
-
-
-def _rows(store: AnalysisStore, kind: str) -> dict[str, dict[str, Any]]:
-    return {key: value for key, value in store.all(kind)}
-
-
-def _ledger(root: Path) -> dict[str, Any]:
-    with closing(ReadOnlyAnalysisStore(root / DB)) as s:
-        s.connection.execute("BEGIN")
-        return dict(
-            windows=_rows(s, "supervised_window"),
-            closures={v["window"]: v for _, v in s.all("supervised_close")},
-            stops={v["window"] for _, v in s.all("supervised_stop")},
-            attempts=_rows(s, "supervised_attempt"),
-            audited={v["attempt"]: v for _, v in s.all("supervised_audit")},
-            decisions=sorted(
-                _rows(s, "supervised_decision").items(), key=lambda pair: pair[1]["index"]
-            ),
-            completed={v["decision"]: v for _, v in s.all("supervised_completed")},
-            checkpoints={v["decision"]: v for _, v in s.all("supervised_checkpoint")},
-            trials={v["experiment_id"]: v for _, v in s.all("predictive_research_trial")},
-        )
 
 
 def _store(root: Path, kind: str, row: dict[str, Any]) -> str:
@@ -439,6 +380,13 @@ def worker(root: Path, pin: str, attempt_id: str) -> None:
         and evaluation_pin == control["evaluation_population"],
         "supervised_population_binding",
     )
+    if diagnostics and (matched := diagnostics[index].get("matched_experiment_id")):
+        reference = next(t for t in inherited["trials"] if t["experiment_id"] == matched)
+        require(
+            train_pin == reference["training_population"]
+            and evaluation_pin == reference["evaluation_population"],
+            "supervised_matched_population",
+        )
     prepared = state["checkpoints"].get(key)
     trial = state["trials"].get(experiment)
     if trial is None:
