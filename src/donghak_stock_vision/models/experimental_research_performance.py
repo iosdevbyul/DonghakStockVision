@@ -57,9 +57,7 @@ def strategy_summary(
         costs = sum(float(row["proposal_wall_seconds"]) for row in rows)
         incumbent = baseline["mean_ap"]
         above = (
-            None
-            if incumbent is None
-            else sum(value > incumbent["value"] + EPSILON for value in ap)
+            None if incumbent is None else sum(value > incumbent["value"] + EPSILON for value in ap)
         )
         result[mode] = dict(
             observations=len(rows),

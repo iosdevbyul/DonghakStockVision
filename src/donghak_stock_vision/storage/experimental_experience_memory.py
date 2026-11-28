@@ -142,9 +142,7 @@ def restore(
                     raise ValueError("experience_reference_missing")
                 item = verified_feedback(proposal, reference, outcome)
                 feedback.setdefault(item["semanticId"], item)
-                observations.append(
-                    item | {"proposal_wall_seconds": float(audit["wall_seconds"])}
-                )
+                observations.append(item | {"proposal_wall_seconds": float(audit["wall_seconds"])})
         if before != file_sha(target / DB):
             raise ValueError("experience_source_changed")
         for row in outcomes:
