@@ -69,7 +69,7 @@ def hypothesis_feedback(proposal: dict[str, Any], history: list[dict[str, Any]])
     row = next((h for h in history if h["experiment_id"] == proposal["experimentId"]), None)
     metric = proposal["evidence"][0]["metric"]
     observed = None if row is None else row.get(metric)
-    if type(observed) not in (int, float) or not math.isfinite(observed):
+    if observed is None or type(observed) not in (int, float) or not math.isfinite(observed):
         observed = None
     delta = None if observed is None else observed - proposal["referenceValue"]
     changes = proposal.get("changes", {})
@@ -79,7 +79,9 @@ def hypothesis_feedback(proposal: dict[str, Any], history: list[dict[str, Any]])
         for m in METRICS:
             before, after = reference.get(m), row.get(m)
             if (
-                type(before) in (int, float)
+                before is not None
+                and after is not None
+                and type(before) in (int, float)
                 and type(after) in (int, float)
                 and math.isfinite(before)
                 and math.isfinite(after)
@@ -119,9 +121,7 @@ def hypothesis_feedback(proposal: dict[str, Any], history: list[dict[str, Any]])
 def transition_key(before: dict[str, Any], after: dict[str, Any]) -> str:
     """Coarse configuration transition, not a causal or transferable rule."""
     changes = {
-        key: [before[key], after[key]]
-        for key in ("family", "mask")
-        if before[key] != after[key]
+        key: [before[key], after[key]] for key in ("family", "mask") if before[key] != after[key]
     }
     if before["value"] != after["value"]:
         changes["value"] = [before["value"], after["value"]]
