@@ -8,7 +8,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
-from donghak_stock_vision.backtest.validation import fields, require
+from donghak_stock_vision.backtest.validation import fields, require, sha, text
 from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.models import autonomous_strategy as policy
 from donghak_stock_vision.models.service import provenance
@@ -22,6 +22,41 @@ from donghak_stock_vision.storage.krx_backfill import read_pin, write_new
 from donghak_stock_vision.storage.real_market_dataset import document
 from donghak_stock_vision.storage.research_resources import lock, probe, resource_reason
 from donghak_stock_vision.storage.research_studies import _file_sha256
+
+DIAGNOSTIC_POLICY = "failure_guided_diagnostic_v1"
+
+
+def _diagnostic_slots(request: dict[str, Any]) -> list[dict[str, Any]]:
+    if "diagnostic_slots" not in request:
+        return []
+    raw = request["diagnostic_slots"]
+    require(type(raw) is list, "supervised_diagnostic_schedule")
+    slots: list[dict[str, Any]] = raw
+    require(
+        len(slots) == 2
+        and request["schedule"][:2] == [1, 5]
+        and len(request["schedule"]) <= 14
+        and all(request["schedule"].count(h) <= 7 for h in policy.HORIZONS),
+        "supervised_diagnostic_schedule",
+    )
+    for horizon, item in zip((1, 5), slots, strict=True):
+        fields(
+            item,
+            "horizon original_candidate_id candidate_id evidence_experiment_ids reason hypothesis",
+        )
+        evidence = item["evidence_experiment_ids"]
+        require(
+            type(item["horizon"]) is int
+            and item["horizon"] == horizon
+            and sha(item["original_candidate_id"]) != sha(item["candidate_id"])
+            and type(evidence) is list
+            and 1 <= len(evidence) <= 12
+            and len({sha(key) for key in evidence}) == len(evidence)
+            and len(text(item["reason"])) <= 512
+            and len(text(item["hypothesis"])) <= 512,
+            "supervised_diagnostic_slot_binding",
+        )
+    return slots
 
 
 def _owners(
@@ -86,7 +121,11 @@ def _inherit(root: Path, inherited: dict[str, Any], source_hash: str) -> dict[st
 
 def register(request: dict[str, Any], root: Path, pins: Path) -> str:
     fields(
-        {key: value for key, value in request.items() if key != "previous_run"},
+        {
+            key: value
+            for key, value in request.items()
+            if key not in {"previous_run", "diagnostic_slots"}
+        },
         "version r4_root r4_plan_pin_file r5_request r5_request_pin_file "
         "schedule max_seconds max_failures",
     )
@@ -99,6 +138,7 @@ def register(request: dict[str, Any], root: Path, pins: Path) -> str:
         and not root.is_relative_to(pins),
         "supervised_plan_bounds",
     )
+    slots = _diagnostic_slots(request)
     previous_db = Path(request["r4_root"]) / DB
     previous_hash = _file_sha256(previous_db)
     original, source, prior_r3, prior_r4, result_id = _owners(request)
@@ -147,6 +187,8 @@ def register(request: dict[str, Any], root: Path, pins: Path) -> str:
         source_owners=source["sources"],
         **r3.FLAGS,
     )
+    if slots:
+        _bind_diagnostics(plan, slots, original, source, prior_r3, prior_r4)
     root.mkdir(mode=0o700)
     (root / "models").mkdir(mode=0o700)
     pins.mkdir(mode=0o700)
@@ -156,6 +198,47 @@ def register(request: dict[str, Any], root: Path, pins: Path) -> str:
         pin = store.put("supervised_plan", plan)
     write_new(pins / "plan.pin", pin)
     return pin
+
+
+def _bind_diagnostics(
+    plan: dict[str, Any],
+    slots: list[dict[str, Any]],
+    source_root: Path,
+    source: dict[str, Any],
+    prior_r3: list[dict[str, Any]],
+    prior_r4: list[dict[str, Any]],
+) -> None:
+    prior = prior_r3 + prior_r4 + plan["inherited"].get("trials", [])
+    ranking_plan = plan | {"development_tickers": source["development_tickers"]}
+    pinned = []
+    for index, slot in enumerate(slots):
+        h = slot["horizon"]
+        evidence = {
+            trial["experiment_id"]
+            for trial in prior
+            if trial["state"] == "completed" and trial["config"]["goal"]["horizon"] == h
+        }
+        require(
+            set(slot["evidence_experiment_ids"]) <= evidence,
+            "supervised_diagnostic_source_binding",
+        )
+        original = _select(
+            ranking_plan,
+            digest(plan),
+            h,
+            index,
+            dict(decisions=[], completed={}),
+            source_root,
+            prior_r3,
+            prior_r4,
+        )["candidate"]["experiment_id"]
+        require(original == slot["original_candidate_id"], "supervised_diagnostic_original_choice")
+        require(
+            any(c["experiment_id"] == slot["candidate_id"] for c in plan["pools"][str(h)]),
+            "supervised_diagnostic_candidate_not_available",
+        )
+        pinned.append(slot | dict(policy=DIAGNOSTIC_POLICY, selected_at=plan["registered_at"]))
+    plan["diagnostics"] = pinned
 
 
 def _plan(root: Path, pin: str) -> dict[str, Any]:
@@ -170,6 +253,17 @@ def _plan(root: Path, pin: str) -> dict[str, Any]:
         and all(plan[k] is False for k in r3.FLAGS),
         "supervised_plan_binding",
     )
+    slots = _diagnostic_slots(plan["request"])
+    if slots or "diagnostics" in plan:
+        require(
+            bool(slots)
+            and plan.get("diagnostics")
+            == [
+                slot | dict(policy=DIAGNOSTIC_POLICY, selected_at=plan["registered_at"])
+                for slot in slots
+            ],
+            "supervised_diagnostic_plan_binding",
+        )
     return plan
 
 
@@ -227,6 +321,21 @@ def _select(
     without_latest, _ = policy.choose(
         available, own[:-1] if len(own) > 1 else own, memory, control, h
     )
+    diagnostics = plan.get("diagnostics", [])
+    prescribed = diagnostics[index] if index < len(diagnostics) else None
+    if prescribed is not None:
+        require(
+            prescribed["horizon"] == h
+            and choice["experiment_id"] == prescribed["original_candidate_id"],
+            "supervised_diagnostic_original_choice",
+        )
+        available_by_id = {c["experiment_id"]: c for c in available}
+        require(
+            prescribed["candidate_id"] in available_by_id,
+            "supervised_diagnostic_candidate_not_available",
+        )
+        choice = available_by_id[prescribed["candidate_id"]]
+        reason = reason | {"diagnostic": prescribed}
     return dict(
         plan_id=pin,
         index=index,
@@ -235,7 +344,8 @@ def _select(
         parent=own[-1]["experiment_id"],
         previous_result=own[-1]["experiment_id"] if len(own) > 1 else None,
         without_latest=without_latest["experiment_id"],
-        latest_changed_choice=choice["experiment_id"] != without_latest["experiment_id"],
+        latest_changed_choice=prescribed is None
+        and choice["experiment_id"] != without_latest["experiment_id"],
         rationale=reason,
         control=control,
         groups=groups,
@@ -292,6 +402,8 @@ def worker(root: Path, pin: str, attempt_id: str) -> None:
             "supervised_parent_changed",
         )
     index = attempt["index"]
+    diagnostics = plan.get("diagnostics", [])
+    require(not diagnostics or index < len(diagnostics), "supervised_diagnostic_approval_bound")
     h = request["schedule"][index]
     existing = state["decisions"]
     if index < len(existing):
@@ -340,15 +452,17 @@ def worker(root: Path, pin: str, attempt_id: str) -> None:
                 _checkpoint(root, key, result, evaluation_pin)
             return bool(attempt["checkpoint_only"])
 
+        trial_plan = source | dict(code=plan["code"])
+        cache = r3._r2_cache(trial_plan) if diagnostics and h == 5 and prepared is None else {}
         timing: dict[str, float] = {}
         trial = r3._trial(
             root,
-            source | dict(code=plan["code"]),
+            trial_plan,
             pin,
             config,
             train,
             dev,
-            {},
+            cache,
             choice["parent"],
             "supervised_research_trial",
             timings=timing,
@@ -405,13 +519,41 @@ def _usage(state: dict[str, Any]) -> tuple[float, int]:
     return seconds, failures
 
 
+def _diagnostic_stop(plan: dict[str, Any], state: dict[str, Any], index: int) -> str | None:
+    if not plan.get("diagnostics"):
+        return None
+    if index >= len(plan["diagnostics"]):
+        return "diagnostic_approval_exhausted"
+    if any(item["trial"]["state"] == "failed" for item in state["completed"].values()):
+        return "diagnostic_slot_failed"
+    prior = [
+        (key, attempt) for key, attempt in state["attempts"].items() if attempt["index"] == index
+    ]
+    if not prior:
+        return None
+    # Only a signed checkpoint-only attempt proves the prior worker did not evaluate.
+    if len(prior) == 1 and prior[0][1]["checkpoint_only"]:
+        key = prior[0][0]
+        audit = state["audited"].get(key)
+        decision = next((k for k, d in state["decisions"] if d["index"] == index), None)
+        if (
+            audit is not None
+            and audit["returncode"] == 0
+            and audit["reason"] is None
+            and decision in state["checkpoints"]
+        ):
+            return None
+    return "diagnostic_attempt_requires_review"
+
+
 def run(root: Path, pin: str, steps: int, *, checkpoint_only: bool = False) -> dict[str, Any]:
     from donghak_stock_vision.storage.autonomous_runner import launch
 
     plan = _plan(root, pin)
     spec = plan["request"]
     require(
-        1 <= steps <= len(spec["schedule"]) and (not checkpoint_only or steps == 1),
+        1 <= steps <= len(plan.get("diagnostics", spec["schedule"]))
+        and (not checkpoint_only or steps == 1),
         "supervised_step_bound",
     )
     require(plan["code"] == provenance(), "supervised_code_changed")
@@ -450,10 +592,13 @@ def run(root: Path, pin: str, steps: int, *, checkpoint_only: bool = False) -> d
             charged, failures = _usage(state)
             remaining = spec["max_seconds"] - max(charged, initial + time.monotonic() - began)
             index = len(state["completed"])
+            diagnostic_stop = _diagnostic_stop(plan, state, index)
             if window in state["stops"]:
                 reason = "operator_stop"
             elif remaining <= 0:
                 reason = "time_budget_exhausted"
+            elif diagnostic_stop is not None:
+                reason = diagnostic_stop
             elif index >= len(spec["schedule"]):
                 reason = "candidate_budget_exhausted"
             elif failures >= spec["max_failures"]:
@@ -488,6 +633,11 @@ def run(root: Path, pin: str, steps: int, *, checkpoint_only: bool = False) -> d
                         reason = audit["reason"] or "worker_failed"
                     elif window in _ledger(root)["stops"]:
                         reason = "operator_stop"
+                    elif plan.get("diagnostics") and any(
+                        item["trial"]["state"] == "failed"
+                        for item in _ledger(root)["completed"].values()
+                    ):
+                        reason = "diagnostic_slot_failed"
                     elif checkpoint_only and len(_ledger(root)["completed"]) == index:
                         reason = "checkpoint_pause"
                     else:
@@ -558,8 +708,18 @@ def status(root: Path, pin: str, *, forecasts: bool = True) -> dict[str, Any]:
         historical=dict(
             active_window=active[0] if active else None,
             completed=len(state["completed"]),
-            fits=len(state["checkpoints"]),
+            fits=sum(c["cache_source"] is None for c in state["checkpoints"].values()),
             evaluated=sum(r["trial"]["state"] == "completed" for r in state["completed"].values()),
+            **(
+                dict(
+                    approved_slots=len(plan["diagnostics"]),
+                    exact_source_reuse=sum(
+                        c["cache_source"] is not None for c in state["checkpoints"].values()
+                    ),
+                )
+                if plan.get("diagnostics")
+                else {}
+            ),
             exact_checkpoint_reuse=sum(
                 r["exact_checkpoint_reuse"] for r in state["completed"].values()
             ),

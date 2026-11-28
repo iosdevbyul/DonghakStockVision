@@ -141,6 +141,11 @@ def run_command(args: argparse.Namespace) -> int:
                         "next_horizon",
                     )
                 } | dict(prospective=supervised_view["prospective"]["status"])
+                if "approved_slots" in current:
+                    supervised_state.update(
+                        approved_slots=current["approved_slots"],
+                        exact_source_reuse=current["exact_source_reuse"],
+                    )
         print(json.dumps(supervised_state))
         return int(
             args.action == "supervised-run"
