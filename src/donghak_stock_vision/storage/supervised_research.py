@@ -32,17 +32,22 @@ def _diagnostic_slots(request: dict[str, Any]) -> list[dict[str, Any]]:
     raw = request["diagnostic_slots"]
     require(type(raw) is list, "supervised_diagnostic_schedule")
     slots: list[dict[str, Any]] = raw
+    single = request["schedule"] == [1]
     require(
-        len(slots) == 2
-        and request["schedule"][:2] == [1, 5]
-        and len(request["schedule"]) <= 14
-        and all(request["schedule"].count(h) <= 7 for h in policy.HORIZONS),
+        (single and len(slots) == 1)
+        or (
+            len(slots) == 2
+            and request["schedule"][:2] == [1, 5]
+            and len(request["schedule"]) <= 14
+            and all(request["schedule"].count(h) <= 7 for h in policy.HORIZONS)
+        ),
         "supervised_diagnostic_schedule",
     )
-    for horizon, item in zip((1, 5), slots, strict=True):
+    for horizon, item in zip(request["schedule"][: len(slots)], slots, strict=True):
         fields(
             item,
-            "horizon original_candidate_id candidate_id evidence_experiment_ids reason hypothesis",
+            "horizon original_candidate_id candidate_id evidence_experiment_ids reason hypothesis"
+            + (" matched_experiment_id" if single else ""),
         )
         evidence = item["evidence_experiment_ids"]
         require(
@@ -53,7 +58,8 @@ def _diagnostic_slots(request: dict[str, Any]) -> list[dict[str, Any]]:
             and 1 <= len(evidence) <= 12
             and len({sha(key) for key in evidence}) == len(evidence)
             and len(text(item["reason"])) <= 512
-            and len(text(item["hypothesis"])) <= 512,
+            and len(text(item["hypothesis"])) <= 512
+            and (not single or sha(item["matched_experiment_id"]) in evidence),
             "supervised_diagnostic_slot_binding",
         )
     return slots
@@ -80,7 +86,16 @@ def _owners(
 def _valid_limits(request: dict[str, Any]) -> bool:
     return bool(
         type(request["schedule"]) is list
-        and 2 <= len(request["schedule"]) <= 20
+        and (
+            2 <= len(request["schedule"]) <= 20
+            or (
+                request["schedule"] == [1]
+                and "diagnostic_slots" in request
+                and type(request["max_seconds"]) is int
+                and request["max_seconds"] <= 90
+                and request["max_failures"] == 1
+            )
+        )
         and all(type(h) is int and h in policy.HORIZONS for h in request["schedule"])
         and type(request["max_seconds"]) is int
         and 1 <= request["max_seconds"] <= LIMITS["timeout_seconds"]
@@ -233,10 +248,28 @@ def _bind_diagnostics(
             prior_r4,
         )["candidate"]["experiment_id"]
         require(original == slot["original_candidate_id"], "supervised_diagnostic_original_choice")
-        require(
-            any(c["experiment_id"] == slot["candidate_id"] for c in plan["pools"][str(h)]),
-            "supervised_diagnostic_candidate_not_available",
+        candidate = next(
+            (c for c in plan["pools"][str(h)] if c["experiment_id"] == slot["candidate_id"]),
+            None,
         )
+        require(candidate is not None, "supervised_diagnostic_candidate_not_available")
+        if matched := slot.get("matched_experiment_id"):
+            reference = next(
+                (
+                    t
+                    for t in plan["inherited"].get("trials", [])
+                    if t["experiment_id"] == matched and t["state"] == "completed"
+                ),
+                None,
+            )
+            assert candidate is not None
+            require(
+                reference is not None
+                and candidate["config"]["mask"] != reference["config"]["mask"]
+                and candidate["config"]
+                == reference["config"] | {"mask": candidate["config"]["mask"]},
+                "supervised_matched_mask_contract",
+            )
         pinned.append(slot | dict(policy=DIAGNOSTIC_POLICY, selected_at=plan["registered_at"]))
     plan["diagnostics"] = pinned
 
@@ -439,6 +472,13 @@ def worker(root: Path, pin: str, attempt_id: str) -> None:
         and evaluation_pin == control["evaluation_population"],
         "supervised_population_binding",
     )
+    if diagnostics and (matched := diagnostics[index].get("matched_experiment_id")):
+        reference = next(t for t in inherited["trials"] if t["experiment_id"] == matched)
+        require(
+            train_pin == reference["training_population"]
+            and evaluation_pin == reference["evaluation_population"],
+            "supervised_matched_population",
+        )
     prepared = state["checkpoints"].get(key)
     trial = state["trials"].get(experiment)
     if trial is None:
