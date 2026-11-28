@@ -84,3 +84,26 @@ The optional --skip-legacy-baseline avoids repeatedly spending inference on the
 legacy parent-evidence rejection. For policy comparison use two fresh sessions
 with the same request, one with --grounded-control and both with the skip flag.
 Cross-session ingestion of skill proposal feedback itself remains future work.
+
+## Persistent experiment campaign
+
+The opt-in --previous ROOT SESSION_PIN argument can be repeated in chronological
+order (at most 12 sources). Original private session and plan pins, dataset,
+source pin, scope, immutable evidence and database hashes are checked. Completed
+configuration hashes are excluded from subsequent sessions even when code-based
+experiment identifiers change. Proposal feedback is recomputed from reference
+and outcome observations; it is not imported from console JSON. Include all
+ancestor sessions when restoring a chained campaign. Source session directories
+and PIN files must remain intact. This is bounded memory, not model weight tuning.
+
+A learned policy uses smoothed observed strategy outcomes, reserves exploration,
+and retains at least two candidates when possible. It is enabled with prior
+sessions; the original single-session comparison remains available. One verified
+unload permits one resident-identity retry per proposal; other errors stop.
+Resident identity diagnostics are recorded without weakening CPU or digest checks.
+
+The experimental_skill_campaign_cli runs up to four fresh sessions with an
+explicit request, research parent, PIN parent, and previous session references.
+It stops on pause or exhausted budget. No daemon, final test, model promotion,
+or trading is enabled. Persistent sources must be explicitly supplied; no
+untrusted directory discovery or automatic deletion is performed.

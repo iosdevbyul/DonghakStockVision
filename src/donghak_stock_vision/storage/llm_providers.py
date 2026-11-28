@@ -103,6 +103,10 @@ class OllamaProvider:
                 timeout=60,
             )
             loaded = self.backend.request("/api/ps")["models"]
+            self.metadata["resident_identity"] = [
+                {k: row.get(k) for k in ("name", "digest", "size_vram", "context_length")}
+                for row in loaded
+            ]
             require(
                 len(loaded) == 1
                 and loaded[0].get("digest") == c.revision

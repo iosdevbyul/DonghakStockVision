@@ -6,10 +6,12 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
+from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.models.llm_provider import ModelConfig
 from donghak_stock_vision.storage.analysis import ReadOnlyAnalysisStore
 from donghak_stock_vision.storage.autonomous_research import DB, context, terminals
 from donghak_stock_vision.storage.autonomous_runner import run as run_worker
+from donghak_stock_vision.storage.experimental_experience_memory import restore
 from donghak_stock_vision.storage.experimental_skill_agent import (
     SkillAgent,
     historical_experiences,
@@ -29,18 +31,46 @@ from donghak_stock_vision.storage.research_resources import lock
 
 
 def compare(
-    root: Path, pin: str, *, adaptive: bool = True, skip_legacy_baseline: bool = False
+    root: Path,
+    pin: str,
+    *,
+    adaptive: bool = True,
+    skip_legacy_baseline: bool = False,
+    previous: list[tuple[Path, Path]] | None = None,
+) -> dict[str, Any]:
+    with lock(root, ".skill-study.lock"):
+        return _compare(root, pin, adaptive, skip_legacy_baseline, previous or [])
+
+
+def _compare(
+    root: Path,
+    pin: str,
+    adaptive: bool,
+    skip_legacy_baseline: bool,
+    previous: list[tuple[Path, Path]],
 ) -> dict[str, Any]:
     frozen = load(root, pin)
     if frozen["version"] != VERSION or not root.name.startswith("skill-experiment-"):
         raise ValueError("skill_requires_dedicated_v1_session")
     budget = frozen["request"]["budget"]
     target = arm_root(root, "gemma_blind")
-    plan, _ = context(target, frozen["plan_id"])
+    plan, data = context(target, frozen["plan_id"])
     # The existing runner opens confirmation only after full plan exhaustion.
     if len(plan["configurations"]) <= budget:
         raise ValueError("skill_confirmation_guard")
-    allowed = frozenset(c["experiment_id"] for c in frozen["candidates"])
+    prior_rows, persistent, lineage = restore(previous, frozen, data)
+    excluded = {digest(row["config"]) for row in prior_rows if row["state"] == "completed"}
+    allowed = frozenset(
+        c["experiment_id"] for c in frozen["candidates"] if digest(c["config"]) not in excluded
+    )
+    # Freeze the external lineage and actual selection scope before any inference.
+    from donghak_stock_vision.storage.krx_backfill import write_new
+
+    write_new(
+        root / "experience-scope.json",
+        json.dumps(dict(sources=lineage, allowed=sorted(allowed), adaptive=adaptive)),
+    )
+    effective_budget = min(budget, len(allowed))
     baseline = arm_root(root, "gemma_memory")
     for arm in frozen["arms"]:
         with closing(ReadOnlyAnalysisStore(arm_root(root, arm) / DB)) as store:
@@ -64,12 +94,13 @@ def compare(
             and h["config"]["stock_policy"] == frozen["request"]["stock_policy"]
         ]
     )
+    pause_reason = None
     with lock(root, ".session.lock"):
-        for _ in range(budget):
+        for _ in range(effective_budget):
             with closing(ReadOnlyAnalysisStore(target / DB)) as store:
                 done = terminals(store)
                 count = len(store.all("llm_proposal"))
-            if len(done) >= budget or count >= budget:
+            if len(done) >= effective_budget or count >= effective_budget:
                 break
             agent = SkillAgent(target, lambda: OllamaProvider(config), adaptive=adaptive)
 
@@ -81,7 +112,7 @@ def compare(
             def project(view: dict[str, Any]) -> dict[str, Any]:
                 history = [
                     h
-                    for h in frozen["memory"] + view["history"]
+                    for h in frozen["memory"] + prior_rows + view["history"]
                     if h["config"]["goal"]["horizon"] == frozen["request"]["horizon"]
                     and h["config"]["stock_policy"] == frozen["request"]["stock_policy"]
                 ]
@@ -91,6 +122,8 @@ def compare(
                     "candidates": [c for c in view["candidates"] if c["experiment_id"] in allowed],
                     "leader": None,
                     "skill_historical": historical,
+                    "skill_persistent": persistent,
+                    "skill_learned_policy": bool(previous),
                 }
 
             result = run_worker(
@@ -104,6 +137,7 @@ def compare(
                 allowed_experiments=allowed,
             ).to_dict()
             if result["pause_reason"]:
+                pause_reason = result["pause_reason"]
                 break
     value = report(root, pin)
     with closing(ReadOnlyAnalysisStore(target / DB)) as store:
@@ -120,6 +154,14 @@ def compare(
         research_mode="adaptive_skills" if adaptive else "grounded_control",
         strategy_decisions=[p["strategy"] for p in hypotheses],
         historical_experiences=historical,
+        persistent_experiences=persistent,
+        persistent_sources=lineage,
+        experience_scope_pin=digest(
+            dict(sources=lineage, allowed=sorted(allowed), adaptive=adaptive)
+        ),
+        duplicate_configurations_excluded=len(frozen["candidates"]) - len(allowed),
+        effective_training_budget=effective_budget,
+        pause_reason=pause_reason,
         provider_inference_seconds=sum(a["metadata"]["inference_seconds"] for a in audits),
         tool_events=[a["events"] for a in audits],
         hypotheses=hypotheses,
@@ -148,6 +190,7 @@ def main() -> None:
     parser.add_argument("--request", type=Path, required=True)
     parser.add_argument("--grounded-control", action="store_true")
     parser.add_argument("--skip-legacy-baseline", action="store_true")
+    parser.add_argument("--previous", action="append", nargs=2, type=Path, default=[])
     args = parser.parse_args()
     if not args.root.name.startswith("skill-experiment-"):
         parser.error("root must start with skill-experiment-")
@@ -160,6 +203,7 @@ def main() -> None:
         pin,
         adaptive=not args.grounded_control,
         skip_legacy_baseline=args.skip_legacy_baseline,
+        previous=[(root, pin) for root, pin in args.previous],
     )
     print(json.dumps(result, indent=2))
 

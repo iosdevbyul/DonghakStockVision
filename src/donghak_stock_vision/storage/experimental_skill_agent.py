@@ -8,6 +8,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
+from donghak_stock_vision.data.learning import digest
 from donghak_stock_vision.models.experimental_view_skills import build_view_skills
 from donghak_stock_vision.models.llm_provider import LLMProvider
 from donghak_stock_vision.models.research_agent import decode_gemma_proposal
@@ -122,6 +123,8 @@ def hypothesis_feedback(proposal: dict[str, Any], history: list[dict[str, Any]])
         "candidateConfig": proposal.get("candidateConfig"),
         "metricDeltas": deltas,
         "predictiveQuality": quality,
+        "strategyMode": proposal.get("strategy", {}).get("mode", "unknown"),
+        "semanticId": None if row is None or "config" not in row else digest(row["config"]),
         "causal": False,
     }
 
@@ -150,12 +153,14 @@ def strategy_options(
     *,
     adaptive: bool,
     historical: list[dict[str, Any]] | None = None,
+    persistent: list[dict[str, Any]] | None = None,
+    learned_policy: bool = False,
 ) -> tuple[dict[int, dict[str, Any]], dict[str, Any]]:
     """Use partial transition matches, shrink sparse evidence, and retain exploration."""
     before = configuration(reference)
     experiences: list[tuple[set[str], int, str]] = []
     seen: set[str] = set()
-    for item in (historical or []) + feedback:
+    for item in (historical or []) + (persistent or []) + feedback:
         left, right = item.get("referenceConfig"), item.get("candidateConfig")
         quality = item.get("predictiveQuality")
         if left is None or right is None or quality not in ("improvement", "regression", "stable"):
@@ -190,7 +195,10 @@ def strategy_options(
     )
     mode = "control" if not adaptive else "exploration"
     chosen = candidates
-    if adaptive and own_count % 2 == 1 and len(candidates) > 1:
+    strategy_stats = mode_statistics((persistent or []) + feedback)
+    if adaptive and learned_policy:
+        chosen, mode = learned_options(candidates, scores, support, strategy_stats, own_count)
+    elif adaptive and own_count % 2 == 1 and len(candidates) > 1:
         best = max(scores.values())
         if best > min(scores.values()):
             chosen = {i: c for i, c in candidates.items() if scores[i] == best}
@@ -207,9 +215,60 @@ def strategy_options(
         "supportCounts": [[i, len(ids)] for i, ids in support.items()],
         "supportingExperiments": [[i, ids] for i, ids in support.items()],
         "allowedIndices": list(chosen),
-        "policy": "partial_transition_shrinkage_v2",
+        "policy": "persistent_strategy_v3" if learned_policy else "partial_transition_shrinkage_v2",
+        "strategyStats": strategy_stats,
         "causal": False,
     }
+
+
+def mode_statistics(feedback: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+    stats = {
+        mode: dict(count=0, improvements=0, regressions=0)
+        for mode in ("exploration", "exploitation")
+    }
+    seen: set[str] = set()
+    for item in feedback:
+        mode, quality = item.get("strategyMode"), item.get("predictiveQuality")
+        identity = item.get("semanticId", item.get("experimentId"))
+        if (
+            mode not in stats
+            or quality not in ("improvement", "stable", "regression")
+            or identity is None
+            or identity in seen
+        ):
+            continue
+        seen.add(identity)
+        stats[mode]["count"] += 1
+        stats[mode]["improvements"] += int(quality == "improvement")
+        stats[mode]["regressions"] += int(quality == "regression")
+    return stats
+
+
+def learned_options(
+    candidates: dict[int, dict[str, Any]],
+    scores: dict[int, float],
+    support: dict[int, list[str]],
+    stats: dict[str, dict[str, int]],
+    step: int,
+) -> tuple[dict[int, dict[str, Any]], str]:
+    # Preserve one exploratory slot in every three decisions.
+    rates = {
+        mode: (row["improvements"] - row["regressions"]) / (row["count"] + 2)
+        for mode, row in stats.items()
+    }
+    exploit = step % 3 != 0 and (
+        stats["exploitation"]["count"] == 0
+        or rates["exploitation"] >= rates["exploration"]
+    )
+    if exploit and max(scores.values()) > min(scores.values()):
+        ranked = sorted(candidates, key=lambda i: (-scores[i], i))
+        mode = "exploitation"
+    else:
+        ranked = sorted(candidates, key=lambda i: (len(support[i]), -scores[i], i))
+        mode = "exploration"
+    # Keep two choices whenever possible; never force a single winner.
+    count = min(len(ranked), max(2, (len(ranked) + 1) // 2))
+    return {i: candidates[i] for i in ranked[:count]}, mode
 
 
 def historical_experiences(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -282,7 +341,12 @@ def select_grounded(
             payload = {
                 "task": "Select a past experiment to investigate. Return its index and reason.",
                 "history": [
-                    [i, configuration(row)["name"], {m: row.get(m) for m in METRICS}]
+                    [
+                        i,
+                        configuration(row)["name"],
+                        configuration(row)["mask"],
+                        {m: row.get(m) for m in METRICS},
+                    ]
                     for i, row in eligible.items()
                 ],
             }
@@ -300,6 +364,8 @@ def select_grounded(
                 view.get("skill_feedback", []),
                 adaptive=view.get("skill_adaptive", True),
                 historical=view.get("skill_historical", []),
+                persistent=view.get("skill_persistent", []),
+                learned_policy=view.get("skill_learned_policy", False),
             )
             metrics = [
                 m
@@ -572,7 +638,9 @@ class SkillAgent:
         began = time.monotonic()
         self.audit = {"state": "rejected", "started_at": clock()}
 
-        def generate(prompt: str, schema: dict[str, Any]) -> str:
+        recovery_used = False
+
+        def generate_once(prompt: str, schema: dict[str, Any]) -> str:
             provider = self.factory()
             self.unloaded = False
             try:
@@ -587,6 +655,18 @@ class SkillAgent:
                     provider.close()
                 finally:
                     calls.append(dict(provider.metadata))
+
+        def generate(prompt: str, schema: dict[str, Any]) -> str:
+            nonlocal recovery_used
+            try:
+                return generate_once(prompt, schema)
+            except ValueError as error:
+                if str(error) != "llm_resident_identity" or not self.unloaded or recovery_used:
+                    raise
+                recovery_used = True
+                self.audit["resident_identity_retry"] = True
+                time.sleep(1)
+                return generate_once(prompt, schema)
 
         try:
             with closing(ReadOnlyAnalysisStore(self.root / DB)) as read_store:

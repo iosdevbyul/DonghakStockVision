@@ -5,6 +5,8 @@ import pytest
 
 from donghak_stock_vision.storage.experimental_skill_agent import (
     historical_experiences,
+    learned_options,
+    mode_statistics,
     hypothesis_feedback,
     select_with_skills,
     strategy_options,
@@ -291,3 +293,47 @@ def test_historical_comparison_is_observational() -> None:
     assert len(results) == 1
     assert results[0]["causal"] is False
     assert results[0]["source"] == "historical_matched_comparison"
+
+
+def test_learned_strategy_keeps_two_candidates() -> None:
+    candidates = {i: {"experiment_id": str(i)} for i in range(5)}
+    stats = mode_statistics([])
+    selected, mode = learned_options(
+        candidates,
+        {0: 0.9, 1: 0.5, 2: 0.1, 3: 0.0, 4: -0.2},
+        {i: [] for i in candidates},
+        stats,
+        1,
+    )
+    assert mode == "exploitation"
+    assert list(selected) == [0, 1, 2]
+
+
+def test_strategy_learning_counts_semantic_result_once() -> None:
+    item = {
+        "semanticId": "same",
+        "strategyMode": "exploration",
+        "predictiveQuality": "improvement",
+    }
+    stats = mode_statistics([item, item])
+    assert stats["exploration"]["count"] == 1
+    assert stats["exploration"]["improvements"] == 1
+
+
+def test_persistent_feedback_is_used_in_first_session_decision() -> None:
+    reference = view()["candidates"][0]
+    candidate = {
+        "experiment_id": "new",
+        "config": {"candidate": {"family": "forest", "value": 2}, "mask": "all"},
+    }
+    prior = {
+        "experimentId": "past",
+        "referenceConfig": {"family": "linear", "value": 1, "mask": "all"},
+        "candidateConfig": {"family": "forest", "value": 1, "mask": "all"},
+        "predictiveQuality": "improvement",
+    }
+    _, decision = strategy_options(
+        reference, {0: candidate}, [], adaptive=True, persistent=[prior], learned_policy=True
+    )
+    assert decision["measuredExperiences"] == 1
+    assert decision["scores"][0][1] > 0
