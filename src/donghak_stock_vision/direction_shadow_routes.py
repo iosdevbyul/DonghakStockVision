@@ -288,8 +288,7 @@ class DirectionPublication:
             raise ValueError("direction_publication_unavailable") from error
 
 
-def router(reader: DirectionPublication, authorize: Callable[[str], Principal | None]) -> APIRouter:
-    routes = APIRouter(prefix="/api/v1/research/predictions")
+def research_read_guard(authorize: Callable[[str], Principal | None]) -> Callable[..., None]:
     bearer = HTTPBearer(auto_error=False)
 
     def guard(
@@ -317,6 +316,13 @@ def router(reader: DirectionPublication, authorize: Callable[[str], Principal | 
             raise HTTPException(403, detail={"code": "local_research_access_required"})
         if len(request.scope.get("path", "")) + len(request.scope.get("query_string", b"")) > 4096:
             raise HTTPException(413, detail={"code": "oversized_request"})
+
+    return guard
+
+
+def router(reader: DirectionPublication, authorize: Callable[[str], Principal | None]) -> APIRouter:
+    routes = APIRouter(prefix="/api/v1/research/predictions")
+    guard = research_read_guard(authorize)
 
     def read() -> Publication:
         try:

@@ -26,6 +26,32 @@ from donghak_stock_vision.storage.forward_capture import (
 from donghak_stock_vision.trading.domain import Currency, Exchange, Instrument
 
 
+def _capture_exit_code(plan: ForwardCapturePlan, result: FrozenJSON) -> int:
+    """Use the verified capture envelope; market storage is a separate operation."""
+    manifest = result.to_dict()
+    if plan.full_market_scope is None:
+        return int(manifest["ingestion"] != [["success", 1, None]])
+    responses = manifest["responses"]
+    if (
+        manifest["version"] != "forward_capture_manifest_v2"
+        or manifest.get("scope") != "full_market"
+        or manifest["plan"] != plan.document.to_dict()
+        or manifest["stop_reason"] is not None
+        or manifest["ingestion"] != []
+        or len(responses) != 1
+    ):
+        return 1
+    response = responses[0]
+    metadata = response["metadata"]
+    return int(
+        metadata["http_status"] != 200
+        or metadata["complete"] is not True
+        or metadata["error"] is not None
+        or response["parse_error"] is not None
+        or not response["parsed_bars"]
+    )
+
+
 def add_commands(sub: Any) -> None:
     cmd = sub.add_parser(
         "forward-capture", help="explicit bounded forward capture; offline by default"
@@ -446,4 +472,4 @@ def run(args: argparse.Namespace) -> int:
             }
         ).payload_json
     )
-    return 0 if result.to_dict()["ingestion"] == [["success", 1, None]] else 1
+    return _capture_exit_code(plan, result)

@@ -16,6 +16,7 @@ from typing import Any
 from donghak_stock_vision.storage.autonomous_research import DB, context
 from donghak_stock_vision.storage.research_lab_publication import (
     VERSION,
+    VISIBILITY_INDEX,
     ResearchLabPublication,
 )
 
@@ -25,16 +26,22 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument(
         "--study",
         action="append",
-        required=True,
+        default=[],
         help="absolute study root followed by colon and existing 64-character plan ID",
     )
     command.add_argument("--output", type=Path, required=True)
+    command.add_argument("--visibility-request", type=Path)
+    command.add_argument("--visibility-request-pin-file", type=Path)
     return command
 
 
-def export(studies: list[str], output: Path) -> dict[str, Any]:
+def export(
+    studies: list[str], output: Path, *, visibility_data: bytes | None = None
+) -> dict[str, Any]:
     if (
-        not 1 <= len(studies) <= 24
+        not 0 <= len(studies) <= 24
+        or (not studies and visibility_data is None)
+        or output.resolve() != output
         or not output.is_absolute()
         or output.exists()
         or output.is_symlink()
@@ -86,10 +93,26 @@ def export(studies: list[str], output: Path) -> dict[str, Any]:
                 "reportSha256": hashlib.sha256(report_content).hexdigest(),
             }
         )
+    index: dict[str, Any] = {"version": VERSION, "entries": entries}
+    if visibility_data is not None:
+        from donghak_stock_vision.storage.research_lab_publication import MAX_VISIBILITY
+
+        if len(visibility_data) > MAX_VISIBILITY:
+            raise ValueError("visibility_publication_bound")
+        view_file = output / "visibility.json"
+        with view_file.open("xb") as stream:
+            os.fchmod(stream.fileno(), 0o600)
+            stream.write(visibility_data)
+        index.update(
+            version=VISIBILITY_INDEX,
+            visibility=dict(
+                name=view_file.name, sha256=hashlib.sha256(visibility_data).hexdigest()
+            ),
+        )
     manifest = output / "index.json"
     with manifest.open("x", encoding="utf-8") as stream:
         os.chmod(manifest, 0o600)
-        json.dump({"version": VERSION, "entries": entries}, stream, sort_keys=True)
+        json.dump(index, stream, sort_keys=True)
     index_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
     ResearchLabPublication(output, index_sha256)
     return {
@@ -104,7 +127,25 @@ def export(studies: list[str], output: Path) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> None:
     args = parser().parse_args(argv)
-    print(json.dumps(export(args.study, args.output), sort_keys=True))
+    if bool(args.visibility_request) != bool(args.visibility_request_pin_file):
+        parser().error("visibility request and independent PIN must be supplied together")
+    data = None
+    if args.visibility_request is not None:
+        from donghak_stock_vision.storage.research_lab_evidence import _pinned, visibility
+
+        request = _pinned(str(args.visibility_request), str(args.visibility_request_pin_file))
+
+        def paths(value: Any) -> list[Path]:
+            if isinstance(value, dict):
+                return [p for child in value.values() for p in paths(child)]
+            if isinstance(value, list):
+                return [p for child in value for p in paths(child)]
+            return [Path(value)] if isinstance(value, str) and value.startswith("/") else []
+
+        if any(args.output.resolve().is_relative_to(p.parent.resolve()) for p in paths(request)):
+            parser().error("visibility output must be separate from source owners")
+        data = visibility(request).model_dump_json(exclude_none=True).encode()
+    print(json.dumps(export(args.study, args.output, visibility_data=data), sort_keys=True))
 
 
 if __name__ == "__main__":

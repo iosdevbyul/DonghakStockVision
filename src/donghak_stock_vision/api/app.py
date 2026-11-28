@@ -88,6 +88,7 @@ def create_app(
     direction_reader: DirectionPublication | None = None,
     direction_authorize: "Callable[[str],Principal|None] | None" = None,
     lab_reader: ResearchLabPublication | None = None,
+    lab_authorize: "Callable[[str],Principal|None] | None" = None,
     allowed_origins: Sequence[str] = (
         "http://localhost:3000",
         "http://127.0.0.1:3000",
@@ -106,7 +107,7 @@ def create_app(
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT"] if ai_management is not None else ["GET"],
         allow_headers=["Accept", "Content-Type", "Authorization"]
-        if ai_management is not None or direction_reader is not None
+        if ai_management is not None or direction_reader is not None or lab_authorize is not None
         else ["Accept", "Content-Type"],
     )
 
@@ -121,6 +122,14 @@ def create_app(
         raise ValueError("direction_authenticated_read_pair_required")
     if direction_reader is not None and direction_authorize is not None:
         app.include_router(direction_router(direction_reader, direction_authorize))
+
+    visibility = lab_reader.visibility if lab_reader is not None else None
+    if (visibility is None) != (lab_authorize is None):
+        raise ValueError("research_lab_authenticated_read_pair_required")
+    if visibility is not None and lab_authorize is not None:
+        from donghak_stock_vision.research_lab_routes import router as lab_router
+
+        app.include_router(lab_router(visibility, lab_authorize))
 
     def require_reader() -> ResearchAPIReader:
         if reader is None:
