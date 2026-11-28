@@ -124,7 +124,7 @@ def _compare(
             ) -> SkillAgent:
                 return current
 
-            def project(view: dict[str, Any]) -> dict[str, Any]:
+            def project(view: dict[str, Any], step: int = count) -> dict[str, Any]:
                 history = [
                     h
                     for h in frozen["memory"] + prior_rows + view["history"]
@@ -139,7 +139,7 @@ def _compare(
                     "skill_historical": historical,
                     "skill_persistent": persistent,
                     "skill_learned_policy": bool(previous),
-                    "skill_planned_mode": None if planner is None else planner["schedule"][count],
+                    "skill_planned_mode": None if planner is None else planner["schedule"][step],
                 }
 
             result = run_worker(
